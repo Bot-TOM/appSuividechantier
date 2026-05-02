@@ -48,6 +48,7 @@ export function useChantierDetail(chantierId: string) {
       .from('chantiers')
       .update({ statut, updated_at: new Date().toISOString() })
       .eq('id', chantierId)
+    await fetchAll()
   }
 
   async function advanceEtape(etape: Etape) {
@@ -59,6 +60,7 @@ export function useChantierDetail(chantierId: string) {
     } else {
       await supabase.from('etapes').update({ statut: 'non_fait', started_at: null, finished_at: null, updated_at: now }).eq('id', etape.id)
     }
+    await fetchAll()
   }
 
   async function updateConsigne(etapeId: string, consigne: string) {
@@ -66,10 +68,12 @@ export function useChantierDetail(chantierId: string) {
       .from('etapes')
       .update({ consigne: consigne.trim() || null, updated_at: new Date().toISOString() })
       .eq('id', etapeId)
+    await fetchAll()
   }
 
   async function addNote(contenu: string, technicienId: string) {
     await supabase.from('notes').insert({ chantier_id: chantierId, technicien_id: technicienId, contenu })
+    await fetchAll()
   }
 
   async function uploadEtapePhoto(etapeId: string, file: File): Promise<{ error: string | null }> {

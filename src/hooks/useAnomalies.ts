@@ -35,6 +35,7 @@ export function useAnomalies(chantierId?: string) {
 
   async function updateStatut(id: string, statut: Anomalie['statut']) {
     await supabase.from('anomalies').update({ statut, updated_at: new Date().toISOString() }).eq('id', id)
+    await fetch()
   }
 
   return { anomalies, loading, refetch: fetch, updateStatut }

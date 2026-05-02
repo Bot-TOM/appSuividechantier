@@ -35,15 +35,18 @@ export function useChecklistMateriel(chantierId: string) {
 
   async function toggleItem(id: string, checked: boolean) {
     await supabase.from('checklist_materiel').update({ checked }).eq('id', id)
+    await fetch()
   }
 
   async function addItem(nom: string) {
     const ordre = items.length + 1
     await supabase.from('checklist_materiel').insert({ chantier_id: chantierId, nom: nom.trim(), checked: false, ordre })
+    await fetch()
   }
 
   async function deleteItem(id: string) {
     await supabase.from('checklist_materiel').delete().eq('id', id)
+    await fetch()
   }
 
   const total   = items.length
