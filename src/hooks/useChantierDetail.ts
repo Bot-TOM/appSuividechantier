@@ -1,22 +1,32 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Chantier, Etape, Note } from '@/types'
+import { Chantier, Etape, EtapePhoto, Note } from '@/types'
 
 export function useChantierDetail(chantierId: string) {
-  const [chantier, setChantier] = useState<Chantier | null>(null)
-  const [etapes, setEtapes]     = useState<Etape[]>([])
-  const [notes, setNotes]       = useState<Note[]>([])
-  const [loading, setLoading]   = useState(true)
+  const [chantier, setChantier]   = useState<Chantier | null>(null)
+  const [etapes, setEtapes]       = useState<Etape[]>([])
+  const [notes, setNotes]         = useState<Note[]>([])
+  const [photos, setPhotos]       = useState<Record<string, EtapePhoto[]>>({})
+  const [loading, setLoading]     = useState(true)
 
   const fetchAll = useCallback(async () => {
-    const [{ data: c }, { data: e }, { data: n }] = await Promise.all([
+    const [{ data: c }, { data: e }, { data: n }, { data: p }] = await Promise.all([
       supabase.from('chantiers').select('*').eq('id', chantierId).single(),
       supabase.from('etapes').select('*').eq('chantier_id', chantierId).order('ordre'),
       supabase.from('notes').select('*, profiles(full_name)').eq('chantier_id', chantierId).order('created_at', { ascending: false }),
+      supabase.from('etape_photos').select('*').eq('chantier_id', chantierId).order('created_at'),
     ])
     setChantier(c)
     setEtapes(e ?? [])
     setNotes(n ?? [])
+
+    // Indexer les photos par etape_id pour un accès O(1)
+    const byEtape: Record<string, EtapePhoto[]> = {}
+    for (const photo of (p ?? [])) {
+      if (!byEtape[photo.etape_id]) byEtape[photo.etape_id] = []
+      byEtape[photo.etape_id].push(photo)
+    }
+    setPhotos(byEtape)
     setLoading(false)
   }, [chantierId])
 
@@ -25,9 +35,10 @@ export function useChantierDetail(chantierId: string) {
   useEffect(() => {
     const sub = supabase
       .channel(`chantier-${chantierId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'etapes',   filter: `chantier_id=eq.${chantierId}` }, fetchAll)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'notes',    filter: `chantier_id=eq.${chantierId}` }, fetchAll)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'chantiers', filter: `id=eq.${chantierId}` }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'etapes',       filter: `chantier_id=eq.${chantierId}` }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'notes',        filter: `chantier_id=eq.${chantierId}` }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'chantiers',    filter: `id=eq.${chantierId}` }, fetchAll)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'etape_photos', filter: `chantier_id=eq.${chantierId}` }, fetchAll)
       .subscribe()
     return () => { supabase.removeChannel(sub) }
   }, [chantierId, fetchAll])
@@ -39,29 +50,14 @@ export function useChantierDetail(chantierId: string) {
       .eq('id', chantierId)
   }
 
-  /**
-   * Fait avancer l'étape dans le cycle : non_fait → en_cours → fait → non_fait
-   * Enregistre les timestamps automatiquement.
-   */
   async function advanceEtape(etape: Etape) {
     const now = new Date().toISOString()
-
     if (etape.statut === 'non_fait') {
-      await supabase
-        .from('etapes')
-        .update({ statut: 'en_cours', started_at: now, finished_at: null, updated_at: now })
-        .eq('id', etape.id)
+      await supabase.from('etapes').update({ statut: 'en_cours', started_at: now, finished_at: null, updated_at: now }).eq('id', etape.id)
     } else if (etape.statut === 'en_cours') {
-      await supabase
-        .from('etapes')
-        .update({ statut: 'fait', finished_at: now, updated_at: now })
-        .eq('id', etape.id)
+      await supabase.from('etapes').update({ statut: 'fait', finished_at: now, updated_at: now }).eq('id', etape.id)
     } else {
-      // fait → reset complet
-      await supabase
-        .from('etapes')
-        .update({ statut: 'non_fait', started_at: null, finished_at: null, updated_at: now })
-        .eq('id', etape.id)
+      await supabase.from('etapes').update({ statut: 'non_fait', started_at: null, finished_at: null, updated_at: now }).eq('id', etape.id)
     }
   }
 
@@ -73,9 +69,7 @@ export function useChantierDetail(chantierId: string) {
   }
 
   async function addNote(contenu: string, technicienId: string) {
-    await supabase
-      .from('notes')
-      .insert({ chantier_id: chantierId, technicien_id: technicienId, contenu })
+    await supabase.from('notes').insert({ chantier_id: chantierId, technicien_id: technicienId, contenu })
   }
 
   async function uploadEtapePhoto(etapeId: string, file: File): Promise<{ error: string | null }> {
@@ -87,21 +81,42 @@ export function useChantierDetail(chantierId: string) {
 
     const { error: storageError } = await supabase.storage
       .from('chantier-photos')
-      .upload(path, file, { upsert: true })
+      .upload(path, file, { upsert: false })
 
     if (storageError) return { error: `Storage: ${storageError.message}` }
 
     const { data } = supabase.storage.from('chantier-photos').getPublicUrl(path)
 
     const { error: dbError } = await supabase
-      .from('etapes')
-      .update({ photo_url: data.publicUrl, updated_at: new Date().toISOString() })
-      .eq('id', etapeId)
+      .from('etape_photos')
+      .insert({ etape_id: etapeId, chantier_id: chantierId, url: data.publicUrl })
 
     if (dbError) return { error: `DB: ${dbError.message}` }
 
     return { error: null }
   }
 
-  return { chantier, etapes, notes, loading, updateStatut, advanceEtape, updateConsigne, addNote, uploadEtapePhoto, refetch: fetchAll }
+  async function deleteEtapePhoto(photoId: string, storagePath: string): Promise<{ error: string | null }> {
+    const { error: storageError } = await supabase.storage
+      .from('chantier-photos')
+      .remove([storagePath])
+
+    if (storageError) return { error: `Storage: ${storageError.message}` }
+
+    const { error: dbError } = await supabase
+      .from('etape_photos')
+      .delete()
+      .eq('id', photoId)
+
+    if (dbError) return { error: `DB: ${dbError.message}` }
+
+    return { error: null }
+  }
+
+  return {
+    chantier, etapes, notes, photos, loading,
+    updateStatut, advanceEtape, updateConsigne, addNote,
+    uploadEtapePhoto, deleteEtapePhoto,
+    refetch: fetchAll,
+  }
 }

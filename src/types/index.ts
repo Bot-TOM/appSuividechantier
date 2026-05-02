@@ -41,11 +41,19 @@ export interface Etape {
   nom: string
   ordre: number
   statut: EtapeStatut
-  consigne: string | null    // note libre du manager (instruction, contexte, durée indicative…)
-  started_at: string | null  // horodatage début (technicien)
-  finished_at: string | null // horodatage fin (technicien)
-  photo_url: string | null   // photo terrain
+  consigne: string | null
+  started_at: string | null
+  finished_at: string | null
+  photo_url: string | null   // legacy — remplacé par etape_photos
   updated_at: string
+}
+
+export interface EtapePhoto {
+  id: string
+  etape_id: string
+  chantier_id: string
+  url: string
+  created_at: string
 }
 
 // Notes rapides

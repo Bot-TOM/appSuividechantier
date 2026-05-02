@@ -1,5 +1,5 @@
 import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
-import { Chantier, Etape, Note, Anomalie } from '@/types'
+import { Chantier, Etape, EtapePhoto, Note, Anomalie } from '@/types'
 
 const S = StyleSheet.create({
   page:        { padding: 40, backgroundColor: '#ffffff', fontFamily: 'Helvetica', fontSize: 10, color: '#1f2937' },
@@ -63,11 +63,12 @@ function safeStr(v: unknown): string {
 interface Props {
   chantier:  Chantier
   etapes:    Etape[]
+  photos:    Record<string, EtapePhoto[]>
   notes:     (Note & { profiles?: { full_name?: string } | null })[]
   anomalies: (Anomalie & { profiles?: { full_name?: string } | null })[]
 }
 
-export default function ChantierPDF({ chantier, etapes, notes, anomalies }: Props) {
+export default function ChantierPDF({ chantier, etapes, photos, notes, anomalies }: Props) {
   const faites = etapes.filter(e => e.statut === 'fait').length
   const pct    = etapes.length === 0 ? 0 : Math.round((faites / etapes.length) * 100)
 
@@ -144,10 +145,9 @@ export default function ChantierPDF({ chantier, etapes, notes, anomalies }: Prop
                   {e.statut === 'fait' ? 'Fait' : e.statut === 'en_cours' ? 'En cours' : 'A faire'}
                 </Text>
               </View>
-              {e.photo_url
-                ? <Image style={S.etapePhoto} src={e.photo_url} />
-                : null
-              }
+              {(photos[e.id] ?? []).map(p => (
+                <Image key={p.id} style={S.etapePhoto} src={p.url} />
+              ))}
             </View>
           ))}
         </View>

@@ -7,7 +7,7 @@ import { useChantierTechniciens } from '@/hooks/useChantierTechniciens'
 import { useChecklistMateriel } from '@/hooks/useChecklistMateriel'
 import { useAutoControle } from '@/hooks/useAutoControle'
 import { formatDuree, getElapsedMinutes, getDureeReelle } from '@/lib/duree'
-import { ChantierStatut, Etape, Note } from '@/types'
+import { ChantierStatut, Etape, EtapePhoto, Note } from '@/types'
 
 type InnerTab = 'etapes' | 'notes' | 'infos'
 
@@ -61,20 +61,84 @@ function ElapsedBadge({ startedAt }: { startedAt: string }) {
   return <span className="text-xs font-semibold text-orange-500 tabular-nums">⏱ {formatDuree(minutes)}</span>
 }
 
+// ─── Lightbox photos ──────────────────────────────────────────────────────────
+function Lightbox({ photos, initialIndex, onClose, onDelete }: {
+  photos: EtapePhoto[]
+  initialIndex: number
+  onClose: () => void
+  onDelete?: (photo: EtapePhoto) => void
+}) {
+  const [index, setIndex] = useState(initialIndex)
+  const photo = photos[index]
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={onClose}>
+      {/* Header */}
+      <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <span className="text-white/60 text-sm">{index + 1} / {photos.length}</span>
+        <div className="flex items-center gap-3">
+          {onDelete && (
+            <button
+              onClick={() => { onDelete(photo); if (photos.length === 1) onClose() }}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-lg">
+            ✕
+          </button>
+        </div>
+      </div>
+
+      {/* Image */}
+      <div className="flex-1 flex items-center justify-center px-4" onClick={e => e.stopPropagation()}>
+        <img src={photo.url} alt="Photo" className="max-w-full max-h-full rounded-xl object-contain" />
+      </div>
+
+      {/* Navigation */}
+      {photos.length > 1 && (
+        <div className="flex justify-center gap-3 py-5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+          <button
+            onClick={() => setIndex(i => Math.max(0, i - 1))}
+            disabled={index === 0}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors"
+          >←</button>
+          <div className="flex items-center gap-1.5">
+            {photos.map((_, i) => (
+              <button key={i} onClick={() => setIndex(i)}
+                className={`w-2 h-2 rounded-full transition-all ${i === index ? 'bg-white scale-125' : 'bg-white/40'}`} />
+            ))}
+          </div>
+          <button
+            onClick={() => setIndex(i => Math.min(photos.length - 1, i + 1))}
+            disabled={index === photos.length - 1}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors"
+          >→</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
 // ─── Ligne d'étape ────────────────────────────────────────────────────────────
 function EtapeLine({
-  etape, onAdvance, isManager = false, onUpdateConsigne, onUploadPhoto,
+  etape, photos, onAdvance, isManager = false, onUpdateConsigne, onUploadPhoto, onDeletePhoto,
 }: {
   etape: Etape
+  photos: EtapePhoto[]
   onAdvance: (e: Etape) => void
   isManager?: boolean
   onUpdateConsigne?: (etapeId: string, consigne: string) => void
   onUploadPhoto?: (etapeId: string, file: File) => Promise<{ error: string | null }>
+  onDeletePhoto?: (photo: EtapePhoto) => void
 }) {
   const [consigneValue, setConsigneValue] = useState(etape.consigne ?? '')
-  const [uploading, setUploading]   = useState(false)
+  const [uploading, setUploading]     = useState(false)
   const [uploadError, setUploadError] = useState('')
-  const [lightbox, setLightbox]     = useState(false)
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   useEffect(() => { setConsigneValue(etape.consigne ?? '') }, [etape.consigne])
 
@@ -99,13 +163,9 @@ function EtapeLine({
       <div className="px-4 py-4">
         <div className="flex items-start gap-3">
           {/* Bouton statut */}
-          <button
-            onClick={() => onAdvance(etape)}
-            className="flex-shrink-0 mt-0.5 active:scale-90 transition-transform"
-          >
+          <button onClick={() => onAdvance(etape)} className="flex-shrink-0 mt-0.5 active:scale-90 transition-transform">
             {isFait ? (
-              <div className="w-7 h-7 rounded-full flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
+              <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                 </svg>
@@ -119,12 +179,11 @@ function EtapeLine({
             )}
           </button>
 
-          {/* Contenu central */}
+          {/* Contenu */}
           <div className="flex-1 min-w-0">
             <span className={`text-sm font-semibold leading-snug block ${isFait ? 'text-gray-400 line-through' : 'text-gray-800'}`}>
               {etape.nom}
             </span>
-
             {isManager && !isFait && (
               <input
                 value={consigneValue}
@@ -146,15 +205,15 @@ function EtapeLine({
             )}
           </div>
 
-          {/* Droite : action + photo */}
+          {/* Droite : état + bouton photo */}
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
-            <span className={`text-[11px] font-semibold ${isEnCours ? 'text-orange-400' : isFait ? 'text-gray-300' : 'text-gray-300'}`}>
+            <span className={`text-[11px] font-semibold ${isEnCours ? 'text-orange-400' : 'text-gray-300'}`}>
               {isEnCours ? 'Terminer →' : isFait ? 'Annuler' : 'Démarrer'}
             </span>
             <label className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
               uploading ? 'opacity-40 pointer-events-none' : 'text-gray-300 hover:text-orange-400 hover:bg-orange-50 active:bg-orange-100'
-            }`}>
-              <input type="file" accept="image/*" onChange={handleFileChange}
+            }`} title="Ajouter une photo">
+              <input type="file" accept="image/*" capture="environment" onChange={handleFileChange}
                 className="absolute opacity-0 w-px h-px overflow-hidden pointer-events-none" tabIndex={-1} />
               {uploading
                 ? <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
@@ -169,22 +228,29 @@ function EtapeLine({
 
         {uploadError && <p className="mt-1.5 ml-10 text-xs text-red-500">{uploadError}</p>}
 
-        {etape.photo_url && (
-          <div className="mt-3 ml-10">
-            <button onClick={() => setLightbox(true)}>
-              <img src={etape.photo_url} alt="Photo étape"
-                className="h-24 rounded-xl object-cover border border-gray-100 hover:opacity-90 transition-opacity" />
-            </button>
+        {/* Galerie photos */}
+        {photos.length > 0 && (
+          <div className="mt-3 ml-10 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {photos.map((photo, i) => (
+              <button key={photo.id} onClick={() => setLightboxIndex(i)} className="flex-shrink-0">
+                <img
+                  src={photo.url}
+                  alt={`Photo ${i + 1}`}
+                  className="h-20 w-20 rounded-xl object-cover border border-gray-100 hover:opacity-90 active:opacity-75 transition-opacity"
+                />
+              </button>
+            ))}
           </div>
         )}
       </div>
 
-      {lightbox && etape.photo_url && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4" onClick={() => setLightbox(false)}>
-          <img src={etape.photo_url} alt="Photo" className="max-w-full max-h-full rounded-2xl object-contain" />
-          <button className="absolute top-5 right-5 text-white/70 hover:text-white w-10 h-10 flex items-center justify-center rounded-full bg-black/40 text-xl"
-            onClick={() => setLightbox(false)}>✕</button>
-        </div>
+      {lightboxIndex !== null && (
+        <Lightbox
+          photos={photos}
+          initialIndex={lightboxIndex}
+          onClose={() => setLightboxIndex(null)}
+          onDelete={onDeletePhoto}
+        />
       )}
     </>
   )
@@ -195,7 +261,7 @@ export default function ChantierDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { profile } = useAuth()
-  const { chantier, etapes, notes, loading, updateStatut, advanceEtape, updateConsigne, addNote, uploadEtapePhoto } = useChantierDetail(id!)
+  const { chantier, etapes, notes, photos, loading, updateStatut, advanceEtape, updateConsigne, addNote, uploadEtapePhoto, deleteEtapePhoto } = useChantierDetail(id!)
   const { anomalies }   = useAnomalies(id!)
   const { techniciens } = useChantierTechniciens(id!)
   const { total: matTotal, checked: matChecked } = useChecklistMateriel(id!)
@@ -231,7 +297,7 @@ export default function ChantierDetail() {
         import('@/components/pdf/ChantierPDF'),
       ])
       const blob = await pdf(
-        <ChantierPDF chantier={chantier} etapes={etapes} notes={notes as never} anomalies={anomalies as never} />
+        <ChantierPDF chantier={chantier} etapes={etapes} photos={photos} notes={notes as never} anomalies={anomalies as never} />
       ).toBlob()
       const url = URL.createObjectURL(blob)
 
@@ -432,10 +498,12 @@ export default function ChantierDetail() {
                       <EtapeLine
                         key={etape.id}
                         etape={etape}
+                        photos={photos[etape.id] ?? []}
                         onAdvance={advanceEtape}
                         isManager={isManager}
                         onUpdateConsigne={updateConsigne}
                         onUploadPhoto={uploadEtapePhoto}
+                        onDeletePhoto={p => deleteEtapePhoto(p.id, new URL(p.url).pathname.replace(/^\/storage\/v1\/object\/public\/chantier-photos\//, ''))}
                       />
                     ))}
                   </div>
