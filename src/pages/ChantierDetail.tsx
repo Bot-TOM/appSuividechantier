@@ -226,23 +226,19 @@ export default function ChantierDetail() {
       const blob = await pdf(
         <ChantierPDF chantier={chantier} etapes={etapes} notes={notes as never} anomalies={anomalies as never} />
       ).toBlob()
-      const filename = `rapport-${chantier.nom.replace(/\s+/g, '-').toLowerCase()}.pdf`
-      await new Promise<void>((resolve, reject) => {
-        const reader = new FileReader()
-        reader.onloadend = () => {
-          try {
-            const link = document.createElement('a')
-            link.href = reader.result as string
-            link.download = filename
-            document.body.appendChild(link)
-            link.click()
-            document.body.removeChild(link)
-            resolve()
-          } catch (e) { reject(e) }
-        }
-        reader.onerror = () => reject(new Error('Lecture du PDF échouée'))
-        reader.readAsDataURL(blob)
-      })
+      const url = URL.createObjectURL(blob)
+      // Sur mobile, window.open dans le même tick de l'événement utilisateur est requis
+      const win = window.open(url, '_blank')
+      if (!win) {
+        // Fallback si le popup est bloqué : lien direct
+        const link = document.createElement('a')
+        link.href = url
+        link.download = `rapport-${chantier.nom.replace(/\s+/g, '-').toLowerCase()}.pdf`
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+      setTimeout(() => URL.revokeObjectURL(url), 10_000)
     } catch (err) {
       setPdfError(`Erreur PDF : ${err instanceof Error ? err.message : String(err)}`)
     } finally {
