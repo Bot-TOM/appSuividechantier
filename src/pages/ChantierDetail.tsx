@@ -148,12 +148,14 @@ function EtapeLine({
     ? getDureeReelle(etape.started_at, etape.finished_at) : null
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !onUploadPhoto) return
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length || !onUploadPhoto) return
     setUploading(true)
     setUploadError('')
-    const { error } = await onUploadPhoto(etape.id, file)
-    if (error) setUploadError(error)
+    for (const file of files) {
+      const { error } = await onUploadPhoto(etape.id, file)
+      if (error) { setUploadError(error); break }
+    }
     setUploading(false)
     e.target.value = ''
   }
@@ -213,7 +215,7 @@ function EtapeLine({
             <label className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
               uploading ? 'opacity-40 pointer-events-none' : 'text-gray-300 hover:text-orange-400 hover:bg-orange-50 active:bg-orange-100'
             }`} title="Ajouter une photo">
-              <input type="file" accept="image/*" capture="environment" onChange={handleFileChange}
+              <input type="file" accept="image/*" multiple onChange={handleFileChange}
                 className="absolute opacity-0 w-px h-px overflow-hidden pointer-events-none" tabIndex={-1} />
               {uploading
                 ? <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
