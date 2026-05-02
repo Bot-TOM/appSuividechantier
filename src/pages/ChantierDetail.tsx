@@ -135,17 +135,25 @@ function EtapeLine({
   onUploadPhoto?: (etapeId: string, file: File) => Promise<{ error: string | null }>
   onDeletePhoto?: (photo: EtapePhoto) => void
 }) {
+  const [localStatut, setLocalStatut] = useState(etape.statut)
   const [consigneValue, setConsigneValue] = useState(etape.consigne ?? '')
   const [uploading, setUploading]     = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
+  useEffect(() => { setLocalStatut(etape.statut) }, [etape.statut])
   useEffect(() => { setConsigneValue(etape.consigne ?? '') }, [etape.consigne])
 
-  const isFait    = etape.statut === 'fait'
-  const isEnCours = etape.statut === 'en_cours'
+  const isFait    = localStatut === 'fait'
+  const isEnCours = localStatut === 'en_cours'
   const dureeReelle = isFait && etape.started_at && etape.finished_at
     ? getDureeReelle(etape.started_at, etape.finished_at) : null
+
+  function handleAdvance() {
+    const next = localStatut === 'non_fait' ? 'en_cours' : localStatut === 'en_cours' ? 'fait' : 'non_fait'
+    setLocalStatut(next)
+    onAdvance(etape)
+  }
 
   async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -165,7 +173,7 @@ function EtapeLine({
       <div className="px-4 py-4">
         <div className="flex items-start gap-3">
           {/* Bouton statut */}
-          <button onClick={() => onAdvance(etape)} className="flex-shrink-0 mt-0.5 active:scale-90 transition-transform">
+          <button onClick={handleAdvance} className="flex-shrink-0 mt-0.5 active:scale-90 transition-transform">
             {isFait ? (
               <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
