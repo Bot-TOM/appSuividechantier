@@ -201,7 +201,7 @@ export default function TechnicienHome() {
       </header>
 
       {/* ── Contenu ──────────────────────────────────────────────────────── */}
-      <main className="px-4 py-5 max-w-lg mx-auto pb-24">
+      <main className="px-4 py-5 max-w-lg mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
 
         {activeTab === 'chantiers' && (
           <>

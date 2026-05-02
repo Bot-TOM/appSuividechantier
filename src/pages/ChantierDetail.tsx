@@ -210,7 +210,7 @@ function EtapeLine({
           {/* Droite : état + bouton photo */}
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
             <span className={`text-[11px] font-semibold ${isEnCours ? 'text-orange-400' : 'text-gray-300'}`}>
-              {isEnCours ? 'Terminer →' : isFait ? 'Annuler' : 'Démarrer'}
+              {isEnCours ? 'Terminer →' : isFait ? '↺' : 'Démarrer'}
             </span>
             <label className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
               uploading ? 'opacity-40 pointer-events-none' : 'text-gray-300 hover:text-orange-400 hover:bg-orange-50 active:bg-orange-100'
@@ -476,7 +476,7 @@ export default function ChantierDetail() {
       )}
 
       {/* ── Contenu onglets ───────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 space-y-3 pb-8">
+      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 space-y-3 pb-safe-4" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
 
         {/* ── ÉTAPES ────────────────────────────────────────────────────────── */}
         {activeTab === 'etapes' && (

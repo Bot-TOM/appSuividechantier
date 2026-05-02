@@ -21,6 +21,25 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Safe area bottom padding with minimum */
+.pb-safe-4 {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+/* Hide scrollbar (Android + iOS) tout en gardant le scroll */
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+/* Touch feedback amélioré */
+.active\:scale-tap:active {
+  transform: scale(0.97);
+}
+
 /* Orange CTA button shadow */
 .btn-orange-shadow {
   box-shadow: 0 4px 12px rgba(249, 115, 22, 0.35);

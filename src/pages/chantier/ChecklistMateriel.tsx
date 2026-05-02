@@ -51,7 +51,7 @@ export default function ChecklistMateriel() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-5 space-y-4">
+      <main className="max-w-2xl mx-auto px-4 py-5 space-y-4" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
 
         {/* Message succès si tout coché */}
         {done && (

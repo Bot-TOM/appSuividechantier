@@ -100,7 +100,7 @@ export default function AutoControlePage() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-4 space-y-3 pb-8">
+      <main className="max-w-2xl mx-auto px-4 py-4 space-y-3" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
 
         {/* Sections par catégorie */}
         {categories.map(categorie => {
