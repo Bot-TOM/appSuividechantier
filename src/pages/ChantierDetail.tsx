@@ -218,6 +218,13 @@ export default function ChantierDetail() {
     if (!chantier) return
     setGeneratingPDF(true)
     setPdfError('')
+
+    // Ouvrir la fenêtre MAINTENANT (tick synchrone) pour éviter le blocage mobile
+    const win = window.open('', '_blank')
+    if (win) {
+      win.document.write('<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6b7280">Génération du PDF…</body></html>')
+    }
+
     try {
       const [{ pdf }, { default: ChantierPDF }] = await Promise.all([
         import('@react-pdf/renderer'),
@@ -227,19 +234,16 @@ export default function ChantierDetail() {
         <ChantierPDF chantier={chantier} etapes={etapes} notes={notes as never} anomalies={anomalies as never} />
       ).toBlob()
       const url = URL.createObjectURL(blob)
-      // Sur mobile, window.open dans le même tick de l'événement utilisateur est requis
-      const win = window.open(url, '_blank')
-      if (!win) {
-        // Fallback si le popup est bloqué : lien direct
-        const link = document.createElement('a')
-        link.href = url
-        link.download = `rapport-${chantier.nom.replace(/\s+/g, '-').toLowerCase()}.pdf`
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+
+      if (win && !win.closed) {
+        win.location.href = url
+      } else {
+        // Fallback : navigation dans l'onglet courant
+        window.location.href = url
       }
-      setTimeout(() => URL.revokeObjectURL(url), 10_000)
+      setTimeout(() => URL.revokeObjectURL(url), 30_000)
     } catch (err) {
+      if (win && !win.closed) win.close()
       setPdfError(`Erreur PDF : ${err instanceof Error ? err.message : String(err)}`)
     } finally {
       setGeneratingPDF(false)
