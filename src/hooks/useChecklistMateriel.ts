@@ -34,19 +34,21 @@ export function useChecklistMateriel(chantierId: string) {
   }, [chantierId, fetch])
 
   async function toggleItem(id: string, checked: boolean) {
+    setItems(prev => prev.map(item => item.id === id ? { ...item, checked } : item))
     await supabase.from('checklist_materiel').update({ checked }).eq('id', id)
-    await fetch()
+    fetch()
   }
 
   async function addItem(nom: string) {
     const ordre = items.length + 1
     await supabase.from('checklist_materiel').insert({ chantier_id: chantierId, nom: nom.trim(), checked: false, ordre })
-    await fetch()
+    fetch()
   }
 
   async function deleteItem(id: string) {
+    setItems(prev => prev.filter(item => item.id !== id))
     await supabase.from('checklist_materiel').delete().eq('id', id)
-    await fetch()
+    fetch()
   }
 
   const total   = items.length

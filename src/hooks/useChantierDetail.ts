@@ -44,36 +44,35 @@ export function useChantierDetail(chantierId: string) {
   }, [chantierId, fetchAll])
 
   async function updateStatut(statut: Chantier['statut']) {
-    await supabase
-      .from('chantiers')
-      .update({ statut, updated_at: new Date().toISOString() })
-      .eq('id', chantierId)
-    await fetchAll()
+    setChantier(prev => prev ? { ...prev, statut } : prev)
+    await supabase.from('chantiers').update({ statut, updated_at: new Date().toISOString() }).eq('id', chantierId)
+    fetchAll()
   }
 
   async function advanceEtape(etape: Etape) {
     const now = new Date().toISOString()
+    let updates: Partial<Etape>
     if (etape.statut === 'non_fait') {
-      await supabase.from('etapes').update({ statut: 'en_cours', started_at: now, finished_at: null, updated_at: now }).eq('id', etape.id)
+      updates = { statut: 'en_cours', started_at: now, finished_at: null, updated_at: now }
     } else if (etape.statut === 'en_cours') {
-      await supabase.from('etapes').update({ statut: 'fait', finished_at: now, updated_at: now }).eq('id', etape.id)
+      updates = { statut: 'fait', finished_at: now, updated_at: now }
     } else {
-      await supabase.from('etapes').update({ statut: 'non_fait', started_at: null, finished_at: null, updated_at: now }).eq('id', etape.id)
+      updates = { statut: 'non_fait', started_at: null, finished_at: null, updated_at: now }
     }
-    await fetchAll()
+    setEtapes(prev => prev.map(e => e.id === etape.id ? { ...e, ...updates } : e))
+    await supabase.from('etapes').update(updates).eq('id', etape.id)
+    fetchAll()
   }
 
   async function updateConsigne(etapeId: string, consigne: string) {
-    await supabase
-      .from('etapes')
-      .update({ consigne: consigne.trim() || null, updated_at: new Date().toISOString() })
-      .eq('id', etapeId)
-    await fetchAll()
+    setEtapes(prev => prev.map(e => e.id === etapeId ? { ...e, consigne: consigne.trim() || null } : e))
+    await supabase.from('etapes').update({ consigne: consigne.trim() || null, updated_at: new Date().toISOString() }).eq('id', etapeId)
+    fetchAll()
   }
 
   async function addNote(contenu: string, technicienId: string) {
     await supabase.from('notes').insert({ chantier_id: chantierId, technicien_id: technicienId, contenu })
-    await fetchAll()
+    fetchAll()
   }
 
   async function uploadEtapePhoto(etapeId: string, file: File): Promise<{ error: string | null }> {
