@@ -93,6 +93,7 @@ export function useChantierDetail(chantierId: string) {
 
     if (dbError) return { error: `DB: ${dbError.message}` }
 
+    await fetchAll()
     return { error: null }
   }
 
@@ -110,6 +111,7 @@ export function useChantierDetail(chantierId: string) {
 
     if (dbError) return { error: `DB: ${dbError.message}` }
 
+    await fetchAll()
     return { error: null }
   }
 
