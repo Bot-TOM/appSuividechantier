@@ -10,6 +10,7 @@ import SignupPage from '@/pages/SignupPage'
 import ChantierDetail from '@/pages/ChantierDetail'
 import AnomaliesChantier from '@/pages/anomalies/AnomaliesChantier'
 import ChecklistMateriel from '@/pages/chantier/ChecklistMateriel'
+import AutoControle from '@/pages/chantier/AutoControle'
 import EditChantier from '@/pages/manager/EditChantier'
 
 export default function App() {
@@ -43,6 +44,9 @@ export default function App() {
           } />
           <Route path="/chantier/:id/modifier" element={
             <ProtectedRoute allowedRole="manager"><EditChantier /></ProtectedRoute>
+          } />
+          <Route path="/chantier/:id/autocontrole" element={
+            <ProtectedRoute><AutoControle /></ProtectedRoute>
           } />
 
           {/* Technicien */}

@@ -57,6 +57,26 @@ export interface Note {
   created_at: string
 }
 
+// Auto-contrôle
+export interface AutoControleCheck {
+  id: string
+  categorie: string
+  label: string
+  checked: boolean
+  commentaire: string
+}
+
+export interface AutoControle {
+  id: string
+  chantier_id: string
+  technicien_id: string
+  checks: AutoControleCheck[]
+  commentaire: string | null
+  signe_le: string | null
+  created_at: string
+  updated_at: string
+}
+
 // Anomalies
 export type AnomalieGravite = 'haute' | 'moyenne' | 'basse'
 export type AnomalieStatut = 'ouvert' | 'en_cours' | 'resolu'

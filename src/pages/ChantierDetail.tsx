@@ -5,6 +5,7 @@ import { useChantierDetail } from '@/hooks/useChantierDetail'
 import { useAnomalies } from '@/hooks/useAnomalies'
 import { useChantierTechniciens } from '@/hooks/useChantierTechniciens'
 import { useChecklistMateriel } from '@/hooks/useChecklistMateriel'
+import { useAutoControle } from '@/hooks/useAutoControle'
 import { formatDuree, getElapsedMinutes, getDureeReelle } from '@/lib/duree'
 import { ChantierStatut, Etape, Note } from '@/types'
 
@@ -198,6 +199,7 @@ export default function ChantierDetail() {
   const { anomalies }   = useAnomalies(id!)
   const { techniciens } = useChantierTechniciens(id!)
   const { total: matTotal, checked: matChecked } = useChecklistMateriel(id!)
+  const { autocontrole } = useAutoControle(id!)
 
   const [activeTab, setActiveTab]     = useState<InnerTab>('etapes')
   const [noteText, setNoteText]       = useState('')
@@ -580,6 +582,31 @@ export default function ChantierDetail() {
                 }
               </button>
             </div>
+
+            {/* Auto-contrôle */}
+            <button
+              onClick={() => navigate(`/chantier/${id}/autocontrole`)}
+              className="w-full flex items-center gap-4 bg-white rounded-2xl p-4 text-left active:scale-[0.98] transition-all"
+              style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
+            >
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                autocontrole?.signe_le ? 'bg-green-50' : 'bg-orange-50'
+              }`}>
+                <svg className={`w-5 h-5 ${autocontrole?.signe_le ? 'text-green-500' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-gray-800 text-sm">Fiche auto-contrôle</p>
+                <p className={`text-xs mt-0.5 ${autocontrole?.signe_le ? 'text-green-600 font-medium' : 'text-gray-400'}`}>
+                  {autocontrole?.signe_le
+                    ? `Signée le ${new Date(autocontrole.signe_le).toLocaleDateString('fr-FR')}`
+                    : autocontrole ? 'Brouillon en cours' : 'À compléter'
+                  }
+                </p>
+              </div>
+              <span className="text-gray-300 text-lg flex-shrink-0">→</span>
+            </button>
 
             {/* Actions manager */}
             {isManager && (
