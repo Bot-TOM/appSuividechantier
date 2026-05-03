@@ -1,14 +1,15 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabase'
 
-interface Progression {
+export interface Progression {
   chantier_id: string
   total: number
   faites: number
   pct: number
+  /** Nom de l'étape en cours, ou de la prochaine étape non_fait. Null si tout est terminé. */
+  etapeActive: string | null
 }
 
-// Récupère la progression (% étapes faites) pour une liste de chantiers en une seule requête
 export function useEtapesProgression(chantierIds: string[]) {
   const [progression, setProgression] = useState<Record<string, Progression>>({})
 
@@ -17,21 +18,39 @@ export function useEtapesProgression(chantierIds: string[]) {
 
     supabase
       .from('etapes')
-      .select('chantier_id, statut')
+      .select('chantier_id, statut, nom, ordre')
       .in('chantier_id', chantierIds)
       .then(({ data }) => {
         if (!data) return
-        const map: Record<string, Progression> = {}
+
+        const groups: Record<string, typeof data> = {}
         for (const e of data) {
-          if (!map[e.chantier_id]) map[e.chantier_id] = { chantier_id: e.chantier_id, total: 0, faites: 0, pct: 0 }
-          map[e.chantier_id].total++
-          if (e.statut === 'fait') map[e.chantier_id].faites++
+          if (!groups[e.chantier_id]) groups[e.chantier_id] = []
+          groups[e.chantier_id].push(e)
         }
-        for (const id of Object.keys(map)) {
-          const p = map[id]
-          p.pct = p.total === 0 ? 0 : Math.round((p.faites / p.total) * 100)
+
+        const result: Record<string, Progression> = {}
+        for (const id of Object.keys(groups)) {
+          const etapes = groups[id]
+          const total  = etapes.length
+          const faites = etapes.filter(e => e.statut === 'fait').length
+          const pct    = total === 0 ? 0 : Math.round((faites / total) * 100)
+
+          const enCours = etapes.find(e => e.statut === 'en_cours')
+          const prochaine = etapes
+            .filter(e => e.statut === 'non_fait')
+            .sort((a, b) => a.ordre - b.ordre)[0]
+
+          result[id] = {
+            chantier_id: id,
+            total,
+            faites,
+            pct,
+            etapeActive: enCours?.nom ?? prochaine?.nom ?? null,
+          }
         }
-        setProgression(map)
+
+        setProgression(result)
       })
   }, [chantierIds.join(',')])
 

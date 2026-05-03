@@ -170,7 +170,7 @@ function EtapeLine({
 
   return (
     <>
-      <div className="px-4 py-4">
+      <div className={`px-4 py-4 transition-colors ${isEnCours ? 'bg-orange-50' : ''}`}>
         <div className="flex items-start gap-3">
           {/* Bouton statut */}
           <button onClick={handleAdvance} className="flex-shrink-0 mt-0.5 active:scale-90 transition-transform">
@@ -491,14 +491,14 @@ export default function ChantierDetail() {
           <>
             <section className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
               <div className="px-4 py-3.5 border-b border-gray-50 flex items-center justify-between">
-                <h2 className="font-semibold text-gray-900 text-sm">Checklist</h2>
-                <div className="flex items-center gap-3 text-xs text-gray-400">
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" /> En cours
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-1.5 h-1.5 rounded-full bg-orange-500" /> Fait
-                  </span>
+                <h2 className="font-semibold text-gray-900 text-sm">Étapes</h2>
+                <div className="flex items-center gap-2">
+                  {etapes.filter(e => e.statut === 'en_cours').length > 0 && (
+                    <span className="text-xs bg-orange-100 text-orange-600 font-semibold px-2 py-0.5 rounded-full">
+                      {etapes.filter(e => e.statut === 'en_cours').length} en cours
+                    </span>
+                  )}
+                  <span className="text-xs text-gray-400 font-medium">{faites}/{etapes.length}</span>
                 </div>
               </div>
               {etapes.length === 0
