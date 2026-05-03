@@ -7,7 +7,12 @@
     <title>Suivi Chantier PV</title>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#F8FAFC">
+        <div style="width:32px;height:32px;border:4px solid #f97316;border-top-color:transparent;border-radius:50%;animation:spin .8s linear infinite"></div>
+      </div>
+    </div>
+    <style>@keyframes spin{to{transform:rotate(360deg)}}</style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
