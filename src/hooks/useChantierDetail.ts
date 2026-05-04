@@ -118,10 +118,15 @@ export function useChantierDetail(chantierId: string) {
     return { error: null }
   }
 
+  async function deleteChantier(): Promise<{ error: string | null }> {
+    const { error } = await supabase.from('chantiers').delete().eq('id', chantierId)
+    return { error: error?.message ?? null }
+  }
+
   return {
     chantier, etapes, notes, photos, loading,
     updateStatut, advanceEtape, updateConsigne, addNote,
-    uploadEtapePhoto, deleteEtapePhoto,
+    uploadEtapePhoto, deleteEtapePhoto, deleteChantier,
     refetch: fetchAll,
   }
 }

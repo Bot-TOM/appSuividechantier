@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext'
 import { useChantiers } from '@/hooks/useChantiers'
 import { useAnomalies } from '@/hooks/useAnomalies'
 import { useEtapesProgression } from '@/hooks/useEtapesProgression'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 import GraviteBadge from '@/components/anomalies/GraviteBadge'
 import { supabase } from '@/lib/supabase'
 import { Chantier, ChantierStatut, Anomalie } from '@/types'
@@ -103,6 +104,7 @@ export default function ManagerDashboard() {
   const [pwd, setPwd]                   = useState({ new: '', confirm: '' })
   const [pwdLoading, setPwdLoading]     = useState(false)
   const [pwdMsg, setPwdMsg]             = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
 
   const handleChangePwd = useCallback(async () => {
     if (pwd.new.length < 6) { setPwdMsg({ type: 'err', text: 'Minimum 6 caractères' }); return }
@@ -180,6 +182,27 @@ export default function ManagerDashboard() {
                 style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 {profile?.full_name?.charAt(0).toUpperCase()}
               </div>
+              {pushStatus !== 'unsupported' && (
+                <button
+                  onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
+                  title={pushStatus === 'subscribed' ? 'Désactiver les notifications' : pushStatus === 'denied' ? 'Notifications bloquées par le navigateur' : 'Activer les notifications'}
+                  disabled={pushStatus === 'denied'}
+                  className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
+                    pushStatus === 'subscribed'
+                      ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
+                      : pushStatus === 'denied'
+                      ? 'text-gray-200 cursor-not-allowed'
+                      : 'text-gray-300 hover:text-orange-500 hover:bg-orange-50'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
+                    <path d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 01-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 11-7.48 0 24.585 24.585 0 01-4.831-1.244.75.75 0 01-.298-1.205A8.217 8.217 0 005.25 9.75V9z" />
+                  </svg>
+                  {pushStatus === 'subscribed' && (
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full" />
+                  )}
+                </button>
+              )}
               <button
                 onClick={signOut}
                 title="Se déconnecter"

@@ -62,6 +62,16 @@ function ElapsedBadge({ startedAt }: { startedAt: string }) {
 }
 
 // ─── Lightbox photos ──────────────────────────────────────────────────────────
+async function downloadPhoto(url: string) {
+  const res  = await fetch(url)
+  const blob = await res.blob()
+  const a    = document.createElement('a')
+  a.href     = URL.createObjectURL(blob)
+  a.download = `photo_${Date.now()}.jpg`
+  a.click()
+  URL.revokeObjectURL(a.href)
+}
+
 function Lightbox({ photos, initialIndex, onClose, onDelete }: {
   photos: EtapePhoto[]
   initialIndex: number
@@ -77,6 +87,15 @@ function Lightbox({ photos, initialIndex, onClose, onDelete }: {
       <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
         <span className="text-white/60 text-sm">{index + 1} / {photos.length}</span>
         <div className="flex items-center gap-3">
+          <button
+            onClick={() => downloadPhoto(photo.url)}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+            title="Télécharger"
+          >
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          </button>
           {onDelete && (
             <button
               onClick={() => { onDelete(photo); if (photos.length === 1) onClose() }}
@@ -271,17 +290,19 @@ export default function ChantierDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { profile } = useAuth()
-  const { chantier, etapes, notes, photos, loading, updateStatut, advanceEtape, updateConsigne, addNote, uploadEtapePhoto, deleteEtapePhoto } = useChantierDetail(id!)
+  const { chantier, etapes, notes, photos, loading, updateStatut, advanceEtape, updateConsigne, addNote, uploadEtapePhoto, deleteEtapePhoto, deleteChantier } = useChantierDetail(id!)
   const { anomalies }   = useAnomalies(id!)
   const { techniciens } = useChantierTechniciens(id!)
   const { total: matTotal, checked: matChecked } = useChecklistMateriel(id!)
   const { autocontrole } = useAutoControle(id!)
 
   const [activeTab, setActiveTab]     = useState<InnerTab>('etapes')
-  const [noteText, setNoteText]       = useState('')
-  const [savingNote, setSavingNote]   = useState(false)
+  const [noteText, setNoteText]         = useState('')
+  const [savingNote, setSavingNote]     = useState(false)
   const [generatingPDF, setGeneratingPDF] = useState(false)
-  const [pdfError, setPdfError]       = useState('')
+  const [pdfError, setPdfError]         = useState('')
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [deleting, setDeleting]         = useState(false)
 
   const isManager         = profile?.role === 'manager'
   const anomaliesOuvertes = anomalies.filter(a => a.statut !== 'resolu').length
@@ -324,6 +345,13 @@ export default function ChantierDetail() {
     } finally {
       setGeneratingPDF(false)
     }
+  }
+
+  async function handleDeleteChantier() {
+    setDeleting(true)
+    const { error } = await deleteChantier()
+    if (error) { setDeleting(false); setConfirmDelete(false); return }
+    navigate('/manager')
   }
 
   async function handleAddNote() {
@@ -389,7 +417,29 @@ export default function ChantierDetail() {
             </div>
 
             {isManager
-              ? <StatutSelector current={chantier.statut} onChange={updateStatut} />
+              ? (
+                <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
+                  <StatutSelector current={chantier.statut} onChange={updateStatut} />
+                  <button
+                    onClick={() => navigate(`/chantier/${id}/modifier`)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+                    title="Modifier le chantier"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => setConfirmDelete(true)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                    title="Supprimer le chantier"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
+              )
               : (
                 <div className="flex items-center gap-1.5 bg-white/20 px-3 py-1.5 rounded-xl flex-shrink-0 mt-1">
                   <span className={`w-2 h-2 rounded-full flex-shrink-0 ${
@@ -723,6 +773,33 @@ export default function ChantierDetail() {
           </>
         )}
       </main>
+
+      {/* ── Modale confirmation suppression ──────────────────────────────── */}
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-6" onClick={() => setConfirmDelete(false)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <h3 className="font-bold text-gray-900 text-lg mb-2">Supprimer ce chantier ?</h3>
+            <p className="text-gray-500 text-sm mb-6">
+              Cette action est irréversible. Toutes les étapes, notes et photos associées seront supprimées.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDeleteChantier}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors disabled:opacity-60"
+              >
+                {deleting ? 'Suppression…' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

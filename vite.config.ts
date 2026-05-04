@@ -8,6 +8,13 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        globPatterns: ['**/*.{css,html,ico,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 500 * 1024,
+      },
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
         name: 'Suivi Chantier PV',
@@ -21,32 +28,6 @@ export default defineConfig({
         icons: [
           { src: 'pwa-192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' },
-        ],
-      },
-      workbox: {
-        cleanupOutdatedCaches: true,
-        clientsClaim: true,
-        globPatterns: ['**/*.{css,html,ico,png,svg,woff2}'],
-        maximumFileSizeToCacheInBytes: 500 * 1024,
-        runtimeCaching: [
-          {
-            // JS chunks servis en NetworkFirst pour éviter les conflits après déploiement
-            urlPattern: /\/assets\/.*\.js$/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'js-chunks',
-              expiration: { maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 7 },
-              networkTimeoutSeconds: 10,
-            },
-          },
-          {
-            urlPattern: /^https:\/\/.*\.supabase\.co\/.*/i,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'supabase-cache',
-              expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 },
-            },
-          },
         ],
       },
     }),

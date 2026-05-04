@@ -217,7 +217,26 @@ export default function AnomaliesChantier() {
               return (
                 <div key={anomalie.id} className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                   {anomalie.photo_url && (
-                    <img src={anomalie.photo_url} alt="Anomalie" className="w-full h-44 object-cover" />
+                    <div className="relative">
+                      <img src={anomalie.photo_url} alt="Anomalie" className="w-full h-44 object-cover" />
+                      <button
+                        onClick={async () => {
+                          const res  = await fetch(anomalie.photo_url!)
+                          const blob = await res.blob()
+                          const a    = document.createElement('a')
+                          a.href     = URL.createObjectURL(blob)
+                          a.download = `anomalie_${Date.now()}.jpg`
+                          a.click()
+                          URL.revokeObjectURL(a.href)
+                        }}
+                        className="absolute bottom-2 right-2 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                        title="Télécharger"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                      </button>
+                    </div>
                   )}
                   <div className="p-5">
                     <div className="flex items-start justify-between gap-3 mb-3">
