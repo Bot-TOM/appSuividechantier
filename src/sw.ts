@@ -6,6 +6,9 @@ import { ExpirationPlugin } from 'workbox-expiration'
 
 declare const self: ServiceWorkerGlobalScope
 
+// Prend le contrôle immédiatement après installation (évite l'écran blanc)
+self.addEventListener('install', () => self.skipWaiting())
+
 // Injected by VitePWA at build time
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()

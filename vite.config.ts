@@ -12,8 +12,8 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       injectManifest: {
-        globPatterns: ['**/*.{css,html,ico,png,svg,woff2}'],
-        maximumFileSizeToCacheInBytes: 500 * 1024,
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
+        maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
