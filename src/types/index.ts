@@ -90,6 +90,38 @@ export interface AutoControle {
   updated_at: string
 }
 
+// Chat
+export type MessageFileType = 'image' | 'document'
+
+export interface MessageReaction {
+  id: string
+  message_id: string
+  user_id: string
+  emoji: string
+  created_at: string
+}
+
+export interface MessageRead {
+  message_id: string
+  user_id: string
+  read_at: string
+}
+
+export interface ChatMessage {
+  id: string
+  chantier_id: string
+  user_id: string
+  content: string | null
+  file_url: string | null
+  file_name: string | null
+  file_type: MessageFileType | null
+  reply_to_id: string | null
+  created_at: string
+  profiles: { full_name: string } | null
+  message_reactions: MessageReaction[]
+  message_reads: MessageRead[]
+}
+
 // Anomalies
 export type AnomalieGravite = 'haute' | 'moyenne' | 'basse'
 export type AnomalieStatut = 'ouvert' | 'en_cours' | 'resolu'

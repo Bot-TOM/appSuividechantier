@@ -12,8 +12,9 @@ import { formatDuree, getElapsedMinutes, getDureeReelle } from '@/lib/duree'
 import { ChantierStatut, Etape, EtapePhoto, Note, AutoControleCheck } from '@/types'
 import { PdfOptions, PDF_OPTIONS_DEFAULT } from '@/components/pdf/ChantierPDF'
 import AnomaliesTabContent from '@/components/anomalies/AnomaliesTabContent'
+import ChatTab from '@/components/chat/ChatTab'
 
-type InnerTab = 'etapes' | 'rapport' | 'docs' | 'notes' | 'materiel' | 'anomalies' | 'autocontrole' | 'infos'
+type InnerTab = 'etapes' | 'rapport' | 'chat' | 'docs' | 'notes' | 'materiel' | 'anomalies' | 'autocontrole' | 'infos'
 
 // ─── Sélecteur statut chantier ────────────────────────────────────────────────
 const STATUTS_CHANTIER: { value: ChantierStatut; label: string; dot: string; bg: string }[] = [
@@ -692,6 +693,7 @@ export default function ChantierDetail() {
             {([
               { key: 'etapes',      label: 'Étapes' },
               { key: 'rapport',     label: 'Rapport',     badge: rapports.length || undefined },
+              { key: 'chat',        label: 'Chat' },
               { key: 'docs',        label: 'Docs',        badge: documents.length || undefined },
               { key: 'notes',       label: 'Notes',       badge: notes.length || undefined },
               { key: 'materiel',    label: 'Matériel',    badge: matTotal > 0 ? matChecked === matTotal ? undefined : matTotal - matChecked : undefined },
@@ -1204,6 +1206,11 @@ export default function ChantierDetail() {
             </button>
             {pdfError && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl text-center">{pdfError}</div>}
           </>
+        )}
+
+        {/* ── CHAT ──────────────────────────────────────────────────────────── */}
+        {activeTab === 'chat' && id && profile && (
+          <ChatTab chantierId={id} userId={profile.id} />
         )}
 
         {/* ── ANOMALIES ─────────────────────────────────────────────────────── */}
