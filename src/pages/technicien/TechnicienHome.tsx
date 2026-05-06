@@ -116,19 +116,17 @@ function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePus
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
-    if (!file) return
+    if (!file || !profile) return
     e.target.value = ''
     setAvatarLoading(true)
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
       const ext = file.name.split('.').pop() ?? 'jpg'
-      const path = `${user.id}.${ext}`
+      const path = `${profile.id}.${ext}`
       const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
       if (uploadErr) { console.error('[avatar] upload:', uploadErr.message); return }
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
-      const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id)
+      const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', profile.id)
       if (updateErr) { console.error('[avatar] update profile:', updateErr.message); return }
       onAvatarChange(url)
     } finally {
