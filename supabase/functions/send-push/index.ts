@@ -16,49 +16,73 @@ Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
   const payload = await req.json()
-
-  // Payload from DB webhook: { type, table, record, schema }
   const { table, record } = payload
-
-  let title = ''
-  let body  = ''
-
-  if (table === 'notes') {
-    title = '📝 Nouveau message technicien'
-    body  = record.contenu?.slice(0, 80) ?? 'Un technicien a publié un message'
-  } else if (table === 'auto_controles') {
-    title = '✅ Auto-contrôle soumis'
-    body  = "Un technicien a soumis un rapport d'auto-contrôle"
-  } else {
-    return new Response(JSON.stringify({ ignored: true, table }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    })
-  }
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
     Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
   )
 
-  // Step 1: get all manager user IDs
-  const { data: managers } = await supabase
-    .from('profiles')
-    .select('id')
-    .eq('role', 'manager')
+  let title = ''
+  let body = ''
+  let recipientIds: string[] = []
+  let chatOnly = false
 
-  if (!managers?.length) {
-    return new Response(JSON.stringify({ sent: 0, reason: 'no managers' }), {
+  if (table === 'notes') {
+    title = '📝 Nouveau message technicien'
+    body = record.contenu?.slice(0, 80) ?? 'Un technicien a publié un message'
+    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+    recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
+
+  } else if (table === 'auto_controles') {
+    title = '✅ Auto-contrôle soumis'
+    body = "Un technicien a soumis un rapport d'auto-contrôle"
+    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+    recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
+
+  } else if (table === 'messages') {
+    chatOnly = true
+    const { data: sender } = await supabase
+      .from('profiles').select('full_name').eq('id', record.user_id).single()
+    const senderName = sender?.full_name ?? 'Quelqu\'un'
+    title = '💬 Nouveau message'
+    body = `${senderName} : ${record.content?.slice(0, 60) ?? '📎 Fichier'}`
+
+    const { data: techs } = await supabase
+      .from('chantier_techniciens')
+      .select('technicien_id')
+      .eq('chantier_id', record.chantier_id)
+    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+
+    const allIds = [
+      ...(techs?.map((t: { technicien_id: string }) => t.technicien_id) ?? []),
+      ...(managers?.map((m: { id: string }) => m.id) ?? []),
+    ]
+    recipientIds = [...new Set(allIds)].filter(id => id !== record.user_id)
+
+  } else {
+    return new Response(JSON.stringify({ ignored: true, table }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
   }
 
-  const managerIds = managers.map((m) => m.id)
+  if (!recipientIds.length) {
+    return new Response(JSON.stringify({ sent: 0, reason: 'no recipients' }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+  }
 
-  // Step 2: get their push subscriptions
-  const { data: subs, error } = await supabase
+  // Récupère les abonnements push (filtre notif chat si désactivées)
+  let query = supabase
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
-    .in('user_id', managerIds)
+    .in('user_id', recipientIds)
+
+  if (chatOnly) {
+    query = (query as any).eq('chat_notif_enabled', true)
+  }
+
+  const { data: subs, error } = await query
 
   if (error || !subs?.length) {
     return new Response(JSON.stringify({ sent: 0, error: error?.message, reason: 'no subscriptions' }), {
@@ -66,7 +90,7 @@ Deno.serve(async (req) => {
     })
   }
 
-  const chantierId  = record?.chantier_id ?? ''
+  const chantierId = record?.chantier_id ?? ''
   const notifPayload = JSON.stringify({
     title,
     body,
@@ -74,7 +98,7 @@ Deno.serve(async (req) => {
   })
 
   const results = await Promise.allSettled(
-    subs.map((sub) =>
+    subs.map((sub: { endpoint: string; p256dh: string; auth: string }) =>
       webpush.sendNotification(
         { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
         notifPayload,
@@ -82,10 +106,10 @@ Deno.serve(async (req) => {
     ),
   )
 
-  const sent   = results.filter((r) => r.status === 'fulfilled').length
+  const sent = results.filter((r) => r.status === 'fulfilled').length
   const failed = results.filter((r) => r.status === 'rejected').length
 
-  // Clean up expired subscriptions (HTTP 410)
+  // Nettoie les abonnements expirés (HTTP 410)
   const expiredEndpoints: string[] = []
   results.forEach((r, i) => {
     if (r.status === 'rejected') {
