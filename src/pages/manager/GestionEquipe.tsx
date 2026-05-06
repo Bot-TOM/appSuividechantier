@@ -5,9 +5,16 @@ import { supabase } from '@/lib/supabase'
 import { supabaseAuth } from '@/lib/supabaseAuth'
 import { UserProfile } from '@/types'
 
+interface EditModal {
+  user: UserProfile
+  full_name: string
+  email: string
+  password: string
+}
+
 export default function GestionEquipe() {
   const navigate = useNavigate()
-  const { profile, signOut } = useAuth()
+  const { profile, session, signOut } = useAuth()
   const [techniciens, setTechniciens] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -16,6 +23,15 @@ export default function GestionEquipe() {
   const [error, setError] = useState('')
 
   const [form, setForm] = useState({ full_name: '', email: '', password: '' })
+
+  // Modale édition
+  const [editModal, setEditModal] = useState<EditModal | null>(null)
+  const [editSubmitting, setEditSubmitting] = useState(false)
+  const [editError, setEditError] = useState('')
+
+  // Confirmation suppression
+  const [deleteConfirm, setDeleteConfirm] = useState<UserProfile | null>(null)
+  const [deleteSubmitting, setDeleteSubmitting] = useState(false)
 
   async function fetchEquipe() {
     const { data } = await supabase
@@ -65,13 +81,82 @@ export default function GestionEquipe() {
     setSubmitting(false)
   }
 
+  // ── Édition ────────────────────────────────────────────────────────────────
+  function openEdit(tech: UserProfile) {
+    setEditModal({ user: tech, full_name: tech.full_name, email: tech.email, password: '' })
+    setEditError('')
+  }
+
+  async function handleEdit(e: FormEvent) {
+    e.preventDefault()
+    if (!editModal) return
+    setEditError('')
+    setEditSubmitting(true)
+
+    const payload: Record<string, string> = { userId: editModal.user.id }
+    if (editModal.full_name !== editModal.user.full_name) payload.full_name = editModal.full_name
+    if (editModal.email    !== editModal.user.email)     payload.email     = editModal.email
+    if (editModal.password)                              payload.password  = editModal.password
+
+    if (Object.keys(payload).length === 1) {
+      setEditModal(null)
+      setEditSubmitting(false)
+      return
+    }
+
+    const res = await fetch('/api/admin-user', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token ?? ''}`,
+      },
+      body: JSON.stringify(payload),
+    })
+
+    if (!res.ok) {
+      const data = await res.json()
+      setEditError(data.error ?? 'Erreur lors de la modification')
+      setEditSubmitting(false)
+      return
+    }
+
+    setSuccess(`Compte de ${editModal.full_name} mis à jour`)
+    setEditModal(null)
+    setEditSubmitting(false)
+    fetchEquipe()
+  }
+
+  // ── Suppression ────────────────────────────────────────────────────────────
+  async function handleDelete() {
+    if (!deleteConfirm) return
+    setDeleteSubmitting(true)
+
+    const res = await fetch('/api/admin-user', {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token ?? ''}`,
+      },
+      body: JSON.stringify({ userId: deleteConfirm.id }),
+    })
+
+    if (!res.ok) {
+      setSuccess('')
+      setError('Erreur lors de la suppression')
+    } else {
+      setSuccess(`Compte de ${deleteConfirm.full_name} supprimé`)
+    }
+    setDeleteConfirm(null)
+    setDeleteSubmitting(false)
+    fetchEquipe()
+  }
+
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
 
-      {/* ── Header avec onglets ──────────────────────────────────────────────── */}
+      {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-20">
         <div className="max-w-4xl mx-auto px-6">
-
           <div className="flex items-center justify-between py-4">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
@@ -80,7 +165,6 @@ export default function GestionEquipe() {
               </div>
               <span className="font-bold text-gray-900 text-lg tracking-tight">SolarTrack</span>
             </div>
-
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-gray-900 leading-tight">{profile?.full_name}</p>
@@ -90,28 +174,19 @@ export default function GestionEquipe() {
                 style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 {profile?.full_name?.charAt(0).toUpperCase()}
               </div>
-              <button
-                onClick={signOut}
-                title="Se déconnecter"
-                className="text-gray-300 hover:text-red-400 transition-colors text-lg leading-none ml-1"
-              >
+              <button onClick={signOut} title="Se déconnecter"
+                className="text-gray-300 hover:text-red-400 transition-colors text-lg leading-none ml-1">
                 ↩
               </button>
             </div>
           </div>
-
-          {/* Onglets */}
           <div className="flex gap-0 -mb-px">
-            <button
-              onClick={() => navigate('/manager')}
-              className="px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors"
-            >
+            <button onClick={() => navigate('/manager')}
+              className="px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors">
               Chantiers
             </button>
-            <button
-              onClick={() => navigate('/manager')}
-              className="px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors"
-            >
+            <button onClick={() => navigate('/manager')}
+              className="px-5 py-3 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-800 transition-colors">
               Anomalies
             </button>
             <button className="px-5 py-3 text-sm font-semibold border-b-2 border-orange-500 text-orange-600">
@@ -123,15 +198,18 @@ export default function GestionEquipe() {
 
       <main className="max-w-2xl md:max-w-5xl mx-auto px-6 py-6 space-y-5">
 
-        {/* Succès */}
         {success && (
           <div className="bg-green-50 border border-green-100 text-green-700 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
-            <span className="text-base">✓</span>
-            {success}
+            <span className="text-base">✓</span> {success}
+          </div>
+        )}
+        {error && (
+          <div className="bg-red-50 border border-red-100 text-red-600 text-sm px-4 py-3 rounded-2xl">
+            {error}
           </div>
         )}
 
-        {/* ── Formulaire création compte ────────────────────────────────────── */}
+        {/* ── Formulaire création ──────────────────────────────────────────── */}
         {showForm ? (
           <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
             <h2 className="font-semibold text-gray-900 mb-5">Nouveau technicien</h2>
@@ -155,11 +233,7 @@ export default function GestionEquipe() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-sm" />
                 <p className="text-xs text-gray-400 mt-1.5">Le technicien pourra le modifier après connexion</p>
               </div>
-
-              {error && (
-                <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{error}</div>
-              )}
-
+              {error && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{error}</div>}
               <div className="flex gap-3 pt-1">
                 <button type="button" onClick={() => setShowForm(false)}
                   className="flex-1 border border-gray-200 text-gray-600 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors text-sm">
@@ -174,11 +248,9 @@ export default function GestionEquipe() {
             </form>
           </div>
         ) : (
-          <button
-            onClick={() => setShowForm(true)}
+          <button onClick={() => { setShowForm(true); setError(''); setSuccess('') }}
             className="w-full text-white font-semibold py-3.5 rounded-xl transition-all hover:opacity-90 text-sm"
-            style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}
-          >
+            style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}>
             + Ajouter un technicien
           </button>
         )}
@@ -204,8 +276,7 @@ export default function GestionEquipe() {
               {techniciens.map(tech => (
                 <div key={tech.id}
                   className="bg-white rounded-2xl px-5 py-4 flex items-center gap-4"
-                  style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}
-                >
+                  style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                     style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                     {tech.full_name.charAt(0).toUpperCase()}
@@ -214,15 +285,119 @@ export default function GestionEquipe() {
                     <p className="font-semibold text-gray-900 text-sm">{tech.full_name}</p>
                     <p className="text-xs text-gray-400 truncate">{tech.email}</p>
                   </div>
-                  <span className="text-xs bg-orange-50 text-orange-600 font-medium px-2.5 py-1 rounded-full flex-shrink-0">
-                    Technicien
-                  </span>
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs bg-orange-50 text-orange-600 font-medium px-2.5 py-1 rounded-full">
+                      Technicien
+                    </span>
+                    <button
+                      onClick={() => { openEdit(tech); setSuccess(''); setError('') }}
+                      className="p-2 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+                      title="Modifier">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
+                      </svg>
+                    </button>
+                    <button
+                      onClick={() => { setDeleteConfirm(tech); setSuccess(''); setError('') }}
+                      className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      title="Supprimer">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                      </svg>
+                    </button>
+                  </div>
                 </div>
               ))}
             </div>
           )}
         </div>
       </main>
+
+      {/* ── Modale édition ───────────────────────────────────────────────────── */}
+      {editModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: 'rgba(0,0,0,0.4)' }}>
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm"
+            style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div className="flex items-center justify-between mb-5">
+              <h3 className="font-semibold text-gray-900">Modifier le compte</h3>
+              <button onClick={() => setEditModal(null)} className="text-gray-400 hover:text-gray-600 text-xl leading-none">✕</button>
+            </div>
+
+            <form onSubmit={handleEdit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom complet</label>
+                <input value={editModal.full_name}
+                  onChange={e => setEditModal(m => m ? { ...m, full_name: e.target.value } : m)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
+                <input type="email" value={editModal.email}
+                  onChange={e => setEditModal(m => m ? { ...m, email: e.target.value } : m)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Nouveau mot de passe <span className="text-gray-400 font-normal">(laisser vide = inchangé)</span>
+                </label>
+                <input type="text" value={editModal.password} placeholder="••••••••"
+                  onChange={e => setEditModal(m => m ? { ...m, password: e.target.value } : m)}
+                  minLength={6}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm" />
+              </div>
+
+              {editError && (
+                <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{editError}</div>
+              )}
+
+              <div className="flex gap-3 pt-1">
+                <button type="button" onClick={() => setEditModal(null)}
+                  className="flex-1 border border-gray-200 text-gray-600 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors text-sm">
+                  Annuler
+                </button>
+                <button type="submit" disabled={editSubmitting}
+                  className="flex-1 text-white font-semibold py-3 rounded-xl transition-all text-sm disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
+                  {editSubmitting ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale suppression ───────────────────────────────────────────────── */}
+      {deleteConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4"
+          style={{ background: 'rgba(0,0,0,0.4)' }}>
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm"
+            style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.2)' }}>
+            <div className="text-center mb-5">
+              <div className="w-14 h-14 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <svg className="w-7 h-7 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </div>
+              <h3 className="font-semibold text-gray-900 mb-1">Supprimer ce compte ?</h3>
+              <p className="text-sm text-gray-500">
+                Le compte de <span className="font-semibold text-gray-900">{deleteConfirm.full_name}</span> sera définitivement supprimé.
+              </p>
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setDeleteConfirm(null)}
+                className="flex-1 border border-gray-200 text-gray-600 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors text-sm">
+                Annuler
+              </button>
+              <button onClick={handleDelete} disabled={deleteSubmitting}
+                className="flex-1 bg-red-500 hover:bg-red-600 text-white font-semibold py-3 rounded-xl transition-colors text-sm disabled:opacity-60">
+                {deleteSubmitting ? 'Suppression...' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
