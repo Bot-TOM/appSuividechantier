@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { ChatMessage } from '@/types'
 
@@ -6,14 +6,19 @@ export function useMessages(chantierId: string, userId: string) {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
+  const messagesRef = useRef<ChatMessage[]>([])
 
   const fetchMessages = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('messages')
       .select('*, profiles(full_name), message_reactions(*), message_reads(user_id, read_at)')
       .eq('chantier_id', chantierId)
       .order('created_at', { ascending: true })
-    if (data) setMessages(data as ChatMessage[])
+    if (error) console.error('[chat] fetchMessages:', error)
+    if (data) {
+      messagesRef.current = data as ChatMessage[]
+      setMessages(data as ChatMessage[])
+    }
     setLoading(false)
   }, [chantierId])
 
@@ -30,12 +35,13 @@ export function useMessages(chantierId: string, userId: string) {
   }, [chantierId, fetchMessages])
 
   const sendMessage = useCallback(async (content: string, replyToId?: string) => {
-    await supabase.from('messages').insert({
+    const { error } = await supabase.from('messages').insert({
       chantier_id: chantierId,
       user_id: userId,
       content,
       reply_to_id: replyToId ?? null,
     })
+    if (error) console.error('[chat] sendMessage:', error)
   }, [chantierId, userId])
 
   const sendFile = useCallback(async (file: File, replyToId?: string) => {
@@ -46,7 +52,7 @@ export function useMessages(chantierId: string, userId: string) {
       const { data: upload, error } = await supabase.storage.from('chat-files').upload(path, file)
       if (error) throw error
       const { data: { publicUrl } } = supabase.storage.from('chat-files').getPublicUrl(upload.path)
-      await supabase.from('messages').insert({
+      const { error: insertErr } = await supabase.from('messages').insert({
         chantier_id: chantierId,
         user_id: userId,
         file_url: publicUrl,
@@ -54,6 +60,7 @@ export function useMessages(chantierId: string, userId: string) {
         file_type: file.type.startsWith('image/') ? 'image' : 'document',
         reply_to_id: replyToId ?? null,
       })
+      if (insertErr) console.error('[chat] sendFile insert:', insertErr)
     } finally {
       setUploading(false)
     }
@@ -78,9 +85,11 @@ export function useMessages(chantierId: string, userId: string) {
     }
   }, [userId])
 
+  // Utilise une ref pour éviter la boucle infinie (messages → markAllRead → fetch → messages → ...)
   const markAllRead = useCallback(async () => {
-    if (messages.length === 0) return
-    const unread = messages.filter(m =>
+    const current = messagesRef.current
+    if (current.length === 0) return
+    const unread = current.filter(m =>
       m.user_id !== userId &&
       !(m.message_reads ?? []).some(r => r.user_id === userId)
     )
@@ -89,7 +98,7 @@ export function useMessages(chantierId: string, userId: string) {
       unread.map(m => ({ message_id: m.id, user_id: userId })),
       { onConflict: 'message_id,user_id' }
     )
-  }, [messages, userId])
+  }, [userId])
 
   return { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction, markAllRead }
 }
