@@ -8,6 +8,7 @@ import { useChecklistMateriel } from '@/hooks/useChecklistMateriel'
 import { useAutoControle, initChecks } from '@/hooks/useAutoControle'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useRapports } from '@/hooks/useRapports'
+import type { RapportPhoto } from '@/hooks/useRapports'
 import { formatDuree, getElapsedMinutes, getDureeReelle } from '@/lib/duree'
 import { ChantierStatut, Etape, EtapePhoto, Note, AutoControleCheck } from '@/types'
 import { PdfOptions, PDF_OPTIONS_DEFAULT } from '@/components/pdf/ChantierPDF'
@@ -142,6 +143,59 @@ function Lightbox({ photos, initialIndex, onClose, onDelete }: {
             disabled={index === photos.length - 1}
             className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors"
           >→</button>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─── Lightbox rapport ─────────────────────────────────────────────────────────
+function RapportLightbox({ photos, initialIndex, onClose, onDelete }: {
+  photos: RapportPhoto[]
+  initialIndex: number
+  onClose: () => void
+  onDelete?: (photo: RapportPhoto) => void
+}) {
+  const [index, setIndex] = useState(initialIndex)
+  const photo = photos[index]
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={onClose}>
+      <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <span className="text-white/60 text-sm">{index + 1} / {photos.length}</span>
+        <div className="flex items-center gap-3">
+          <button onClick={() => downloadPhoto(photo.url)}
+            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors" title="Télécharger">
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+          </button>
+          {onDelete && (
+            <button onClick={() => { onDelete(photo); if (photos.length === 1) onClose() }}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </button>
+          )}
+          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-lg">✕</button>
+        </div>
+      </div>
+      <div className="flex-1 flex items-center justify-center px-4" onClick={e => e.stopPropagation()}>
+        <img src={photo.url} alt="Photo" className="max-w-full max-h-full rounded-xl object-contain" />
+      </div>
+      {photos.length > 1 && (
+        <div className="flex justify-center gap-3 py-5 flex-shrink-0" onClick={e => e.stopPropagation()}>
+          <button onClick={() => setIndex(i => Math.max(0, i - 1))} disabled={index === 0}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors">←</button>
+          <div className="flex items-center gap-1.5">
+            {photos.map((_, i) => (
+              <button key={i} onClick={() => setIndex(i)}
+                className={`w-2 h-2 rounded-full transition-all ${i === index ? 'bg-white scale-125' : 'bg-white/40'}`} />
+            ))}
+          </div>
+          <button onClick={() => setIndex(i => Math.min(photos.length - 1, i + 1))} disabled={index === photos.length - 1}
+            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors">→</button>
         </div>
       )}
     </div>
@@ -311,6 +365,7 @@ export default function ChantierDetail() {
       ? t as InnerTab
       : 'etapes'
   })
+  const [rapportLightbox, setRapportLightbox] = useState<{ photos: RapportPhoto[]; index: number } | null>(null)
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [uploadDocError, setUploadDocError] = useState('')
 
@@ -1168,21 +1223,22 @@ export default function ChantierDetail() {
                         {photos.length > 0 && (
                           <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
                             {photos.map((photo, i) => (
-                              <div key={photo.id} className="relative flex-shrink-0">
-                                <a href={photo.url} target="_blank" rel="noreferrer">
-                                  <img
-                                    src={photo.url}
-                                    alt={`Photo ${i + 1}`}
-                                    className="h-24 w-24 rounded-xl object-cover border border-gray-100 active:opacity-75 transition-opacity"
-                                  />
-                                </a>
-                                {(isManager || rapport.auteur_id === profile?.id) && (
-                                  <button
-                                    onClick={() => deleteRapportPhoto(photo)}
-                                    className="absolute top-1 right-1 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center text-xs"
-                                  >✕</button>
+                              <button
+                                key={photo.id}
+                                onClick={() => setRapportLightbox({ photos, index: i })}
+                                className="relative flex-shrink-0 rounded-xl overflow-hidden border border-gray-100 active:opacity-75 transition-opacity"
+                              >
+                                <img
+                                  src={photo.url}
+                                  alt={`Photo ${i + 1}`}
+                                  className="h-24 w-24 object-cover"
+                                />
+                                {photos.length > 1 && i === 0 && (
+                                  <div className="absolute bottom-1 right-1 bg-black/50 text-white text-[10px] font-semibold px-1.5 py-0.5 rounded-full">
+                                    {photos.length}
+                                  </div>
                                 )}
-                              </div>
+                              </button>
                             ))}
                           </div>
                         )}
@@ -1612,6 +1668,27 @@ export default function ChantierDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Lightbox photos rapport */}
+      {rapportLightbox && (
+        <RapportLightbox
+          photos={rapportLightbox.photos}
+          initialIndex={rapportLightbox.index}
+          onClose={() => setRapportLightbox(null)}
+          onDelete={
+            rapports.find(r => r.rapport_photos?.some(p => p.id === rapportLightbox.photos[0]?.id))?.auteur_id === profile?.id || isManager
+              ? (photo) => {
+                  deleteRapportPhoto(photo)
+                  setRapportLightbox(prev => {
+                    if (!prev) return null
+                    const next = prev.photos.filter(p => p.id !== photo.id)
+                    return next.length > 0 ? { ...prev, photos: next, index: Math.min(prev.index, next.length - 1) } : null
+                  })
+                }
+              : undefined
+          }
+        />
       )}
     </div>
   )
