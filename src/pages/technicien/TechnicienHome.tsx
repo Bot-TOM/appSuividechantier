@@ -101,7 +101,7 @@ function ChantierCard({
 
 // ─── Onglet Profil ───────────────────────────────────────────────────────────
 function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePush, onAvatarChange }: {
-  profile: { full_name: string; email?: string; avatar_url?: string | null } | null
+  profile: { id: string; full_name: string; email?: string; avatar_url?: string | null } | null
   signOut: () => void
   pushStatus: 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed'
   subscribePush: () => void
