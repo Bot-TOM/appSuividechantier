@@ -111,10 +111,12 @@ export default function ManagerDashboard() {
       if (!user) return
       const ext = file.name.split('.').pop() ?? 'jpg'
       const path = `${user.id}.${ext}`
-      await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      const { error: uploadErr } = await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      if (uploadErr) { console.error('[avatar] upload:', uploadErr.message); return }
       const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
       const url = `${publicUrl}?t=${Date.now()}`
-      await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id)
+      const { error: updateErr } = await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id)
+      if (updateErr) { console.error('[avatar] update profile:', updateErr.message); return }
       await refreshProfile()
     } finally {
       setAvatarLoading(false)
