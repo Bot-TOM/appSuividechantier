@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Chantier } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
@@ -8,7 +8,7 @@ export function useChantiers() {
   const [chantiers, setChantiers] = useState<Chantier[]>([])
   const [loading, setLoading] = useState(true)
 
-  async function fetchChantiers() {
+  const fetchChantiers = useCallback(async () => {
     setLoading(true)
     let query = supabase.from('chantiers').select('*').order('created_at', { ascending: false })
 
@@ -26,11 +26,11 @@ export function useChantiers() {
     const { data } = await query
     setChantiers(data ?? [])
     setLoading(false)
-  }
+  }, [profile])
 
   useEffect(() => {
     if (profile) fetchChantiers()
-  }, [profile])
+  }, [profile, fetchChantiers])
 
   return { chantiers, loading, refetch: fetchChantiers }
 }

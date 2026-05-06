@@ -44,6 +44,8 @@ export function useChatNotif(userId: string) {
       const permission = await Notification.requestPermission()
       if (permission !== 'granted') return
 
+      if (!VAPID_PUBLIC_KEY) { console.error('[push] VITE_VAPID_PUBLIC_KEY manquante'); return }
+
       const reg = await navigator.serviceWorker.ready
       const sub = await reg.pushManager.subscribe({
         userVisibleOnly: true,
@@ -51,14 +53,16 @@ export function useChatNotif(userId: string) {
       })
 
       const json = sub.toJSON()
-      const keys = json.keys as { p256dh: string; auth: string }
+      const p256dh = json.keys?.p256dh
+      const auth   = json.keys?.auth
+      if (!p256dh || !auth) { console.error('[push] clés PushSubscription manquantes'); return }
 
       await supabase.from('push_subscriptions').upsert(
         {
           user_id: userId,
           endpoint: sub.endpoint,
-          p256dh: keys.p256dh,
-          auth: keys.auth,
+          p256dh,
+          auth,
           chat_notif_enabled: true,
         },
         { onConflict: 'endpoint' },

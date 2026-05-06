@@ -38,7 +38,7 @@ export function useAnomalies(chantierId?: string) {
     const resolved_at = statut === 'resolu' ? now : null
     setAnomalies(prev => prev.map(a => a.id === id ? { ...a, statut, resolved_at } : a))
     await supabase.from('anomalies').update({ statut, resolved_at, updated_at: now }).eq('id', id)
-    fetch()
+    await fetch()
   }
 
   async function updateStatutBulk(ids: string[], statut: Anomalie['statut']) {
@@ -46,13 +46,13 @@ export function useAnomalies(chantierId?: string) {
     const resolved_at = statut === 'resolu' ? now : null
     setAnomalies(prev => prev.map(a => ids.includes(a.id) ? { ...a, statut, resolved_at } : a))
     await supabase.from('anomalies').update({ statut, resolved_at, updated_at: now }).in('id', ids)
-    fetch()
+    await fetch()
   }
 
   async function deleteAnomalies(ids: string[]) {
     setAnomalies(prev => prev.filter(a => !ids.includes(a.id)))
     await supabase.from('anomalies').delete().in('id', ids)
-    fetch()
+    await fetch()
   }
 
   return { anomalies, loading, refetch: fetch, updateStatut, updateStatutBulk, deleteAnomalies }

@@ -46,8 +46,10 @@ export function useNotifications() {
   }
 
   async function clearAll() {
+    if (notifications.length === 0) return
+    const ids = notifications.map(n => n.id)
     setNotifications([])
-    await supabase.from('notifications').delete().neq('id', '00000000-0000-0000-0000-000000000000')
+    await supabase.from('notifications').delete().in('id', ids)
   }
 
   return { notifications, unreadCount, markAllRead, markRead, clearAll }

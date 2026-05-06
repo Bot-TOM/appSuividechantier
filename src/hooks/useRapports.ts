@@ -73,7 +73,7 @@ export function useRapports(chantierId: string) {
       const { error: uploadErr } = await supabase.storage
         .from('rapport-photos')
         .upload(path, compressed, { contentType: 'image/jpeg' })
-      if (uploadErr) return
+      if (uploadErr) { console.error('[rapport] upload photo:', uploadErr.message); return }
       const { data: { publicUrl } } = supabase.storage.from('rapport-photos').getPublicUrl(path)
       await supabase.from('rapport_photos').insert({
         rapport_id: rapport.id,

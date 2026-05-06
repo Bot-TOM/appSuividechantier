@@ -28,7 +28,7 @@ const STATUTS_CHANTIER: { value: ChantierStatut; label: string; dot: string; bg:
 
 function StatutSelector({ current, onChange }: { current: ChantierStatut; onChange: (s: ChantierStatut) => void }) {
   const [open, setOpen] = useState(false)
-  const selected = STATUTS_CHANTIER.find(s => s.value === current)!
+  const selected = STATUTS_CHANTIER.find(s => s.value === current) ?? STATUTS_CHANTIER[0]
   return (
     <div className="relative">
       <button
