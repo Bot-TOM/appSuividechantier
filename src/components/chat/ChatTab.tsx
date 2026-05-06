@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useMessages } from '@/hooks/useMessages'
 import { useChatNotif } from '@/hooks/useChatNotif'
+import Avatar from '@/components/Avatar'
 import type { ChatMessage } from '@/types'
 
 const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👎']
@@ -159,9 +160,12 @@ export default function ChatTab({ chantierId, userId }: Props) {
               >
                 {/* Avatar (autres) */}
                 {!isOwn && (
-                  <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 font-bold text-[11px] mr-1.5 flex-shrink-0 self-end mb-1">
-                    {(msg.profiles?.full_name ?? '?')[0].toUpperCase()}
-                  </div>
+                  <Avatar
+                    name={msg.profiles?.full_name ?? '?'}
+                    avatarUrl={msg.profiles?.avatar_url}
+                    size="sm"
+                    className="mr-1.5 flex-shrink-0 self-end mb-1"
+                  />
                 )}
 
                 <div className={`max-w-[75%] flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}>
