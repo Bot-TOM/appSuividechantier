@@ -44,8 +44,9 @@ const S = StyleSheet.create({
 
   rapportBox:  { backgroundColor: '#f9fafb', borderRadius: 6, padding: 10, marginBottom: 10 },
   rapportMeta: { fontSize: 8, color: '#9ca3af', marginBottom: 4 },
-  rapportPhoto:{ width: 160, height: 110, borderRadius: 6, marginTop: 6, marginRight: 6 },
-  rapportPhotos: { flexDirection: 'row', flexWrap: 'wrap', marginTop: 4 },
+  rapportPhoto1: { width: '100%', height: 300, borderRadius: 6, marginTop: 8, objectFit: 'cover' },
+  rapportPhoto2: { width: '49%', height: 180, borderRadius: 6, marginTop: 6, objectFit: 'cover' },
+  rapportPhotos: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: 4 },
 
   acRow:    { flexDirection: 'row', alignItems: 'center', paddingVertical: 5, borderBottomWidth: 1, borderBottomColor: '#f9fafb' },
   acCheck:  { width: 12, height: 12, borderRadius: 6, borderWidth: 1.5, alignItems: 'center', justifyContent: 'center', marginRight: 6 },
@@ -325,7 +326,11 @@ export default function ChantierPDF({ chantier, etapes, photos, notes, anomalies
                   {(rapport.rapport_photos ?? []).length > 0 && (
                     <View style={S.rapportPhotos}>
                       {(rapport.rapport_photos ?? []).map(photo => (
-                        <Image key={photo.id} style={S.rapportPhoto} src={photo.url} />
+                        <Image
+                          key={photo.id}
+                          style={(rapport.rapport_photos ?? []).length === 1 ? S.rapportPhoto1 : S.rapportPhoto2}
+                          src={photo.url}
+                        />
                       ))}
                     </View>
                   )}
