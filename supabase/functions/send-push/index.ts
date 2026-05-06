@@ -17,6 +17,7 @@ Deno.serve(async (req) => {
 
   const payload = await req.json()
   const { table, record } = payload
+  console.log('[send-push] table:', table, 'record.id:', record?.id, 'chantier_id:', record?.chantier_id)
 
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
@@ -66,7 +67,10 @@ Deno.serve(async (req) => {
     })
   }
 
+  console.log('[send-push] recipientIds:', recipientIds)
+
   if (!recipientIds.length) {
+    console.log('[send-push] no recipients')
     return new Response(JSON.stringify({ sent: 0, reason: 'no recipients' }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
@@ -83,6 +87,7 @@ Deno.serve(async (req) => {
   }
 
   const { data: subs, error } = await query
+  console.log('[send-push] subs count:', subs?.length ?? 0, 'error:', error?.message)
 
   if (error || !subs?.length) {
     return new Response(JSON.stringify({ sent: 0, error: error?.message, reason: 'no subscriptions' }), {
@@ -91,10 +96,13 @@ Deno.serve(async (req) => {
   }
 
   const chantierId = record?.chantier_id ?? ''
+  const url = chantierId
+    ? (chatOnly ? `/chantier/${chantierId}?tab=chat` : `/chantier/${chantierId}`)
+    : '/'
   const notifPayload = JSON.stringify({
     title,
     body,
-    url: chantierId ? `/chantier/${chantierId}` : '/',
+    url,
   })
 
   const results = await Promise.allSettled(
@@ -120,6 +128,11 @@ Deno.serve(async (req) => {
   if (expiredEndpoints.length) {
     await supabase.from('push_subscriptions').delete().in('endpoint', expiredEndpoints)
   }
+
+  console.log('[send-push] result — sent:', sent, 'failed:', failed)
+  results.forEach((r, i) => {
+    if (r.status === 'rejected') console.log('[send-push] failed sub', i, ':', (r.reason as any)?.statusCode, (r.reason as any)?.body)
+  })
 
   return new Response(JSON.stringify({ sent, failed }), {
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },

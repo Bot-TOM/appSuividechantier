@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantierDetail } from '@/hooks/useChantierDetail'
 import { useAnomalies } from '@/hooks/useAnomalies'
@@ -304,7 +304,13 @@ export default function ChantierDetail() {
   const { documents, uploadDocument, deleteDocument } = useDocuments(id!)
   const { rapports, addRapport, deleteRapport, deleteRapportPhoto } = useRapports(id!)
 
-  const [activeTab, setActiveTab]       = useState<InnerTab>('etapes')
+  const [searchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState<InnerTab>(() => {
+    const t = searchParams.get('tab')
+    return (t && ['etapes','rapport','chat','docs','notes','materiel','anomalies','autocontrole','infos'].includes(t))
+      ? t as InnerTab
+      : 'etapes'
+  })
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [uploadDocError, setUploadDocError] = useState('')
 
