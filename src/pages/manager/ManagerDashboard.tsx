@@ -7,6 +7,7 @@ import { useEtapesProgression } from '@/hooks/useEtapesProgression'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { useNotifications } from '@/hooks/useNotifications'
 import GraviteBadge from '@/components/anomalies/GraviteBadge'
+import Avatar from '@/components/Avatar'
 import { supabase } from '@/lib/supabase'
 import { Chantier, ChantierStatut, Anomalie } from '@/types'
 
@@ -97,7 +98,28 @@ const STATUT_ANOMALIE: Record<string, { label: string; next: string; dot: string
 
 // ─── Dashboard principal ─────────────────────────────────────────────────────
 export default function ManagerDashboard() {
-  const { profile, signOut } = useAuth()
+  const { profile, signOut, refreshProfile } = useAuth()
+  const [avatarLoading, setAvatarLoading] = useState(false)
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+    setAvatarLoading(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) return
+      const ext = file.name.split('.').pop() ?? 'jpg'
+      const path = `${user.id}.${ext}`
+      await supabase.storage.from('avatars').upload(path, file, { upsert: true })
+      const { data: { publicUrl } } = supabase.storage.from('avatars').getPublicUrl(path)
+      const url = `${publicUrl}?t=${Date.now()}`
+      await supabase.from('profiles').update({ avatar_url: url }).eq('id', user.id)
+      await refreshProfile()
+    } finally {
+      setAvatarLoading(false)
+    }
+  }
   const { chantiers, loading } = useChantiers()
   const { anomalies, updateStatut: updateAnomalieStatut, updateStatutBulk, deleteAnomalies } = useAnomalies()
   const navigate               = useNavigate()
@@ -221,10 +243,9 @@ export default function ManagerDashboard() {
                 <p className="text-sm font-semibold text-gray-900 leading-tight">{profile?.full_name}</p>
                 <p className="text-xs text-gray-400">Manager</p>
               </div>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
-                {profile?.full_name?.charAt(0).toUpperCase()}
-              </div>
+              <button onClick={() => setActiveTab('profil')} className="flex-shrink-0">
+                <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="md" />
+              </button>
               {/* Cloche — centre de notifications */}
               <div className="relative" ref={notifPanelRef}>
                 <button
@@ -463,12 +484,16 @@ export default function ManagerDashboard() {
         {activeTab === 'profil' && (
           <div className="max-w-lg space-y-4 pb-6">
             <div className="bg-white rounded-2xl p-6 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-              <div
-                className="w-16 h-16 rounded-full flex items-center justify-center text-white text-2xl font-bold mx-auto mb-4"
-                style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}
-              >
-                {profile?.full_name?.charAt(0).toUpperCase()}
-              </div>
+              <label className="relative inline-block cursor-pointer mb-4">
+                <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="xl" />
+                <div className="absolute bottom-0 right-0 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center border-2 border-white">
+                  {avatarLoading
+                    ? <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
+                    : <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                  }
+                </div>
+                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={avatarLoading} />
+              </label>
               <h2 className="font-bold text-gray-900 text-lg">{profile?.full_name}</h2>
               <p className="text-gray-400 text-sm mt-1">{profile?.email}</p>
               <div className="mt-3 inline-flex items-center gap-1.5 bg-orange-50 text-orange-600 text-xs font-semibold px-3 py-1.5 rounded-full">

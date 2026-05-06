@@ -7,6 +7,7 @@ export interface UserProfile {
   full_name: string
   role: UserRole
   created_at: string
+  avatar_url?: string | null
 }
 
 // Statuts possibles d'un chantier
