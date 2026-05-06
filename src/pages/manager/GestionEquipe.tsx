@@ -285,13 +285,10 @@ export default function GestionEquipe() {
                     <p className="font-semibold text-gray-900 text-sm">{tech.full_name}</p>
                     <p className="text-xs text-gray-400 truncate">{tech.email}</p>
                   </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <span className="text-xs bg-orange-50 text-orange-600 font-medium px-2.5 py-1 rounded-full">
-                      Technicien
-                    </span>
+                  <div className="flex items-center gap-1 flex-shrink-0">
                     <button
                       onClick={() => { openEdit(tech); setSuccess(''); setError('') }}
-                      className="p-2 rounded-lg text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-orange-50 text-orange-500 hover:bg-orange-100 transition-colors"
                       title="Modifier">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z" />
@@ -299,7 +296,7 @@ export default function GestionEquipe() {
                     </button>
                     <button
                       onClick={() => { setDeleteConfirm(tech); setSuccess(''); setError('') }}
-                      className="p-2 rounded-lg text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
+                      className="w-9 h-9 flex items-center justify-center rounded-xl bg-red-50 text-red-400 hover:bg-red-100 transition-colors"
                       title="Supprimer">
                       <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
