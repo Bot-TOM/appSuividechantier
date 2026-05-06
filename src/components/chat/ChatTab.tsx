@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useMessages } from '@/hooks/useMessages'
-import { supabase } from '@/lib/supabase'
+import { useChatNotif } from '@/hooks/useChatNotif'
 import type { ChatMessage } from '@/types'
 
 const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👎']
@@ -25,33 +25,6 @@ function sameDay(a: string, b: string) {
 interface Props {
   chantierId: string
   userId: string
-}
-
-function useChatNotif(userId: string) {
-  const [enabled, setEnabled] = useState<boolean | null>(null)
-
-  useEffect(() => {
-    supabase
-      .from('push_subscriptions')
-      .select('chat_notif_enabled')
-      .eq('user_id', userId)
-      .limit(1)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (data) setEnabled(data.chat_notif_enabled ?? true)
-      })
-  }, [userId])
-
-  const toggle = useCallback(async () => {
-    const next = !enabled
-    setEnabled(next)
-    await supabase
-      .from('push_subscriptions')
-      .update({ chat_notif_enabled: next })
-      .eq('user_id', userId)
-  }, [enabled, userId])
-
-  return { enabled, toggle }
 }
 
 export default function ChatTab({ chantierId, userId }: Props) {
@@ -115,27 +88,21 @@ export default function ChatTab({ chantierId, userId }: Props) {
       style={{ height: 'calc(100dvh - 270px)', minHeight: 420 }}
       onClick={dismiss}
     >
-      {/* ── Header toggle notifications ───────────────────────────────── */}
+      {/* ── Header clochette ──────────────────────────────────────────── */}
       {notifEnabled !== null && (
-        <div className="flex justify-end px-3 pt-2 pb-1">
+        <div className="flex items-center justify-end px-3 py-2 border-b border-gray-100 bg-white" onClick={e => e.stopPropagation()}>
           <button
             onClick={toggleNotif}
-            title={notifEnabled ? 'Désactiver les notifications chat' : 'Activer les notifications chat'}
-            className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors ${
+            title={notifEnabled ? 'Désactiver les notifications du chat' : 'Activer les notifications du chat'}
+            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
               notifEnabled
-                ? 'bg-orange-50 border-orange-200 text-orange-600'
-                : 'bg-gray-100 border-gray-200 text-gray-400'
+                ? 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100'
+                : 'bg-gray-100 border-gray-200 text-gray-400 hover:bg-gray-200'
             }`}
           >
-            {notifEnabled ? (
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-              </svg>
-            ) : (
-              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-            )}
+            <svg className="w-3.5 h-3.5" fill={notifEnabled ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+            </svg>
             {notifEnabled ? 'Notifs activées' : 'Notifs désactivées'}
           </button>
         </div>
