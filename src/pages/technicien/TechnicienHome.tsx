@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantiers } from '@/hooks/useChantiers'
 import { useEtapesProgression } from '@/hooks/useEtapesProgression'
+import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { supabase } from '@/lib/supabase'
 import { Chantier, ChantierStatut } from '@/types'
 
@@ -98,7 +99,13 @@ function ChantierCard({
 }
 
 // ─── Onglet Profil ───────────────────────────────────────────────────────────
-function ProfilTab({ profile, signOut }: { profile: { full_name: string; email?: string } | null; signOut: () => void }) {
+function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePush }: {
+  profile: { full_name: string; email?: string } | null
+  signOut: () => void
+  pushStatus: 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed'
+  subscribePush: () => void
+  unsubscribePush: () => void
+}) {
   const [showPwd, setShowPwd]       = useState(false)
   const [pwd, setPwd]               = useState({ new: '', confirm: '' })
   const [pwdLoading, setPwdLoading] = useState(false)
@@ -134,6 +141,35 @@ function ProfilTab({ profile, signOut }: { profile: { full_name: string; email?:
           <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
           Technicien
         </div>
+
+        {/* Toggle notifications push */}
+        {pushStatus !== 'unsupported' && (
+          <div className="mt-4">
+            <button
+              onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
+              disabled={pushStatus === 'denied'}
+              className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full border transition-colors ${
+                pushStatus === 'subscribed'
+                  ? 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100'
+                  : pushStatus === 'denied'
+                  ? 'bg-gray-100 border-gray-200 text-gray-300 cursor-not-allowed'
+                  : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-orange-50 hover:text-orange-500 hover:border-orange-200'
+              }`}
+            >
+              <svg className="w-4 h-4" fill={pushStatus === 'subscribed' ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+              </svg>
+              {pushStatus === 'subscribed'
+                ? 'Notifications activées'
+                : pushStatus === 'denied'
+                ? 'Notifications bloquées'
+                : 'Activer les notifications'}
+            </button>
+            {pushStatus === 'denied' && (
+              <p className="text-xs text-gray-400 mt-1.5">Autorise les notifications dans les paramètres du navigateur</p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
@@ -180,6 +216,7 @@ export default function TechnicienHome() {
   const { chantiers, loading } = useChantiers()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'chantiers' | 'profil'>('chantiers')
+  const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
 
   const progression = useEtapesProgression(chantiers.map(c => c.id))
 
@@ -292,7 +329,7 @@ export default function TechnicienHome() {
 
         {activeTab === 'profil' && (
           <div className="mt-2">
-            <ProfilTab profile={profile} signOut={signOut} />
+            <ProfilTab profile={profile} signOut={signOut} pushStatus={pushStatus} subscribePush={subscribePush} unsubscribePush={unsubscribePush} />
           </div>
         )}
       </main>
