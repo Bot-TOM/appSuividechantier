@@ -31,7 +31,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
+    // Timeout de sécurité : si Supabase ne répond pas en 6s, on débloque le chargement
+    const timeout = setTimeout(() => setLoading(false), 6000)
+
     supabase.auth.getSession().then(async ({ data: { session } }) => {
+      clearTimeout(timeout)
       setSession(session)
       setUser(session?.user ?? null)
       if (session?.user) await fetchProfile(session.user.id)
