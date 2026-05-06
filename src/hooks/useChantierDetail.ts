@@ -75,6 +75,12 @@ export function useChantierDetail(chantierId: string) {
     fetchAll()
   }
 
+  async function deleteNote(noteId: string) {
+    setNotes(prev => prev.filter(n => n.id !== noteId))
+    await supabase.from('notes').delete().eq('id', noteId)
+    fetchAll()
+  }
+
   async function uploadEtapePhoto(etapeId: string, file: File): Promise<{ error: string | null }> {
     const { data: { session } } = await supabase.auth.getSession()
     if (!session) return { error: 'Session expirée — reconnectez-vous' }
@@ -125,7 +131,7 @@ export function useChantierDetail(chantierId: string) {
 
   return {
     chantier, etapes, notes, photos, loading,
-    updateStatut, advanceEtape, updateConsigne, addNote,
+    updateStatut, advanceEtape, updateConsigne, addNote, deleteNote,
     uploadEtapePhoto, deleteEtapePhoto, deleteChantier,
     refetch: fetchAll,
   }

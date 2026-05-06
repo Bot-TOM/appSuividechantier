@@ -10,7 +10,9 @@ export interface UserProfile {
 }
 
 // Statuts possibles d'un chantier
-export type ChantierStatut = 'en_attente' | 'en_cours' | 'termine' | 'bloque'
+export type ChantierStatut = 'planifie' | 'en_attente' | 'en_cours' | 'termine' | 'bloque'
+
+export type TypeContrat = 'revente_totale' | 'autoconsommation' | 'autoconsommation_surplus'
 
 export interface Chantier {
   id: string
@@ -19,8 +21,11 @@ export interface Chantier {
   client_adresse: string
   client_telephone?: string
   type_installation: string
+  type_contrat?: TypeContrat | null
   nb_panneaux: number
+  puissance_kwc?: number | null
   date_prevue: string
+  date_fin_prevue?: string | null
   statut: ChantierStatut
   created_at: string
   updated_at: string
@@ -100,4 +105,5 @@ export interface Anomalie {
   photo_url?: string
   created_at: string
   updated_at: string
+  resolved_at?: string | null
 }

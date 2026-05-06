@@ -3,8 +3,6 @@ import { Session, User } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
 import { UserProfile, UserRole } from '@/types'
 
-const MANAGER_CODE = import.meta.env.VITE_MANAGER_CODE as string
-
 interface AuthContextType {
   user: User | null
   profile: UserProfile | null
@@ -57,7 +55,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(fullName: string, email: string, password: string, managerCode: string) {
-    const role: UserRole = managerCode === MANAGER_CODE ? 'manager' : 'technicien'
+    // Vérification du code manager côté serveur (ne jamais exposer le code dans le bundle JS)
+    let role: UserRole = 'technicien'
+    if (managerCode) {
+      try {
+        const res = await fetch('/api/verify-manager-code', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ code: managerCode }),
+        })
+        if (res.ok) {
+          const data = await res.json() as { isManager: boolean }
+          if (data.isManager) role = 'manager'
+          else return { error: 'Code manager incorrect' }
+        } else {
+          return { error: 'Erreur lors de la vérification du code manager' }
+        }
+      } catch {
+        return { error: 'Impossible de vérifier le code manager' }
+      }
+    }
 
     const { data, error } = await supabase.auth.signUp({
       email,

@@ -35,6 +35,25 @@ body {
   display: none;
 }
 
+/* Scrollbar fine visible sur desktop uniquement */
+@media (pointer: fine) {
+  .no-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+  }
+  .no-scrollbar::-webkit-scrollbar {
+    display: block;
+    height: 3px;
+  }
+  .no-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .no-scrollbar::-webkit-scrollbar-thumb {
+    background: #e5e7eb;
+    border-radius: 99px;
+  }
+}
+
 /* Touch feedback amélioré */
 .active\:scale-tap:active {
   transform: scale(0.97);

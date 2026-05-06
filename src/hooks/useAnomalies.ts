@@ -34,10 +34,26 @@ export function useAnomalies(chantierId?: string) {
   }, [chantierId, fetch])
 
   async function updateStatut(id: string, statut: Anomalie['statut']) {
-    setAnomalies(prev => prev.map(a => a.id === id ? { ...a, statut } : a))
-    await supabase.from('anomalies').update({ statut, updated_at: new Date().toISOString() }).eq('id', id)
+    const now = new Date().toISOString()
+    const resolved_at = statut === 'resolu' ? now : null
+    setAnomalies(prev => prev.map(a => a.id === id ? { ...a, statut, resolved_at } : a))
+    await supabase.from('anomalies').update({ statut, resolved_at, updated_at: now }).eq('id', id)
     fetch()
   }
 
-  return { anomalies, loading, refetch: fetch, updateStatut }
+  async function updateStatutBulk(ids: string[], statut: Anomalie['statut']) {
+    const now = new Date().toISOString()
+    const resolved_at = statut === 'resolu' ? now : null
+    setAnomalies(prev => prev.map(a => ids.includes(a.id) ? { ...a, statut, resolved_at } : a))
+    await supabase.from('anomalies').update({ statut, resolved_at, updated_at: now }).in('id', ids)
+    fetch()
+  }
+
+  async function deleteAnomalies(ids: string[]) {
+    setAnomalies(prev => prev.filter(a => !ids.includes(a.id)))
+    await supabase.from('anomalies').delete().in('id', ids)
+    fetch()
+  }
+
+  return { anomalies, loading, refetch: fetch, updateStatut, updateStatutBulk, deleteAnomalies }
 }

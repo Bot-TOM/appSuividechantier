@@ -7,6 +7,7 @@ import { supabase } from '@/lib/supabase'
 import { Chantier, ChantierStatut } from '@/types'
 
 const STATUT_LABEL: Record<ChantierStatut, string> = {
+  planifie:   'Planifié',
   en_attente: 'En attente',
   en_cours:   'En cours',
   termine:    'Terminé',
@@ -14,6 +15,7 @@ const STATUT_LABEL: Record<ChantierStatut, string> = {
 }
 
 const STATUT_DOT: Record<ChantierStatut, string> = {
+  planifie:   'bg-purple-400',
   en_attente: 'bg-gray-400',
   en_cours:   'bg-blue-500',
   termine:    'bg-green-500',
@@ -21,6 +23,7 @@ const STATUT_DOT: Record<ChantierStatut, string> = {
 }
 
 const STATUT_BORDER: Record<ChantierStatut, string> = {
+  planifie:   'border-l-purple-400',
   en_attente: 'border-l-gray-300',
   en_cours:   'border-l-blue-500',
   termine:    'border-l-green-500',
@@ -83,7 +86,10 @@ function ChantierCard({
         {/* Infos */}
         <div className="flex items-center gap-4 text-xs text-gray-400">
           <span>📅 {new Date(chantier.date_prevue).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</span>
-          <span>☀️ {chantier.nb_panneaux} panneaux</span>
+          {chantier.puissance_kwc != null
+            ? <span>⚡ {chantier.puissance_kwc} kWc</span>
+            : <span>☀️ {chantier.nb_panneaux} pan.</span>
+          }
           <span className="truncate">{chantier.type_installation}</span>
         </div>
       </div>

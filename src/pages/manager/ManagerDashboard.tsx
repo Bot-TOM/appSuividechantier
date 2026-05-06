@@ -1,10 +1,11 @@
-import { useState, useMemo, useCallback } from 'react'
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantiers } from '@/hooks/useChantiers'
 import { useAnomalies } from '@/hooks/useAnomalies'
 import { useEtapesProgression } from '@/hooks/useEtapesProgression'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
+import { useNotifications } from '@/hooks/useNotifications'
 import GraviteBadge from '@/components/anomalies/GraviteBadge'
 import { supabase } from '@/lib/supabase'
 import { Chantier, ChantierStatut, Anomalie } from '@/types'
@@ -19,6 +20,7 @@ type AnomalieWithRelations = Anomalie & {
 }
 
 const STATUT_LABEL: Record<ChantierStatut, string> = {
+  planifie:   'Planifié',
   en_attente: 'En attente',
   en_cours:   'En cours',
   termine:    'Terminé',
@@ -26,6 +28,7 @@ const STATUT_LABEL: Record<ChantierStatut, string> = {
 }
 
 const STATUT_DOT: Record<ChantierStatut, string> = {
+  planifie:   'bg-purple-400',
   en_attente: 'bg-gray-400',
   en_cours:   'bg-blue-500',
   termine:    'bg-green-500',
@@ -33,6 +36,7 @@ const STATUT_DOT: Record<ChantierStatut, string> = {
 }
 
 const STATUT_BORDER: Record<ChantierStatut, string> = {
+  planifie:   'border-l-purple-400',
   en_attente: 'border-l-gray-300',
   en_cours:   'border-l-blue-500',
   termine:    'border-l-green-500',
@@ -74,7 +78,10 @@ function ChantierCard({ chantier, pct, onClick }: { chantier: Chantier; pct: num
 
         <div className="flex items-center gap-4 text-xs text-gray-400">
           <span>📅 {new Date(chantier.date_prevue).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</span>
-          <span>☀️ {chantier.nb_panneaux} panneaux</span>
+          {chantier.puissance_kwc != null
+            ? <span>⚡ {chantier.puissance_kwc} kWc</span>
+            : <span>☀️ {chantier.nb_panneaux} pan.</span>
+          }
           <span>{chantier.type_installation}</span>
         </div>
       </div>
@@ -92,19 +99,54 @@ const STATUT_ANOMALIE: Record<string, { label: string; next: string; dot: string
 export default function ManagerDashboard() {
   const { profile, signOut } = useAuth()
   const { chantiers, loading } = useChantiers()
-  const { anomalies, updateStatut: updateAnomalieStatut } = useAnomalies()
+  const { anomalies, updateStatut: updateAnomalieStatut, updateStatutBulk, deleteAnomalies } = useAnomalies()
   const navigate               = useNavigate()
 
   const [activeTab, setActiveTab]       = useState<Tab>('chantiers')
   const [filterStatut, setFilterStatut] = useState<FilterStatut>('tous')
   const [sortKey, setSortKey]           = useState<SortKey>('date')
   const [searchQuery, setSearchQuery]   = useState('')
-  const [anomalieFilter, setAnomalieFilter] = useState<'tous' | 'ouvert' | 'en_cours' | 'resolu'>('tous')
+  const [anomalieFilter, setAnomalieFilter]   = useState<'tous' | 'ouvert' | 'en_cours' | 'resolu'>('tous')
+  const [anomalieSelectMode, setAnomalieSelectMode] = useState(false)
+  const [anomalieSelectedIds, setAnomalieSelectedIds] = useState<Set<string>>(new Set())
+
+  function toggleAnomalieSelect(id: string) {
+    setAnomalieSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })
+  }
+  function exitAnomalieSelectMode() { setAnomalieSelectMode(false); setAnomalieSelectedIds(new Set()) }
+  function toggleAnomalieSelectAll() {
+    setAnomalieSelectedIds(anomalieSelectedIds.size === anomaliesFiltrees.length ? new Set() : new Set(anomaliesFiltrees.map(a => a.id)))
+  }
+  async function handleAnomalieBulkStatut(statut: Anomalie['statut']) {
+    if (!anomalieSelectedIds.size) return
+    await updateStatutBulk(Array.from(anomalieSelectedIds), statut)
+    exitAnomalieSelectMode()
+  }
+  async function handleAnomalieBulkDelete() {
+    if (!anomalieSelectedIds.size) return
+    await deleteAnomalies(Array.from(anomalieSelectedIds))
+    exitAnomalieSelectMode()
+  }
   const [showPwd, setShowPwd]           = useState(false)
   const [pwd, setPwd]                   = useState({ new: '', confirm: '' })
+  const [showPwdNew, setShowPwdNew]     = useState(false)
+  const [showPwdConfirm, setShowPwdConfirm] = useState(false)
   const [pwdLoading, setPwdLoading]     = useState(false)
   const [pwdMsg, setPwdMsg]             = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
+  const { notifications, unreadCount, markAllRead, markRead, clearAll } = useNotifications()
+  const [showNotifPanel, setShowNotifPanel] = useState(false)
+  const notifPanelRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (notifPanelRef.current && !notifPanelRef.current.contains(e.target as Node)) {
+        setShowNotifPanel(false)
+      }
+    }
+    if (showNotifPanel) document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [showNotifPanel])
 
   const handleChangePwd = useCallback(async () => {
     if (pwd.new.length < 6) { setPwdMsg({ type: 'err', text: 'Minimum 6 caractères' }); return }
@@ -150,6 +192,7 @@ export default function ManagerDashboard() {
 
   const FILTERS: { value: FilterStatut; label: string }[] = [
     { value: 'tous',       label: 'Tous' },
+    { value: 'planifie',   label: 'Planifiés' },
     { value: 'en_cours',   label: 'En cours' },
     { value: 'en_attente', label: 'En attente' },
     { value: 'bloque',     label: 'Bloqués' },
@@ -161,7 +204,7 @@ export default function ManagerDashboard() {
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-20">
-        <div className="max-w-4xl mx-auto px-6">
+        <div className="max-w-4xl md:max-w-6xl mx-auto px-6">
 
           {/* Ligne principale */}
           <div className="flex items-center justify-between py-4">
@@ -182,27 +225,84 @@ export default function ManagerDashboard() {
                 style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 {profile?.full_name?.charAt(0).toUpperCase()}
               </div>
-              {pushStatus !== 'unsupported' && (
+              {/* Cloche — centre de notifications */}
+              <div className="relative" ref={notifPanelRef}>
                 <button
-                  onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
-                  title={pushStatus === 'subscribed' ? 'Désactiver les notifications' : pushStatus === 'denied' ? 'Notifications bloquées par le navigateur' : 'Activer les notifications'}
-                  disabled={pushStatus === 'denied'}
-                  className={`relative w-9 h-9 rounded-full flex items-center justify-center transition-colors ${
-                    pushStatus === 'subscribed'
-                      ? 'bg-orange-100 text-orange-600 hover:bg-orange-200'
-                      : pushStatus === 'denied'
-                      ? 'text-gray-200 cursor-not-allowed'
-                      : 'text-gray-300 hover:text-orange-500 hover:bg-orange-50'
-                  }`}
+                  onClick={() => { setShowNotifPanel(o => !o); if (!showNotifPanel) markAllRead() }}
+                  className="relative w-9 h-9 rounded-full flex items-center justify-center transition-colors text-gray-400 hover:text-orange-500 hover:bg-orange-50"
                 >
                   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
                     <path d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 01-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 11-7.48 0 24.585 24.585 0 01-4.831-1.244.75.75 0 01-.298-1.205A8.217 8.217 0 005.25 9.75V9z" />
                   </svg>
-                  {pushStatus === 'subscribed' && (
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full" />
+                  {unreadCount > 0 && (
+                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
                   )}
                 </button>
-              )}
+
+                {showNotifPanel && (
+                  <div className="absolute right-0 top-12 w-80 bg-white rounded-2xl shadow-2xl border border-gray-100 z-50 overflow-hidden">
+                    {/* En-tête panneau */}
+                    <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                      <span className="font-bold text-gray-900 text-sm">Notifications</span>
+                      <div className="flex items-center gap-2">
+                        {/* Toggle push */}
+                        {pushStatus !== 'unsupported' && (
+                          <button
+                            onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
+                            disabled={pushStatus === 'denied'}
+                            title={pushStatus === 'subscribed' ? 'Désactiver les push' : pushStatus === 'denied' ? 'Bloquées par le navigateur' : 'Activer les push'}
+                            className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full font-medium transition-colors ${
+                              pushStatus === 'subscribed' ? 'bg-orange-100 text-orange-600' :
+                              pushStatus === 'denied'     ? 'bg-gray-100 text-gray-300 cursor-not-allowed' :
+                              'bg-gray-100 text-gray-500 hover:bg-orange-50 hover:text-orange-500'
+                            }`}
+                          >
+                            <span className={`w-1.5 h-1.5 rounded-full ${pushStatus === 'subscribed' ? 'bg-orange-500' : 'bg-gray-300'}`} />
+                            Push {pushStatus === 'subscribed' ? 'ON' : 'OFF'}
+                          </button>
+                        )}
+                        {notifications.length > 0 && (
+                          <button onClick={clearAll} className="text-xs text-gray-400 hover:text-red-400 transition-colors">Tout effacer</button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Liste */}
+                    <div className="max-h-96 overflow-y-auto divide-y divide-gray-50">
+                      {notifications.length === 0 ? (
+                        <div className="flex flex-col items-center justify-center py-10 text-gray-400 gap-2">
+                          <svg className="w-8 h-8 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
+                          </svg>
+                          <span className="text-sm">Aucune notification</span>
+                        </div>
+                      ) : notifications.map(n => (
+                        <button
+                          key={n.id}
+                          onClick={() => { markRead(n.id); setShowNotifPanel(false); navigate(`/chantier/${n.chantier_id}`) }}
+                          className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors ${!n.lu ? 'bg-orange-50/40' : ''}`}
+                        >
+                          <span className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${
+                            n.type === 'anomalie' ? 'bg-red-100 text-red-500' :
+                            n.type === 'rapport'  ? 'bg-blue-100 text-blue-500' :
+                            n.type === 'bloque'   ? 'bg-orange-100 text-orange-500' :
+                            'bg-green-100 text-green-500'
+                          }`}>
+                            {n.type === 'anomalie' ? '⚠' : n.type === 'rapport' ? '📋' : n.type === 'bloque' ? '🔒' : '✓'}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm leading-snug ${!n.lu ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>{n.message}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{new Date(n.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</p>
+                          </div>
+                          {!n.lu && <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0 mt-1.5" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
               <button
                 onClick={signOut}
                 title="Se déconnecter"
@@ -242,36 +342,46 @@ export default function ManagerDashboard() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-6 py-6 space-y-5">
+      <main className="max-w-4xl md:max-w-6xl mx-auto px-6 py-6 space-y-5">
 
         {/* ── Onglet Anomalies ──────────────────────────────────────────────── */}
         {activeTab === 'anomalies' && (
           <>
-            {/* Filtres */}
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1 no-scrollbar">
-              {([
-                { value: 'tous',     label: 'Toutes' },
-                { value: 'ouvert',   label: 'Ouvertes' },
-                { value: 'en_cours', label: 'En cours' },
-                { value: 'resolu',   label: 'Résolues' },
-              ] as { value: typeof anomalieFilter; label: string }[]).map(f => (
-                <button
-                  key={f.value}
-                  onClick={() => setAnomalieFilter(f.value)}
-                  className={`flex-shrink-0 text-sm px-4 py-2 rounded-xl font-medium transition-all duration-150 ${
-                    anomalieFilter === f.value
-                      ? 'text-white'
-                      : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
-                  }`}
-                  style={anomalieFilter === f.value ? { background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' } : undefined}
-                >
-                  {f.label}
-                </button>
-              ))}
+            {/* Filtres + actions sélection */}
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                {([
+                  { value: 'tous',     label: 'Toutes' },
+                  { value: 'ouvert',   label: 'Ouvertes' },
+                  { value: 'en_cours', label: 'En cours' },
+                  { value: 'resolu',   label: 'Résolues' },
+                ] as { value: typeof anomalieFilter; label: string }[]).map(f => (
+                  <button key={f.value} onClick={() => setAnomalieFilter(f.value)}
+                    className={`flex-shrink-0 text-sm px-4 py-2 rounded-xl font-medium transition-all duration-150 ${anomalieFilter === f.value ? 'text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'}`}
+                    style={anomalieFilter === f.value ? { background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' } : undefined}
+                  >{f.label}</button>
+                ))}
+              </div>
+              {anomaliesFiltrees.length > 0 && (
+                anomalieSelectMode ? (
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <button onClick={toggleAnomalieSelectAll} className="text-xs font-semibold text-orange-600 whitespace-nowrap">
+                      {anomalieSelectedIds.size === anomaliesFiltrees.length ? 'Tout désélectionner' : 'Tout sélectionner'}
+                    </button>
+                    <button onClick={exitAnomalieSelectMode} className="text-xs font-semibold text-gray-500 px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50">Annuler</button>
+                  </div>
+                ) : (
+                  <button onClick={() => setAnomalieSelectMode(true)}
+                    className="flex-shrink-0 text-gray-500 text-xs font-semibold px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors">
+                    Sélectionner
+                  </button>
+                )
+              )}
             </div>
 
             <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
               {anomaliesFiltrees.length} anomalie{anomaliesFiltrees.length !== 1 ? 's' : ''}
+              {anomalieSelectMode && anomalieSelectedIds.size > 0 && ` · ${anomalieSelectedIds.size} sélectionnée${anomalieSelectedIds.size > 1 ? 's' : ''}`}
             </p>
 
             {anomaliesFiltrees.length === 0 ? (
@@ -281,39 +391,68 @@ export default function ManagerDashboard() {
                 <p className="text-sm text-gray-400">Tout est en ordre</p>
               </div>
             ) : (
-              <div className="space-y-3 pb-6">
+              <div className="space-y-3 pb-24">
                 {(anomaliesFiltrees as AnomalieWithRelations[]).map(a => {
-                  const s = STATUT_ANOMALIE[a.statut]
+                  const s          = STATUT_ANOMALIE[a.statut]
+                  const isSelected = anomalieSelectedIds.has(a.id)
                   return (
-                    <div key={a.id} className="bg-white rounded-2xl p-5 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                    <div key={a.id}
+                      onClick={() => anomalieSelectMode && toggleAnomalieSelect(a.id)}
+                      className={`bg-white rounded-2xl p-5 space-y-3 transition-all ${anomalieSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-2 ring-red-400' : ''}`}
+                      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                       <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap mb-1">
-                            <span className="text-sm font-semibold text-gray-800">{a.type}</span>
-                            <GraviteBadge gravite={a.gravite} />
+                        <div className="min-w-0 flex items-start gap-3">
+                          {anomalieSelectMode && (
+                            <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? 'bg-red-500 border-red-500' : 'border-gray-300'}`}>
+                              {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                            </div>
+                          )}
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap mb-1">
+                              <span className="text-sm font-semibold text-gray-800">{a.type}</span>
+                              <GraviteBadge gravite={a.gravite} />
+                            </div>
+                            <button onClick={e => { e.stopPropagation(); navigate(`/chantier/${a.chantier_id}/anomalies`) }}
+                              className="text-xs text-orange-500 font-medium hover:underline">
+                              {(a as AnomalieWithRelations).chantiers?.nom ?? '—'}
+                            </button>
                           </div>
-                          <button
-                            onClick={() => navigate(`/chantier/${a.chantier_id}/anomalies`)}
-                            className="text-xs text-orange-500 font-medium hover:underline"
-                          >
-                            {a.chantiers?.nom ?? '—'}
-                          </button>
                         </div>
-                        <button
-                          onClick={() => updateAnomalieStatut(a.id, s.next as Anomalie['statut'])}
-                          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0 transition-all hover:opacity-80 ${s.bg}`}
-                        >
-                          <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                          {s.label} →
-                        </button>
+                        {!anomalieSelectMode && (
+                          <button onClick={() => updateAnomalieStatut(a.id, s.next as Anomalie['statut'])}
+                            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0 transition-all hover:opacity-80 ${s.bg}`}>
+                            <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
+                            {s.label} →
+                          </button>
+                        )}
                       </div>
                       <p className="text-sm text-gray-700 leading-relaxed">{a.description}</p>
                       <p className="text-xs text-gray-400">
-                        {a.profiles?.full_name ?? '—'} · {new Date(a.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        {(a as AnomalieWithRelations).profiles?.full_name ?? '—'} · {new Date(a.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
                   )
                 })}
+              </div>
+            )}
+
+            {/* Barre bulk actions */}
+            {anomalieSelectMode && anomalieSelectedIds.size > 0 && (
+              <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 px-4 py-4"
+                style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.1)', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+                <p className="text-xs text-gray-400 text-center mb-3 font-medium">
+                  {anomalieSelectedIds.size} anomalie{anomalieSelectedIds.size > 1 ? 's' : ''} sélectionnée{anomalieSelectedIds.size > 1 ? 's' : ''}
+                </p>
+                <div className="flex gap-2 max-w-4xl md:max-w-6xl mx-auto">
+                  <button onClick={() => handleAnomalieBulkStatut('en_cours')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors">En cours</button>
+                  <button onClick={() => handleAnomalieBulkStatut('resolu')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 transition-colors">Résoudre</button>
+                  <button onClick={() => handleAnomalieBulkStatut('ouvert')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 transition-colors">Rouvrir</button>
+                  <button onClick={handleAnomalieBulkDelete} className="py-3 px-4 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
           </>
@@ -353,20 +492,22 @@ export default function ManagerDashboard() {
                       {pwdMsg.text}
                     </p>
                   )}
-                  <input
-                    type="password"
-                    placeholder="Nouveau mot de passe"
-                    value={pwd.new}
-                    onChange={e => setPwd(p => ({ ...p, new: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-                  />
-                  <input
-                    type="password"
-                    placeholder="Confirmer le mot de passe"
-                    value={pwd.confirm}
-                    onChange={e => setPwd(p => ({ ...p, confirm: e.target.value }))}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
-                  />
+                  <div className="relative">
+                    <input type={showPwdNew ? 'text' : 'password'} placeholder="Nouveau mot de passe"
+                      value={pwd.new} onChange={e => setPwd(p => ({ ...p, new: e.target.value }))}
+                      className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                    <button type="button" onClick={() => setShowPwdNew(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                      {showPwdNew ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}
+                    </button>
+                  </div>
+                  <div className="relative">
+                    <input type={showPwdConfirm ? 'text' : 'password'} placeholder="Confirmer le mot de passe"
+                      value={pwd.confirm} onChange={e => setPwd(p => ({ ...p, confirm: e.target.value }))}
+                      className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                    <button type="button" onClick={() => setShowPwdConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
+                      {showPwdConfirm ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}
+                    </button>
+                  </div>
                   <button
                     onClick={handleChangePwd}
                     disabled={pwdLoading || !pwd.new || !pwd.confirm}

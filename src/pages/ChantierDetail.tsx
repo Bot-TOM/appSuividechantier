@@ -5,18 +5,23 @@ import { useChantierDetail } from '@/hooks/useChantierDetail'
 import { useAnomalies } from '@/hooks/useAnomalies'
 import { useChantierTechniciens } from '@/hooks/useChantierTechniciens'
 import { useChecklistMateriel } from '@/hooks/useChecklistMateriel'
-import { useAutoControle } from '@/hooks/useAutoControle'
+import { useAutoControle, initChecks } from '@/hooks/useAutoControle'
+import { useDocuments } from '@/hooks/useDocuments'
+import { useRapports } from '@/hooks/useRapports'
 import { formatDuree, getElapsedMinutes, getDureeReelle } from '@/lib/duree'
-import { ChantierStatut, Etape, EtapePhoto, Note } from '@/types'
+import { ChantierStatut, Etape, EtapePhoto, Note, AutoControleCheck } from '@/types'
+import { PdfOptions, PDF_OPTIONS_DEFAULT } from '@/components/pdf/ChantierPDF'
+import AnomaliesTabContent from '@/components/anomalies/AnomaliesTabContent'
 
-type InnerTab = 'etapes' | 'notes' | 'infos'
+type InnerTab = 'etapes' | 'rapport' | 'docs' | 'notes' | 'materiel' | 'anomalies' | 'autocontrole' | 'infos'
 
 // ─── Sélecteur statut chantier ────────────────────────────────────────────────
 const STATUTS_CHANTIER: { value: ChantierStatut; label: string; dot: string; bg: string }[] = [
-  { value: 'en_attente', label: 'En attente', dot: 'bg-gray-400',  bg: 'bg-gray-50 text-gray-700 border-gray-200' },
-  { value: 'en_cours',   label: 'En cours',   dot: 'bg-blue-500',  bg: 'bg-blue-50 text-blue-700 border-blue-200' },
-  { value: 'bloque',     label: 'Bloqué',     dot: 'bg-red-500',   bg: 'bg-red-50 text-red-700 border-red-200' },
-  { value: 'termine',    label: 'Terminé',    dot: 'bg-green-500', bg: 'bg-green-50 text-green-700 border-green-200' },
+  { value: 'planifie',   label: 'Planifié',   dot: 'bg-purple-400', bg: 'bg-purple-50 text-purple-700 border-purple-200' },
+  { value: 'en_attente', label: 'En attente', dot: 'bg-gray-400',   bg: 'bg-gray-50 text-gray-700 border-gray-200' },
+  { value: 'en_cours',   label: 'En cours',   dot: 'bg-blue-500',   bg: 'bg-blue-50 text-blue-700 border-blue-200' },
+  { value: 'bloque',     label: 'Bloqué',     dot: 'bg-red-500',    bg: 'bg-red-50 text-red-700 border-red-200' },
+  { value: 'termine',    label: 'Terminé',    dot: 'bg-green-500',  bg: 'bg-green-50 text-green-700 border-green-200' },
 ]
 
 function StatutSelector({ current, onChange }: { current: ChantierStatut; onChange: (s: ChantierStatut) => void }) {
@@ -289,20 +294,49 @@ function EtapeLine({
 export default function ChantierDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { profile } = useAuth()
-  const { chantier, etapes, notes, photos, loading, updateStatut, advanceEtape, updateConsigne, addNote, uploadEtapePhoto, deleteEtapePhoto, deleteChantier } = useChantierDetail(id!)
+  const { profile, session } = useAuth()
+  const { chantier, etapes, notes, photos, loading, updateStatut, advanceEtape, updateConsigne, addNote, deleteNote, uploadEtapePhoto, deleteEtapePhoto, deleteChantier } = useChantierDetail(id!)
   const { anomalies }   = useAnomalies(id!)
   const { techniciens } = useChantierTechniciens(id!)
-  const { total: matTotal, checked: matChecked } = useChecklistMateriel(id!)
-  const { autocontrole } = useAutoControle(id!)
+  const { items: matItems, total: matTotal, checked: matChecked, toggleItem: toggleMat, addItem: addMat, deleteItem: deleteMat } = useChecklistMateriel(id!)
+  const { autocontrole, save: saveAC, signer: signerAC } = useAutoControle(id!)
+  const { documents, uploadDocument, deleteDocument } = useDocuments(id!)
+  const { rapports, addRapport, deleteRapport, deleteRapportPhoto } = useRapports(id!)
 
-  const [activeTab, setActiveTab]     = useState<InnerTab>('etapes')
+  const [activeTab, setActiveTab]       = useState<InnerTab>('etapes')
+  const [uploadingDoc, setUploadingDoc] = useState(false)
+  const [uploadDocError, setUploadDocError] = useState('')
+
+  const [newMatItem, setNewMatItem]         = useState('')
+  const [importedItems, setImportedItems]   = useState<string[]>([])
+  const [showImportModal, setShowImportModal] = useState(false)
+
+  const [acChecks, setAcChecks]           = useState<AutoControleCheck[]>(initChecks)
+  const [acCommentaire, setAcCommentaire] = useState('')
+  const [acSaving, setAcSaving]           = useState(false)
+  const [acSigning, setAcSigning]         = useState(false)
+  const [acExpandedId, setAcExpandedId]   = useState<string | null>(null)
+
+  const [rapportMessage, setRapportMessage] = useState('')
+  const [rapportPhotos, setRapportPhotos]   = useState<File[]>([])
+  const [rapportPreviews, setRapportPreviews] = useState<string[]>([])
+  const [submittingRapport, setSubmittingRapport] = useState(false)
+  const [rapportError, setRapportError] = useState('')
   const [noteText, setNoteText]         = useState('')
   const [savingNote, setSavingNote]     = useState(false)
-  const [generatingPDF, setGeneratingPDF] = useState(false)
-  const [pdfError, setPdfError]         = useState('')
-  const [confirmDelete, setConfirmDelete] = useState(false)
+  const [generatingPDF, setGeneratingPDF]   = useState(false)
+  const [pdfError, setPdfError]             = useState('')
+  const [showPdfOptions, setShowPdfOptions] = useState(false)
+  const [pdfOptions, setPdfOptions]         = useState<PdfOptions>(PDF_OPTIONS_DEFAULT)
+  const [confirmDelete, setConfirmDelete]   = useState(false)
   const [deleting, setDeleting]         = useState(false)
+
+  useEffect(() => {
+    if (autocontrole) {
+      setAcChecks(autocontrole.checks)
+      setAcCommentaire(autocontrole.commentaire ?? '')
+    }
+  }, [autocontrole])
 
   const isManager         = profile?.role === 'manager'
   const anomaliesOuvertes = anomalies.filter(a => a.statut !== 'resolu').length
@@ -313,10 +347,10 @@ export default function ChantierDetail() {
 
   async function handleDownloadPDF() {
     if (!chantier) return
+    setShowPdfOptions(false)
     setGeneratingPDF(true)
     setPdfError('')
 
-    // Ouvrir la fenêtre MAINTENANT (tick synchrone) pour éviter le blocage mobile
     const win = window.open('', '_blank')
     if (win) {
       win.document.write('<html><body style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;color:#6b7280">Génération du PDF…</body></html>')
@@ -328,14 +362,24 @@ export default function ChantierDetail() {
         import('@/components/pdf/ChantierPDF'),
       ])
       const blob = await pdf(
-        <ChantierPDF chantier={chantier} etapes={etapes} photos={photos} notes={notes as never} anomalies={anomalies as never} />
+        <ChantierPDF
+          chantier={chantier}
+          etapes={etapes}
+          photos={photos}
+          notes={notes as never}
+          anomalies={anomalies as never}
+          matItems={matItems}
+          acChecks={acChecks}
+          acSigne={autocontrole?.signe_le}
+          rapportsList={rapports}
+          options={pdfOptions}
+        />
       ).toBlob()
       const url = URL.createObjectURL(blob)
 
       if (win && !win.closed) {
         win.location.href = url
       } else {
-        // Fallback : navigation dans l'onglet courant
         window.location.href = url
       }
       setTimeout(() => URL.revokeObjectURL(url), 30_000)
@@ -345,6 +389,180 @@ export default function ChantierDetail() {
     } finally {
       setGeneratingPDF(false)
     }
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+
+    // Convertir le fichier en texte brut pour l'envoyer à l'API
+    const { read, utils } = await import('xlsx')
+    const buf  = await file.arrayBuffer()
+    const wb   = read(buf)
+    const ws   = wb.Sheets[wb.SheetNames[0]]
+    const rows = utils.sheet_to_json<string[]>(ws, { header: 1 }) as string[][]
+    const content = rows.map(r => r.join('\t')).join('\n')
+
+    setImportedItems([])
+    setShowImportModal(true) // ouvrir la modale avec état "chargement"
+
+    try {
+      const res  = await fetch('/api/extract-material', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify({ content }),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        console.error('API error', res.status, text)
+        setImportedItems(['⚠️ Erreur ' + res.status + ' — ' + text.slice(0, 80)])
+        return
+      }
+      const data = await res.json()
+      if (data.error) { console.error('Parse error', data.raw); }
+      const items: string[] = (data.items ?? []).map((i: { nom: string; qte?: string }) =>
+        i.qte ? `${i.nom} — ${i.qte}` : i.nom
+      )
+      if (items.length === 0) { setShowImportModal(false); return }
+      setImportedItems(items)
+    } catch (err) {
+      console.error('fetch error', err)
+      setImportedItems(['⚠️ Impossible de contacter le serveur'])
+    }
+  }
+
+  async function handleConfirmImport() {
+    for (const nom of importedItems) await addMat(nom)
+    setShowImportModal(false)
+    setImportedItems([])
+  }
+
+  async function handleScanFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    e.target.value = ''
+
+    setImportedItems([])
+    setShowImportModal(true)
+
+    const reader = new FileReader()
+    reader.onload = async () => {
+      const dataUrl = reader.result as string
+      const [header, imageBase64] = dataUrl.split(',')
+      const mediaType = header.match(/:(.*?);/)?.[1] ?? 'image/jpeg'
+
+      try {
+        const res  = await fetch('/api/scan-material', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session?.access_token ?? ''}`,
+          },
+          body: JSON.stringify({ imageBase64, mediaType }),
+        })
+        if (!res.ok) {
+          setImportedItems(['⚠️ Erreur serveur — ' + res.status])
+          return
+        }
+        const data = await res.json()
+        const items: string[] = (data.items ?? []).map((i: { nom: string; qte?: string }) =>
+          i.qte ? `${i.nom} — ${i.qte}` : i.nom
+        )
+        if (items.length === 0) { setShowImportModal(false); return }
+        setImportedItems(items)
+      } catch {
+        setImportedItems(['⚠️ Impossible de contacter le serveur'])
+      }
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const acIsSigne = !!autocontrole?.signe_le
+  const acCategories = [...new Set(acChecks.map(c => c.categorie))]
+  const acTotalChecked = acChecks.filter(c => c.checked).length
+  const acPct = Math.round((acTotalChecked / acChecks.length) * 100)
+
+  function toggleAcCheck(id: string) {
+    if (acIsSigne) return
+    setAcChecks(prev => prev.map(c => c.id === id ? { ...c, checked: !c.checked } : c))
+  }
+
+  async function handleAcSave() {
+    if (!profile) return
+    setAcSaving(true)
+    await saveAC(acChecks, acCommentaire, profile.id)
+    setAcSaving(false)
+  }
+
+  async function handleAcSigner() {
+    if (!profile) return
+    setAcSigning(true)
+    await signerAC(acChecks, acCommentaire, profile.id)
+    setAcSigning(false)
+  }
+
+  async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file || !profile) return
+    setUploadingDoc(true)
+    setUploadDocError('')
+    const { error } = await uploadDocument(file, profile.id)
+    if (error) setUploadDocError(error)
+    setUploadingDoc(false)
+    e.target.value = ''
+  }
+
+  function handleRapportPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length) return
+    setRapportPhotos(prev => [...prev, ...files])
+    setRapportPreviews(prev => [...prev, ...files.map(f => URL.createObjectURL(f))])
+    e.target.value = ''
+  }
+
+  function removeRapportPhoto(index: number) {
+    URL.revokeObjectURL(rapportPreviews[index])
+    setRapportPhotos(prev => prev.filter((_, i) => i !== index))
+    setRapportPreviews(prev => prev.filter((_, i) => i !== index))
+  }
+
+  async function handleRapportSubmit() {
+    if (!rapportMessage.trim() || !profile) return
+    setSubmittingRapport(true)
+    setRapportError('')
+    const { error } = await addRapport(rapportMessage, profile.id, rapportPhotos)
+    if (error) { setRapportError(error); setSubmittingRapport(false); return }
+    setRapportMessage('')
+    rapportPreviews.forEach(URL.revokeObjectURL)
+    setRapportPhotos([])
+    setRapportPreviews([])
+    setSubmittingRapport(false)
+  }
+
+  async function downloadRapportPhotos(photos: { url: string }[], rapportDate: string) {
+    if (photos.length === 1) {
+      window.open(photos[0].url, '_blank')
+      return
+    }
+    const { default: JSZip } = await import('jszip')
+    const zip = new JSZip()
+    await Promise.all(photos.map(async (photo, i) => {
+      const res  = await fetch(photo.url)
+      const blob = await res.blob()
+      const ext  = blob.type.split('/')[1] || 'jpg'
+      zip.file(`photo_${i + 1}.${ext}`, blob)
+    }))
+    const content = await zip.generateAsync({ type: 'blob' })
+    const date    = new Date(rapportDate).toLocaleDateString('fr-FR').replace(/\//g, '-')
+    const a       = document.createElement('a')
+    a.href        = URL.createObjectURL(content)
+    a.download    = `rapport_${date}.zip`
+    a.click()
+    URL.revokeObjectURL(a.href)
   }
 
   async function handleDeleteChantier() {
@@ -393,7 +611,7 @@ export default function ChantierDetail() {
           : { background: '#ffffff', borderBottom: '1px solid #f3f4f6' }
         }
       >
-        <div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl md:max-w-5xl mx-auto">
           {/* Ligne titre */}
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex items-start gap-2.5 min-w-0">
@@ -470,16 +688,21 @@ export default function ChantierDetail() {
           </div>
 
           {/* Onglets internes */}
-          <div className="flex gap-0 -mb-3">
+          <div className="flex gap-0 -mb-3 overflow-x-auto no-scrollbar">
             {([
-              { key: 'etapes', label: 'Étapes' },
-              { key: 'notes',  label: 'Notes', badge: notes.length || undefined },
-              { key: 'infos',  label: 'Infos' },
+              { key: 'etapes',      label: 'Étapes' },
+              { key: 'rapport',     label: 'Rapport',     badge: rapports.length || undefined },
+              { key: 'docs',        label: 'Docs',        badge: documents.length || undefined },
+              { key: 'notes',       label: 'Notes',       badge: notes.length || undefined },
+              { key: 'materiel',    label: 'Matériel',    badge: matTotal > 0 ? matChecked === matTotal ? undefined : matTotal - matChecked : undefined },
+              { key: 'anomalies',   label: 'Anomalies',   badge: anomalies.filter(a => a.statut !== 'resolu').length || undefined },
+              { key: 'autocontrole', label: 'Contrôle',   badge: acIsSigne ? undefined : acTotalChecked > 0 ? acTotalChecked : undefined },
+              { key: 'infos',       label: 'Infos' },
             ] as { key: InnerTab; label: string; badge?: number }[]).map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+                className={`flex-shrink-0 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
                   activeTab === tab.key
                     ? isGradient
                       ? 'border-white text-white font-semibold'
@@ -503,7 +726,7 @@ export default function ChantierDetail() {
 
       {/* ── Actions rapides terrain (technicien) ─────────────────────────── */}
       {!isManager && activeTab === 'etapes' && (
-        <div className="px-4 pt-3 pb-0 max-w-2xl mx-auto w-full">
+        <div className="px-4 pt-3 pb-0 max-w-2xl md:max-w-5xl mx-auto w-full">
           <div className="flex gap-2.5">
             <a
               href={`https://maps.google.com/?q=${encodeURIComponent(chantier.client_adresse)}`}
@@ -534,7 +757,7 @@ export default function ChantierDetail() {
       )}
 
       {/* ── Contenu onglets ───────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-4 space-y-3 pb-safe-4" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
+      <main className="flex-1 max-w-2xl md:max-w-5xl mx-auto w-full px-4 py-4 space-y-3 pb-safe-4" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
 
         {/* ── ÉTAPES ────────────────────────────────────────────────────────── */}
         {activeTab === 'etapes' && (
@@ -620,11 +843,23 @@ export default function ChantierDetail() {
               ? <p className="text-center text-gray-400 text-sm py-10">Aucune note pour l'instant</p>
               : <div className="divide-y divide-gray-50">
                   {(notes as (Note & { profiles?: { full_name: string } })[]).map(note => (
-                    <div key={note.id} className="px-4 py-4">
-                      <p className="text-gray-800 text-sm leading-relaxed">{note.contenu}</p>
-                      <p className="text-xs text-gray-400 mt-1.5">
-                        {note.profiles?.full_name} · {new Date(note.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </p>
+                    <div key={note.id} className="px-4 py-4 flex items-start gap-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-gray-800 text-sm leading-relaxed">{note.contenu}</p>
+                        <p className="text-xs text-gray-400 mt-1.5">
+                          {note.profiles?.full_name} · {new Date(note.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                      {(isManager || note.technicien_id === profile?.id) && (
+                        <button
+                          onClick={() => deleteNote(note.id)}
+                          className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors mt-0.5"
+                        >
+                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                          </svg>
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
@@ -632,17 +867,484 @@ export default function ChantierDetail() {
           </section>
         )}
 
+        {/* ── DOCS ──────────────────────────────────────────────────────────── */}
+        {activeTab === 'docs' && (
+          <section className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <div className="px-4 py-3.5 border-b border-gray-50 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900 text-sm">
+                Documents
+                {documents.length > 0 && (
+                  <span className="ml-2 text-[10px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full align-middle">{documents.length}</span>
+                )}
+              </h2>
+              <label className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 bg-orange-50 px-3 py-1.5 rounded-full cursor-pointer hover:bg-orange-100 transition-colors">
+                <input
+                  type="file"
+                  accept=".pdf,.xls,.xlsx"
+                  onChange={handleDocUpload}
+                  className="absolute opacity-0 w-px h-px overflow-hidden pointer-events-none"
+                  tabIndex={-1}
+                  disabled={uploadingDoc}
+                />
+                {uploadingDoc
+                  ? <div className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                  : '+'
+                }
+                Ajouter
+              </label>
+            </div>
+            {uploadDocError && <p className="px-4 py-2 text-xs text-red-500 bg-red-50">{uploadDocError}</p>}
+            {documents.length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-12">Aucun document ajouté</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {documents.map(doc => {
+                  const ext = doc.nom.split('.').pop()?.toLowerCase() ?? ''
+                  const isPdf    = ext === 'pdf'
+                  const isExcel  = ['xls','xlsx'].includes(ext)
+                  const iconColor = isPdf ? 'bg-red-50 text-red-400' : isExcel ? 'bg-green-50 text-green-500' : 'bg-gray-50 text-gray-400'
+                  return (
+                    <div key={doc.id} className="px-4 py-3 flex items-center gap-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconColor}`}>
+                        <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 truncate">{doc.nom}</p>
+                        <p className="text-xs text-gray-400">
+                          {new Date(doc.created_at).toLocaleDateString('fr-FR')}
+                          {doc.taille != null && ` · ${doc.taille < 1024 * 1024 ? `${Math.round(doc.taille / 1024)} Ko` : `${(doc.taille / 1024 / 1024).toFixed(1)} Mo`}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        <a href={doc.url} target="_blank" rel="noreferrer"
+                          className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+                          title="Ouvrir"
+                        >
+                          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                          </svg>
+                        </a>
+                        {(isManager || doc.uploaded_by === profile?.id) && (
+                          <button onClick={() => deleteDocument(doc)}
+                            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+                          >
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── MATÉRIEL ──────────────────────────────────────────────────────── */}
+        {activeTab === 'materiel' && (
+          <section className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <div className="px-4 py-3.5 border-b border-gray-50 flex items-center justify-between">
+              <h2 className="font-semibold text-gray-900 text-sm">
+                Checklist matériel
+                <span className={`ml-2 text-[10px] font-bold px-1.5 py-0.5 rounded-full align-middle ${
+                  matChecked === matTotal && matTotal > 0 ? 'bg-green-100 text-green-600' : 'bg-gray-100 text-gray-500'
+                }`}>{matChecked}/{matTotal}</span>
+              </h2>
+              {matTotal > 0 && (
+                <span className={`text-xs font-semibold ${matChecked === matTotal ? 'text-green-500' : 'text-orange-500'}`}>
+                  {matChecked === matTotal ? 'Tout vérifié ✓' : `${matTotal - matChecked} restant${matTotal - matChecked > 1 ? 's' : ''}`}
+                </span>
+              )}
+            </div>
+
+            {matItems.length === 0 ? (
+              <p className="text-center text-gray-400 text-sm py-10">Aucun élément dans la checklist</p>
+            ) : (
+              <div className="divide-y divide-gray-50">
+                {matItems.map(item => (
+                  <div key={item.id} className="flex items-center gap-3 px-4 py-3.5">
+                    <button
+                      onClick={() => toggleMat(item.id, !item.checked)}
+                      className="flex-shrink-0 w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all active:scale-90"
+                      style={item.checked ? { background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', borderColor: 'transparent' } : { borderColor: '#d1d5db' }}
+                    >
+                      {item.checked && (
+                        <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    <span className={`flex-1 text-sm ${item.checked ? 'line-through text-gray-400' : 'text-gray-800 font-medium'}`}>
+                      {item.nom}
+                    </span>
+                    {isManager && (
+                      <button
+                        onClick={() => deleteMat(item.id)}
+                        className="w-7 h-7 flex items-center justify-center rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors flex-shrink-0"
+                      >
+                        <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {isManager && (
+              <div className="p-4 border-t border-gray-50 space-y-2">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newMatItem}
+                    onChange={e => setNewMatItem(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && newMatItem.trim() && (addMat(newMatItem), setNewMatItem(''))}
+                    placeholder="Ajouter un élément…"
+                    className="flex-1 px-4 py-2.5 rounded-xl border border-dashed border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-gray-50 placeholder-gray-400"
+                  />
+                  <button
+                    onClick={() => { if (newMatItem.trim()) { addMat(newMatItem); setNewMatItem('') } }}
+                    disabled={!newMatItem.trim()}
+                    className="px-4 py-2.5 rounded-xl text-sm font-semibold text-white disabled:opacity-40 transition-all"
+                    style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}
+                  >
+                    + Ajouter
+                  </button>
+                </div>
+                <div className="flex gap-2">
+                  <label className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="file"
+                      accept=".csv,.xlsx,.xls"
+                      onChange={handleImportFile}
+                      className="absolute opacity-0 w-px h-px overflow-hidden pointer-events-none"
+                      tabIndex={-1}
+                    />
+                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+                    </svg>
+                    Importer
+                  </label>
+                  <label className="flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors">
+                    <input
+                      type="file"
+                      accept="image/*"
+                      capture="environment"
+                      onChange={handleScanFile}
+                      className="absolute opacity-0 w-px h-px overflow-hidden pointer-events-none"
+                      tabIndex={-1}
+                    />
+                    <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    Scanner
+                  </label>
+                </div>
+              </div>
+            )}
+          </section>
+        )}
+
+        {/* ── RAPPORT ───────────────────────────────────────────────────────── */}
+        {activeTab === 'rapport' && (
+          <>
+            {/* Formulaire nouveau rapport */}
+            <section className="bg-white rounded-2xl p-5 space-y-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              <h2 className="font-semibold text-gray-900 text-sm">Ajouter une entrée</h2>
+
+              <textarea
+                value={rapportMessage}
+                onChange={e => setRapportMessage(e.target.value)}
+                placeholder="Décrivez l'avancement, les observations, les problèmes rencontrés…"
+                rows={4}
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent resize-none"
+              />
+
+              {/* Prévisualisation photos */}
+              {rapportPreviews.length > 0 && (
+                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                  {rapportPreviews.map((src, i) => (
+                    <div key={i} className="relative flex-shrink-0">
+                      <img src={src} className="h-20 w-20 rounded-xl object-cover border border-gray-100" />
+                      <button
+                        type="button"
+                        onClick={() => removeRapportPhoto(i)}
+                        className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white rounded-full flex items-center justify-center text-xs leading-none"
+                      >✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="flex gap-2">
+                <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-500 cursor-pointer hover:bg-gray-50 transition-colors">
+                  <input type="file" accept="image/*" multiple onChange={handleRapportPhotoChange}
+                    className="absolute opacity-0 w-px h-px overflow-hidden pointer-events-none" tabIndex={-1} />
+                  <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                  </svg>
+                  Photos {rapportPhotos.length > 0 && <span className="text-orange-500 font-semibold">({rapportPhotos.length})</span>}
+                </label>
+
+                <button
+                  onClick={handleRapportSubmit}
+                  disabled={!rapportMessage.trim() || submittingRapport}
+                  className="flex-1 text-white font-semibold py-2.5 rounded-xl transition-all disabled:opacity-50 text-sm flex items-center justify-center gap-2"
+                  style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}
+                >
+                  {submittingRapport
+                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Envoi…</>
+                    : 'Publier'
+                  }
+                </button>
+              </div>
+              {rapportError && <p className="text-xs text-red-500">{rapportError}</p>}
+            </section>
+
+            {/* Liste des entrées */}
+            {rapports.length === 0 ? (
+              <div className="bg-white rounded-2xl p-10 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+                <p className="text-gray-400 text-sm">Aucune entrée de rapport pour l'instant</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {rapports.map(rapport => {
+                  const photos = rapport.rapport_photos ?? []
+                  return (
+                    <div key={rapport.id} className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                      <div className="p-4">
+                        <div className="flex items-start justify-between gap-2 mb-2">
+                          <div>
+                            <p className="text-xs font-semibold text-gray-500">
+                              {rapport.profiles?.full_name}
+                            </p>
+                            <p className="text-[11px] text-gray-400">
+                              {new Date(rapport.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                            </p>
+                          </div>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {photos.length > 0 && (
+                              <button
+                                onClick={() => downloadRapportPhotos(photos, rapport.created_at)}
+                                className="flex items-center gap-1 text-[11px] font-semibold text-orange-600 bg-orange-50 px-2.5 py-1.5 rounded-full hover:bg-orange-100 transition-colors"
+                                title={`Télécharger ${photos.length} photo${photos.length > 1 ? 's' : ''}`}
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                                </svg>
+                                {photos.length} photo{photos.length > 1 ? 's' : ''}
+                              </button>
+                            )}
+                            {(isManager || rapport.auteur_id === profile?.id) && (
+                              <button
+                                onClick={() => deleteRapport(rapport)}
+                                className="w-7 h-7 flex items-center justify-center rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                              </button>
+                            )}
+                          </div>
+                        </div>
+
+                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{rapport.message}</p>
+
+                        {photos.length > 0 && (
+                          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                            {photos.map((photo, i) => (
+                              <div key={photo.id} className="relative flex-shrink-0">
+                                <a href={photo.url} target="_blank" rel="noreferrer">
+                                  <img
+                                    src={photo.url}
+                                    alt={`Photo ${i + 1}`}
+                                    className="h-24 w-24 rounded-xl object-cover border border-gray-100 active:opacity-75 transition-opacity"
+                                  />
+                                </a>
+                                {(isManager || rapport.auteur_id === profile?.id) && (
+                                  <button
+                                    onClick={() => deleteRapportPhoto(photo)}
+                                    className="absolute top-1 right-1 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center text-xs"
+                                  >✕</button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* PDF */}
+            <button
+              onClick={() => setShowPdfOptions(true)}
+              disabled={generatingPDF}
+              className="w-full flex items-center justify-center gap-3 text-white font-semibold py-4 rounded-2xl transition-all disabled:opacity-60"
+              style={{ background: 'linear-gradient(135deg, #1f2937 0%, #374151 100%)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+            >
+              {generatingPDF
+                ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Génération...</>
+                : <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Générer le rapport PDF
+                  </>
+              }
+            </button>
+            {pdfError && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl text-center">{pdfError}</div>}
+          </>
+        )}
+
+        {/* ── ANOMALIES ─────────────────────────────────────────────────────── */}
+        {activeTab === 'anomalies' && id && (
+          <section className="space-y-3">
+            <AnomaliesTabContent chantierId={id} />
+          </section>
+        )}
+
+        {/* ── AUTO-CONTRÔLE ────────────────────────────────────────────────── */}
+        {activeTab === 'autocontrole' && (
+          <>
+            {/* Barre progression */}
+            <section className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              <div className="flex justify-between text-xs text-gray-400 mb-2">
+                <span>{acTotalChecked}/{acChecks.length} points validés</span>
+                <span className={`font-bold ${acPct === 100 ? 'text-green-600' : 'text-orange-500'}`}>{acPct}%</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div className={`h-full rounded-full transition-all duration-500 ${acPct === 100 ? 'bg-green-500' : 'bg-orange-500'}`}
+                  style={{ width: `${acPct}%` }} />
+              </div>
+              {acIsSigne && (
+                <p className="text-xs text-green-600 font-medium mt-2">
+                  ✓ Signée le {new Date(autocontrole!.signe_le!).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                </p>
+              )}
+            </section>
+
+            {/* Sections par catégorie */}
+            {acCategories.map(categorie => {
+              const items = acChecks.filter(c => c.categorie === categorie)
+              const catChecked = items.filter(c => c.checked).length
+              return (
+                <section key={categorie} className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                  <div className="px-4 py-3.5 border-b border-gray-50 flex items-center justify-between">
+                    <h2 className="font-semibold text-gray-900 text-sm">{categorie}</h2>
+                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                      catChecked === items.length ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
+                    }`}>{catChecked}/{items.length}</span>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {items.map(check => (
+                      <div key={check.id}>
+                        <div
+                          className={`px-4 py-3.5 flex items-center gap-3 ${!acIsSigne ? 'cursor-pointer active:bg-gray-50' : ''}`}
+                          onClick={() => toggleAcCheck(check.id)}
+                        >
+                          <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
+                            check.checked ? 'bg-orange-500' : 'border-2 border-gray-200'
+                          }`}>
+                            {check.checked && (
+                              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                              </svg>
+                            )}
+                          </div>
+                          <span className={`flex-1 text-sm ${check.checked ? 'text-gray-400 line-through' : 'text-gray-800 font-medium'}`}>
+                            {check.label}
+                          </span>
+                          {!acIsSigne && (
+                            <button
+                              onClick={e => { e.stopPropagation(); setAcExpandedId(acExpandedId === check.id ? null : check.id) }}
+                              className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
+                                check.commentaire ? 'text-orange-400 bg-orange-50' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
+                              }`}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                        {(acExpandedId === check.id || (acIsSigne && check.commentaire)) && (
+                          <div className="px-4 pb-3 pl-[52px]">
+                            {acIsSigne
+                              ? <p className="text-xs text-gray-500 italic">{check.commentaire}</p>
+                              : <input
+                                  autoFocus
+                                  value={check.commentaire}
+                                  onChange={e => setAcChecks(prev => prev.map(c => c.id === check.id ? { ...c, commentaire: e.target.value } : c))}
+                                  onClick={e => e.stopPropagation()}
+                                  placeholder="Commentaire (optionnel)..."
+                                  className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-600 placeholder-gray-300 bg-gray-50"
+                                />
+                            }
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )
+            })}
+
+            {/* Observations générales */}
+            <section className="bg-white rounded-2xl p-4 space-y-2" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              <h2 className="font-semibold text-gray-900 text-sm">Observations générales</h2>
+              {acIsSigne
+                ? <p className="text-sm text-gray-600 leading-relaxed">{acCommentaire || <span className="text-gray-400 italic">Aucune observation</span>}</p>
+                : <textarea value={acCommentaire} onChange={e => setAcCommentaire(e.target.value)}
+                    placeholder="Remarques, réserves, informations complémentaires..." rows={3}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none" />
+              }
+            </section>
+
+            {/* Actions */}
+            {!acIsSigne && (
+              <div className="space-y-2.5">
+                <button onClick={handleAcSave} disabled={acSaving}
+                  className="w-full border border-gray-200 text-gray-600 font-semibold py-3.5 rounded-2xl hover:bg-gray-50 transition-colors text-sm bg-white disabled:opacity-50">
+                  {acSaving ? 'Sauvegarde...' : 'Sauvegarder le brouillon'}
+                </button>
+                <button onClick={handleAcSigner} disabled={acSigning || acTotalChecked === 0}
+                  className="w-full text-white font-semibold py-4 rounded-2xl transition-all disabled:opacity-50 text-sm"
+                  style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}>
+                  {acSigning ? 'Signature...' : `Signer la fiche (${acTotalChecked}/${acChecks.length} points)`}
+                </button>
+              </div>
+            )}
+          </>
+        )}
+
         {/* ── INFOS ─────────────────────────────────────────────────────────── */}
         {activeTab === 'infos' && (
           <>
-            {/* Infos chantier */}
             <section className="bg-white rounded-2xl p-4 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
               <h2 className="font-semibold text-gray-900 text-sm">Informations</h2>
               <div className="grid grid-cols-2 gap-2">
                 {[
-                  { label: 'Panneaux', value: String(chantier.nb_panneaux) },
-                  { label: 'Type', value: chantier.type_installation },
-                  { label: 'Date prévue', value: new Date(chantier.date_prevue).toLocaleDateString('fr-FR') },
+                  chantier.puissance_kwc != null
+                    ? { label: 'Puissance', value: `${chantier.puissance_kwc} kWc` }
+                    : { label: 'Panneaux', value: String(chantier.nb_panneaux) },
+                  { label: 'Type installation', value: chantier.type_installation },
+                  ...(chantier.type_contrat ? [{ label: 'Contrat', value: {
+                    revente_totale: 'Revente totale',
+                    autoconsommation: 'Autoconsommation',
+                    autoconsommation_surplus: 'Autocons. + surplus',
+                  }[chantier.type_contrat] ?? chantier.type_contrat }] : []),
+                  { label: 'Date début', value: new Date(chantier.date_prevue).toLocaleDateString('fr-FR') },
+                  ...(chantier.date_fin_prevue ? [{ label: 'Date fin prévue', value: new Date(chantier.date_fin_prevue).toLocaleDateString('fr-FR') }] : []),
                   { label: 'Adresse', value: chantier.client_adresse },
                 ].map(({ label, value }) => (
                   <div key={label} className="bg-gray-50 rounded-xl px-3 py-2.5">
@@ -653,7 +1355,6 @@ export default function ChantierDetail() {
               </div>
             </section>
 
-            {/* Équipe */}
             {techniciens.length > 0 && (
               <section className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                 <h2 className="font-semibold text-gray-900 text-sm mb-3">Équipe</h2>
@@ -692,7 +1393,6 @@ export default function ChantierDetail() {
                   </div>
                 )}
               </button>
-
               <button
                 onClick={() => navigate(`/chantier/${id}/anomalies`)}
                 className="bg-white rounded-2xl p-4 text-left active:scale-[0.98] transition-all"
@@ -717,9 +1417,7 @@ export default function ChantierDetail() {
               className="w-full flex items-center gap-4 bg-white rounded-2xl p-4 text-left active:scale-[0.98] transition-all"
               style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
             >
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                autocontrole?.signe_le ? 'bg-green-50' : 'bg-orange-50'
-              }`}>
+              <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${autocontrole?.signe_le ? 'bg-green-50' : 'bg-orange-50'}`}>
                 <svg className={`w-5 h-5 ${autocontrole?.signe_le ? 'text-green-500' : 'text-orange-500'}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
                 </svg>
@@ -736,7 +1434,6 @@ export default function ChantierDetail() {
               <span className="text-gray-300 text-lg flex-shrink-0">→</span>
             </button>
 
-            {/* Actions manager */}
             {isManager && (
               <button
                 onClick={() => navigate(`/chantier/${id}/modifier`)}
@@ -748,31 +1445,134 @@ export default function ChantierDetail() {
                 Modifier le chantier
               </button>
             )}
-
-            {/* PDF */}
-            <button
-              onClick={handleDownloadPDF}
-              disabled={generatingPDF}
-              className="w-full flex items-center justify-center gap-3 text-white font-semibold py-4 rounded-2xl transition-all disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg, #1f2937 0%, #374151 100%)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
-            >
-              {generatingPDF
-                ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Génération...</>
-                : <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Télécharger le rapport PDF
-                  </>
-              }
-            </button>
-
-            {pdfError && (
-              <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl text-center">{pdfError}</div>
-            )}
           </>
         )}
       </main>
+
+      {/* ── Modale import matériel ───────────────────────────────────────── */}
+      {showImportModal && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center" onClick={() => setShowImportModal(false)}>
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 space-y-4" onClick={e => e.stopPropagation()}
+            style={{ maxHeight: '80vh', display: 'flex', flexDirection: 'column', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+            <div className="flex items-center justify-between mb-1 flex-shrink-0">
+              <h3 className="font-bold text-gray-900">Éléments détectés</h3>
+              <button onClick={() => setShowImportModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100">✕</button>
+            </div>
+            {importedItems.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 gap-3">
+                <svg className="w-8 h-8 text-orange-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+                <p className="text-sm text-gray-500">Analyse en cours…</p>
+              </div>
+            ) : (
+            <p className="text-sm text-gray-500 flex-shrink-0">{importedItems.length} élément{importedItems.length > 1 ? 's' : ''} détecté{importedItems.length > 1 ? 's' : ''}. Appuyez sur ✕ pour exclure un élément.</p>
+            )}
+            <div className="overflow-y-auto flex-1 space-y-1 pr-1">
+              {importedItems.map((item, i) => (
+                <div key={i} className="flex items-center gap-3 px-3 py-2.5 rounded-xl bg-gray-50">
+                  <span className="w-5 h-5 rounded-md border-2 border-orange-400 bg-orange-50 flex items-center justify-center flex-shrink-0">
+                    <svg className="w-3 h-3 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </span>
+                  <span className="text-sm text-gray-800 flex-1">{item}</span>
+                  <button
+                    onClick={() => setImportedItems(prev => prev.filter((_, j) => j !== i))}
+                    className="w-6 h-6 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-200 hover:text-red-500 transition-colors flex-shrink-0"
+                  >
+                    <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-3 flex-shrink-0 pt-2">
+              <button
+                onClick={() => { setShowImportModal(false); setImportedItems([]) }}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleConfirmImport}
+                disabled={importedItems.length === 0}
+                className="flex-1 py-3 rounded-2xl text-white font-semibold text-sm disabled:opacity-40 transition-all"
+                style={{ background: 'linear-gradient(135deg, #f97316 0%, #ea580c 100%)' }}
+              >
+                {importedItems.length === 0 ? 'Analyse…' : 'Ajouter à la checklist'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale options PDF ────────────────────────────────────────────── */}
+      {showPdfOptions && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center" onClick={() => setShowPdfOptions(false)}>
+          <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 space-y-4" onClick={e => e.stopPropagation()}
+            style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+            <div className="flex items-center justify-between mb-1">
+              <h3 className="font-bold text-gray-900">Contenu du rapport PDF</h3>
+              <button onClick={() => setShowPdfOptions(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100">✕</button>
+            </div>
+
+            {/* Toggles */}
+            {([
+              { key: 'etapes',       label: 'Étapes et progression' },
+              { key: 'photosEtapes', label: 'Photos des étapes', sub: true },
+              { key: 'anomalies',    label: 'Anomalies' },
+              { key: 'notes',        label: 'Notes terrain' },
+              { key: 'materiel',     label: 'Checklist matériel' },
+              { key: 'autocontrole', label: 'Fiche auto-contrôle' },
+            ] as { key: keyof PdfOptions; label: string; sub?: boolean }[]).map(({ key, label, sub }) => (
+              <div key={key} className={`flex items-center justify-between py-2 ${sub ? 'pl-4 border-l-2 border-gray-100' : 'border-b border-gray-50'}`}>
+                <span className={`text-sm ${sub ? 'text-gray-500' : 'font-medium text-gray-800'}`}>{label}</span>
+                <button
+                  onClick={() => setPdfOptions(o => ({ ...o, [key]: !o[key as keyof PdfOptions] }))}
+                  className={`w-11 h-6 rounded-full transition-all relative ${pdfOptions[key] ? 'bg-orange-500' : 'bg-gray-200'}`}
+                >
+                  <span className={`absolute top-0.5 w-5 h-5 bg-white rounded-full shadow transition-all ${pdfOptions[key] ? 'left-5' : 'left-0.5'}`} />
+                </button>
+              </div>
+            ))}
+
+            {/* Rapports */}
+            <div className="border-b border-gray-50 pb-3">
+              <p className="text-sm font-medium text-gray-800 mb-2">Rapports de terrain</p>
+              <div className="flex gap-2">
+                {([
+                  { value: 'tous',    label: 'Tous' },
+                  { value: 'dernier', label: 'Dernier uniquement' },
+                  { value: 'aucun',   label: 'Aucun' },
+                ] as { value: PdfOptions['rapports']; label: string }[]).map(opt => (
+                  <button
+                    key={opt.value}
+                    onClick={() => setPdfOptions(o => ({ ...o, rapports: opt.value }))}
+                    className={`flex-1 py-2 rounded-xl text-xs font-semibold border-2 transition-all ${
+                      pdfOptions.rapports === opt.value
+                        ? 'border-orange-500 bg-orange-50 text-orange-700'
+                        : 'border-gray-200 text-gray-500 bg-white'
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <button
+              onClick={handleDownloadPDF}
+              className="w-full text-white font-semibold py-4 rounded-2xl transition-all"
+              style={{ background: 'linear-gradient(135deg, #1f2937 0%, #374151 100%)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+            >
+              Générer le PDF
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* ── Modale confirmation suppression ──────────────────────────────── */}
       {confirmDelete && (

@@ -121,7 +121,7 @@ export default function GestionEquipe() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-6 py-6 space-y-5">
+      <main className="max-w-2xl md:max-w-5xl mx-auto px-6 py-6 space-y-5">
 
         {/* Succès */}
         {success && (

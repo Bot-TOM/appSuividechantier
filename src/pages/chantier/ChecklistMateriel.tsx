@@ -26,7 +26,7 @@ export default function ChecklistMateriel() {
 
       {/* ── Header ───────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+        <div className="max-w-2xl md:max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             onClick={() => navigate(`/chantier/${chantierId}`)}
             className="w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors text-xl"
@@ -51,7 +51,7 @@ export default function ChecklistMateriel() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-5 space-y-4" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
+      <main className="max-w-2xl md:max-w-5xl mx-auto px-4 py-5 space-y-4" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
 
         {/* Message succès si tout coché */}
         {done && (

@@ -64,7 +64,7 @@ export default function AutoControlePage() {
 
       {/* Header */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-20">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+        <div className="max-w-2xl md:max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             onClick={() => navigate(`/chantier/${chantierId}`)}
             className="w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 transition-colors text-xl flex-shrink-0"
@@ -86,7 +86,7 @@ export default function AutoControlePage() {
         </div>
 
         {/* Barre de progression */}
-        <div className="max-w-2xl mx-auto px-4 pb-3">
+        <div className="max-w-2xl md:max-w-5xl mx-auto px-4 pb-3">
           <div className="flex justify-between text-xs text-gray-400 mb-1.5">
             <span>{totalChecked}/{checks.length} points validés</span>
             <span className={`font-bold ${pct === 100 ? 'text-green-600' : 'text-orange-500'}`}>{pct}%</span>
@@ -100,7 +100,7 @@ export default function AutoControlePage() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-4 space-y-3" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
+      <main className="max-w-2xl md:max-w-5xl mx-auto px-4 py-4 space-y-3" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
 
         {/* Sections par catégorie */}
         {categories.map(categorie => {

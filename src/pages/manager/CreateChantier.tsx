@@ -13,6 +13,13 @@ const ETAPES_DEFAUT = [
 
 const TYPES_INSTALLATION = ['Résidentiel', 'Professionnel', 'Industriel', 'Agricole']
 
+const TYPES_CONTRAT: { value: string; label: string }[] = [
+  { value: '',                       label: 'Non précisé' },
+  { value: 'revente_totale',         label: 'Revente totale' },
+  { value: 'autoconsommation',       label: 'Autoconsommation' },
+  { value: 'autoconsommation_surplus', label: 'Autoconsommation + surplus' },
+]
+
 interface EtapeForm {
   nom: string
   consigne: string // note libre : instruction, contexte, durée indicative…
@@ -30,8 +37,10 @@ export default function CreateChantier() {
     client_adresse: '',
     client_telephone: '',
     type_installation: 'Résidentiel',
-    nb_panneaux: '',
+    type_contrat: '',
+    puissance_kwc: '',
     date_prevue: '',
+    date_fin_prevue: '',
   })
 
   const [selectedTechs, setSelectedTechs] = useState<string[]>([])
@@ -66,8 +75,10 @@ export default function CreateChantier() {
         client_adresse: form.client_adresse,
         client_telephone: form.client_telephone || null,
         type_installation: form.type_installation,
-        nb_panneaux: parseInt(form.nb_panneaux),
+        type_contrat: form.type_contrat || null,
+        puissance_kwc: form.puissance_kwc ? parseFloat(form.puissance_kwc) : null,
         date_prevue: form.date_prevue,
+        date_fin_prevue: form.date_fin_prevue || null,
         statut: 'en_attente',
       })
       .select()
@@ -103,7 +114,7 @@ export default function CreateChantier() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto px-4 py-4 flex items-center gap-3">
+        <div className="max-w-2xl md:max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
           <button
             onClick={() => navigate('/manager')}
             className="w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors text-xl"
@@ -112,7 +123,7 @@ export default function CreateChantier() {
         </div>
       </header>
 
-      <main className="max-w-2xl mx-auto px-4 py-6">
+      <main className="max-w-2xl md:max-w-5xl mx-auto px-4 py-6">
         <form onSubmit={handleSubmit} className="space-y-4">
 
           {/* ── Informations chantier ──────────────────────────────────────── */}
@@ -128,24 +139,39 @@ export default function CreateChantier() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Type *</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Type d'installation *</label>
                 <select name="type_installation" value={form.type_installation} onChange={handleChange}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
                   {TYPES_INSTALLATION.map(t => <option key={t}>{t}</option>)}
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1.5">Nb panneaux *</label>
-                <input name="nb_panneaux" value={form.nb_panneaux} onChange={handleChange} required
-                  type="number" min="1" placeholder="12"
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent" />
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Type de contrat</label>
+                <select name="type_contrat" value={form.type_contrat} onChange={handleChange}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 bg-white">
+                  {TYPES_CONTRAT.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                </select>
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Date prévue *</label>
-              <input name="date_prevue" value={form.date_prevue} onChange={handleChange} required type="date"
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Puissance (kWc) *</label>
+              <input name="puissance_kwc" value={form.puissance_kwc} onChange={handleChange} required
+                type="number" min="0.1" step="0.01" placeholder="6.00"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent" />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Date de début *</label>
+                <input name="date_prevue" value={form.date_prevue} onChange={handleChange} required type="date"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Date de fin prévue</label>
+                <input name="date_fin_prevue" value={form.date_fin_prevue} onChange={handleChange} type="date"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent" />
+              </div>
             </div>
           </section>
 

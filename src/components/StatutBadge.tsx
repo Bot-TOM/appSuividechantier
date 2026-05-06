@@ -1,6 +1,7 @@
 import { ChantierStatut } from '@/types'
 
 const config: Record<ChantierStatut, { label: string; classes: string }> = {
+  planifie:   { label: 'Planifié',    classes: 'bg-purple-100 text-purple-700' },
   en_attente: { label: 'En attente',  classes: 'bg-gray-100 text-gray-600' },
   en_cours:   { label: 'En cours',    classes: 'bg-blue-100 text-blue-700' },
   termine:    { label: 'Terminé',     classes: 'bg-green-100 text-green-700' },
