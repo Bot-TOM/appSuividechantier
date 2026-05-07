@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
 import { useMessages } from '@/hooks/useMessages'
 import { useChatNotif } from '@/hooks/useChatNotif'
 import { usePresence } from '@/hooks/usePresence'
@@ -257,21 +257,30 @@ export default function ChatTab({ chantierId, userId }: Props) {
     }
   }, [isRecording])
 
-  useEffect(() => {
+  // Scroll initial : useLayoutEffect fire avant le paint → pas de flash au mauvais endroit
+  useLayoutEffect(() => {
     if (messages.length === 0) return
     const isInitialLoad = prevLengthRef.current === 0
     prevLengthRef.current = messages.length
+    if (!isInitialLoad) return
+    const scrollToBottom = () => {
+      const el = msgsContainerRef.current
+      if (el) el.scrollTop = el.scrollHeight
+    }
+    scrollToBottom()
+    // Fallback : dvh / flex peuvent prendre un frame de plus à se stabiliser
+    const t = setTimeout(scrollToBottom, 60)
+    return () => clearTimeout(t)
+  }, [messages.length])
+
+  // Scroll smooth sur nouveau message (si déjà près du bas)
+  useEffect(() => {
+    if (messages.length === 0 || prevLengthRef.current <= 1) return
     const el = msgsContainerRef.current
     if (!el) return
-    if (isInitialLoad) {
-      // Chargement initial : assignation directe, toujours au bas réel
-      el.scrollTop = el.scrollHeight
-    } else {
-      // Nouveau message : scroll smooth uniquement si déjà près du bas (< 150px)
-      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
-      if (distanceFromBottom < 150) {
-        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-      }
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+    if (distanceFromBottom < 150) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
     }
   }, [messages.length])
 
