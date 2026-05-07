@@ -1,24 +1,32 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { UserRole } from '@/types'
+import { UserRole, type PermissionKey } from '@/types'
 import { useState, useEffect } from 'react'
+import { usePermissions } from '@/hooks/usePermissions'
 
 interface Props {
   children: React.ReactNode
   allowedRole?: UserRole
+  /** Clé de permission qui permet à un technicien d'accéder à une route manager */
+  permissionKey?: PermissionKey
 }
 
-export default function ProtectedRoute({ children, allowedRole }: Props) {
+export default function ProtectedRoute({ children, allowedRole, permissionKey }: Props) {
   const { user, profile, loading } = useAuth()
+  const { can, loading: permsLoading } = usePermissions()
   const [slow, setSlow] = useState(false)
 
+  const roleMatch     = !allowedRole || profile?.role === allowedRole
+  const needsPermCheck = !roleMatch && !!permissionKey
+  const stillLoading   = loading || (needsPermCheck && permsLoading)
+
   useEffect(() => {
-    if (!loading) return
+    if (!stillLoading) return
     const t = setTimeout(() => setSlow(true), 3000)
     return () => clearTimeout(t)
-  }, [loading])
+  }, [stillLoading])
 
-  if (loading) {
+  if (stillLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
@@ -39,8 +47,13 @@ export default function ProtectedRoute({ children, allowedRole }: Props) {
 
   if (!user) return <Navigate to="/login" replace />
 
-  if (allowedRole && profile?.role !== allowedRole) {
-    return <Navigate to={profile?.role === 'manager' ? '/manager' : '/technicien'} replace />
+  // Si le rôle ne correspond pas, on vérifie si une permission spécifique l'autorise
+  if (!roleMatch) {
+    if (permissionKey && can(permissionKey)) {
+      // Technicien avec permission élevée → accès autorisé
+    } else {
+      return <Navigate to={profile?.role === 'manager' ? '/manager' : '/technicien'} replace />
+    }
   }
 
   return <>{children}</>

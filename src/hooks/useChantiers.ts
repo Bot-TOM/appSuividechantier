@@ -2,9 +2,11 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Chantier } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
+import { usePermissions } from './usePermissions'
 
 export function useChantiers() {
   const { profile } = useAuth()
+  const { can } = usePermissions()
   const [chantiers, setChantiers] = useState<Chantier[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -12,7 +14,7 @@ export function useChantiers() {
     setLoading(true)
     let query = supabase.from('chantiers').select('*').order('created_at', { ascending: false })
 
-    if (profile?.role === 'technicien') {
+    if (profile?.role === 'technicien' && !can('voir_tous_chantiers')) {
       // Récupère uniquement les chantiers assignés à ce technicien
       const { data: assignations } = await supabase
         .from('chantier_techniciens')
@@ -26,7 +28,7 @@ export function useChantiers() {
     const { data } = await query
     setChantiers(data ?? [])
     setLoading(false)
-  }, [profile])
+  }, [profile, can])
 
   useEffect(() => {
     if (profile) fetchChantiers()
