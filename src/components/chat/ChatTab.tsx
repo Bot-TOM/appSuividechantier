@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useMessages } from '@/hooks/useMessages'
 import { useChatNotif } from '@/hooks/useChatNotif'
 import { usePresence } from '@/hooks/usePresence'
@@ -59,9 +59,10 @@ function renderWithMentions(
 interface Props {
   chantierId: string
   userId: string
+  isActive?: boolean
 }
 
-export default function ChatTab({ chantierId, userId }: Props) {
+export default function ChatTab({ chantierId, userId, isActive = true }: Props) {
   const { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction, markAllRead } =
     useMessages(chantierId, userId)
   const { enabled: notifEnabled, toggle: toggleNotif } = useChatNotif(userId)
@@ -257,34 +258,35 @@ export default function ChatTab({ chantierId, userId }: Props) {
     }
   }, [isRecording])
 
-  // Scroll initial : useLayoutEffect fire avant le paint → pas de flash au mauvais endroit
-  useLayoutEffect(() => {
-    if (messages.length === 0) return
-    const isInitialLoad = prevLengthRef.current === 0
-    prevLengthRef.current = messages.length
-    if (!isInitialLoad) return
-    const scrollToBottom = () => {
-      const el = msgsContainerRef.current
-      if (el) el.scrollTop = el.scrollHeight
-    }
-    scrollToBottom()
-    // Fallback : dvh / flex peuvent prendre un frame de plus à se stabiliser
-    const t = setTimeout(scrollToBottom, 60)
-    return () => clearTimeout(t)
-  }, [messages.length])
-
-  // Scroll smooth sur nouveau message (si déjà près du bas)
-  useEffect(() => {
-    if (messages.length === 0 || prevLengthRef.current <= 1) return
+  const scrollToBottom = useCallback((smooth = false) => {
     const el = msgsContainerRef.current
     if (!el) return
-    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
-    if (distanceFromBottom < 150) {
-      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
-    }
-  }, [messages.length])
+    el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'instant' })
+  }, [])
 
-  useEffect(() => { markAllRead() }, [markAllRead, messages.length])
+  // Scroll to bottom quand l'onglet chat devient visible
+  useEffect(() => {
+    if (!isActive) return
+    scrollToBottom(false)
+  }, [isActive, scrollToBottom])
+
+  // Scroll to bottom quand les messages chargent pour la première fois
+  useEffect(() => {
+    if (messages.length === 0) return
+    const isFirst = prevLengthRef.current === 0
+    prevLengthRef.current = messages.length
+    if (isFirst) {
+      scrollToBottom(false)
+      return
+    }
+    // Nouveau message temps réel : scroll smooth si déjà près du bas
+    const el = msgsContainerRef.current
+    if (!el) return
+    const dist = el.scrollHeight - el.scrollTop - el.clientHeight
+    if (dist < 150) scrollToBottom(true)
+  }, [messages.length, scrollToBottom])
+
+  useEffect(() => { if (isActive) markAllRead() }, [isActive, markAllRead, messages.length])
 
   const handleSend = useCallback(async () => {
     const trimmed = text.trim()

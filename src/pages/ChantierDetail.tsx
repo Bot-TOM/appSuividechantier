@@ -1290,9 +1290,11 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
           </>
         )}
 
-        {/* ── CHAT ──────────────────────────────────────────────────────────── */}
-        {activeTab === 'chat' && id && profile && (
-          <ChatTab chantierId={id} userId={profile.id} />
+        {/* ── CHAT — toujours monté, juste caché pour préserver le scroll ── */}
+        {id && profile && (
+          <div className={activeTab === 'chat' ? '' : 'hidden'}>
+            <ChatTab chantierId={id} userId={profile.id} isActive={activeTab === 'chat'} />
+          </div>
         )}
 
         {/* ── ANOMALIES ─────────────────────────────────────────────────────── */}
