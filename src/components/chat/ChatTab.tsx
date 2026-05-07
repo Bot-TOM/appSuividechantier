@@ -62,8 +62,15 @@ export default function ChatTab({ chantierId, userId }: Props) {
   const { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction, markAllRead } =
     useMessages(chantierId, userId)
   const { enabled: notifEnabled, toggle: toggleNotif } = useChatNotif(userId)
-  const { onlineUsers }  = usePresence(chantierId, userId)
-  const { techniciens }  = useChantierTechniciens(chantierId)
+  const { techniciens } = useChantierTechniciens(chantierId)
+
+  // Nom de l'utilisateur courant — doit être avant usePresence
+  const myName = useMemo(
+    () => messages.find(m => m.user_id === userId)?.profiles?.full_name ?? '',
+    [messages, userId]
+  )
+
+  const { onlineUsers, typingNames, setTyping } = usePresence(chantierId, userId, myName)
 
   const [text, setText]           = useState('')
   const [replyTo, setReplyTo]     = useState<ChatMessage | null>(null)
@@ -81,12 +88,6 @@ export default function ChatTab({ chantierId, userId }: Props) {
     messages.forEach(m => { if (m.profiles?.full_name) names.add(m.profiles.full_name) })
     return Array.from(names)
   }, [techniciens, messages])
-
-  // Nom de l'utilisateur courant (pour le surlignage "mention de moi")
-  const myName = useMemo(
-    () => messages.find(m => m.user_id === userId)?.profiles?.full_name ?? '',
-    [messages, userId]
-  )
 
   // Query après le @ (text from anchor+1 to end, no newline)
   const mentionQuery = useMemo(() => {
@@ -147,6 +148,9 @@ export default function ChatTab({ chantierId, userId }: Props) {
     const val    = e.target.value
     const cursor = e.target.selectionStart ?? val.length
     setText(val)
+
+    // Broadcaster "est en train d'écrire" dès qu'il y a du texte
+    if (val.trim()) setTyping()
 
     // Ouvrir mention quand @ est tapé
     if (val.length > text.length && val[cursor - 1] === '@') {
@@ -388,6 +392,22 @@ export default function ChatTab({ chantierId, userId }: Props) {
 
       {/* ── Barre de saisie ───────────────────────────────────────────── */}
       <div className="border-t border-gray-200 bg-white px-3 py-2.5 relative" onClick={e => e.stopPropagation()}>
+
+        {/* ── Indicateur "est en train d'écrire" ────────────────────── */}
+        {typingNames.length > 0 && (
+          <div className="absolute bottom-full left-3 mb-0.5 flex items-center gap-1.5 text-[11px] text-gray-400">
+            <span>
+              {typingNames.length === 1
+                ? `${typingNames[0]} est en train d'écrire`
+                : `${typingNames.slice(0, 2).join(' et ')} écrivent`}
+            </span>
+            <span className="flex gap-0.5 items-end pb-0.5">
+              <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+            </span>
+          </div>
+        )}
 
         {/* ── Dropdown mentions ──────────────────────────────────────── */}
         {mentionAnchor !== null && mentionResults.length > 0 && (
