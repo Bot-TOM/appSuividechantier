@@ -11,6 +11,30 @@ export interface UserProfile {
   avatar_url?: string | null
 }
 
+// Clés de permissions gérables par le manager
+export type PermissionKey =
+  | 'voir_tous_chantiers'
+  | 'creer_chantier'
+  | 'modifier_chantier'
+  | 'assigner_techniciens'
+  | 'resoudre_anomalie'
+  | 'ajouter_document'
+  | 'supprimer_message_autres'
+  | 'voir_rapports'
+  | 'exporter_pdf'
+
+export const PERMISSION_LABELS: Record<PermissionKey, string> = {
+  voir_tous_chantiers:      'Voir tous les chantiers',
+  creer_chantier:           'Créer un chantier',
+  modifier_chantier:        'Modifier infos & statut',
+  assigner_techniciens:     'Assigner des techniciens',
+  resoudre_anomalie:        'Résoudre une anomalie',
+  ajouter_document:         'Ajouter un document',
+  supprimer_message_autres: 'Supprimer les messages des autres',
+  voir_rapports:            'Voir les rapports & stats',
+  exporter_pdf:             'Exporter en PDF',
+}
+
 // Liste des postes disponibles
 export const POSTES_OPTIONS = [
   'Technicien',

@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { supabaseAuth } from '@/lib/supabaseAuth'
-import { UserProfile, POSTES_OPTIONS } from '@/types'
+import { UserProfile, POSTES_OPTIONS, PERMISSION_LABELS, type PermissionKey } from '@/types'
+import { useRolePermissions } from '@/hooks/useRolePermissions'
 
 interface EditModal {
   user: UserProfile
@@ -19,6 +20,101 @@ const POSTE_COLORS: Record<string, string> = {
   "Chef d'équipe":        'bg-blue-50 text-blue-600',
   'Chef de chantier':     'bg-orange-50 text-orange-600',
   'Conducteur de travaux':'bg-purple-50 text-purple-600',
+}
+
+// ── Section gestion des permissions ─────────────────────────────────────────
+function PermissionsSection() {
+  const { matrix, loading, saving, toggle, ALL_KEYS } = useRolePermissions()
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="mt-6">
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-5 py-4 bg-white rounded-2xl text-left transition-colors hover:bg-gray-50"
+        style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}
+      >
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
+            <svg className="w-4 h-4 text-purple-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+            </svg>
+          </div>
+          <div>
+            <p className="font-semibold text-gray-900 text-sm">Permissions par poste</p>
+            <p className="text-xs text-gray-400">Définissez les droits de chaque rôle terrain</p>
+          </div>
+        </div>
+        <svg className={`w-4 h-4 text-gray-400 transition-transform ${open ? 'rotate-180' : ''}`} fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {open && (
+        <div className="mt-2 bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+          {/* Indicateur de sauvegarde */}
+          {saving && (
+            <div className="px-4 py-2 bg-orange-50 border-b border-orange-100 flex items-center gap-2">
+              <div className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs text-orange-600 font-medium">Sauvegarde...</span>
+            </div>
+          )}
+
+          {loading ? (
+            <div className="flex justify-center py-10">
+              <div className="w-6 h-6 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide w-48">
+                      Permission
+                    </th>
+                    {POSTES_OPTIONS.map(poste => (
+                      <th key={poste} className="px-3 py-3 text-center text-xs font-semibold text-gray-600 min-w-[110px]">
+                        {poste}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-50">
+                  {ALL_KEYS.map(key => (
+                    <tr key={key} className="hover:bg-gray-50/50 transition-colors">
+                      <td className="px-4 py-3 text-xs text-gray-600 font-medium">
+                        {PERMISSION_LABELS[key as PermissionKey]}
+                      </td>
+                      {POSTES_OPTIONS.map(poste => {
+                        const allowed = matrix[poste]?.[key] ?? false
+                        return (
+                          <td key={poste} className="px-3 py-3 text-center">
+                            <button
+                              onClick={() => toggle(poste, key)}
+                              className={`w-10 h-6 rounded-full relative transition-colors duration-200 focus:outline-none ${
+                                allowed ? 'bg-orange-500' : 'bg-gray-200'
+                              }`}
+                            >
+                              <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-all duration-200 ${
+                                allowed ? 'left-[18px]' : 'left-0.5'
+                              }`} />
+                            </button>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="px-4 py-3 text-[11px] text-gray-400 border-t border-gray-50">
+                Les managers ont toujours toutes les permissions. Les modifications sont effectives immédiatement.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  )
 }
 
 export default function GestionEquipe() {
@@ -166,6 +262,7 @@ export default function GestionEquipe() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-20">
@@ -338,6 +435,10 @@ export default function GestionEquipe() {
             </div>
           )}
         </div>
+
+        {/* ── Gestion des permissions ──────────────────────────────────────── */}
+        <PermissionsSection />
+
       </main>
 
       {/* ── Modale édition ───────────────────────────────────────────────────── */}

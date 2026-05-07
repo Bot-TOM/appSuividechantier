@@ -15,6 +15,7 @@ import { PdfOptions, PDF_OPTIONS_DEFAULT } from '@/components/pdf/ChantierPDF'
 import AnomaliesTabContent from '@/components/anomalies/AnomaliesTabContent'
 import ChatTab from '@/components/chat/ChatTab'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
+import { usePermissions } from '@/hooks/usePermissions'
 
 type InnerTab = 'etapes' | 'rapport' | 'chat' | 'docs' | 'notes' | 'materiel' | 'anomalies' | 'autocontrole' | 'infos'
 
@@ -404,6 +405,7 @@ export default function ChantierDetail() {
   }, [autocontrole])
 
   const isManager         = profile?.role === 'manager'
+  const { can }           = usePermissions()
 const faites            = etapes.filter(e => e.statut === 'fait').length
   const pct               = etapes.length === 0 ? 0 : Math.round((faites / etapes.length) * 100)
   const terminees         = etapes.filter(e => e.statut === 'fait' && e.started_at && e.finished_at)
@@ -713,7 +715,7 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
             {isManager
               ? (
                 <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
-                  <StatutSelector current={chantier.statut} onChange={updateStatut} />
+                  {can('modifier_chantier') && <StatutSelector current={chantier.statut} onChange={updateStatut} />}
                   <button
                     onClick={() => navigate(`/chantier/${id}/modifier`)}
                     className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
@@ -767,7 +769,7 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
           <div className="flex gap-0 -mb-3 overflow-x-auto no-scrollbar">
             {([
               { key: 'etapes',      label: 'Étapes' },
-              { key: 'rapport',     label: 'Rapport',     badge: rapports.length || undefined },
+              can('voir_rapports') ? { key: 'rapport', label: 'Rapport', badge: rapports.length || undefined } : null,
               { key: 'chat',        label: 'Chat',        badge: activeTab !== 'chat' && unreadChat > 0 ? unreadChat : undefined },
               { key: 'docs',        label: 'Docs',        badge: documents.length || undefined },
               { key: 'notes',       label: 'Notes',       badge: notes.length || undefined },
@@ -775,7 +777,7 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
               { key: 'anomalies',   label: 'Anomalies',   badge: anomalies.filter(a => a.statut !== 'resolu').length || undefined },
               { key: 'autocontrole', label: 'Contrôle',   badge: acIsSigne ? undefined : acTotalChecked > 0 ? acTotalChecked : undefined },
               { key: 'infos',       label: 'Infos' },
-            ] as { key: InnerTab; label: string; badge?: number }[]).map(tab => (
+            ].filter(Boolean) as { key: InnerTab; label: string; badge?: number }[]).map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
@@ -954,22 +956,24 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
                   <span className="ml-2 text-[10px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded-full align-middle">{documents.length}</span>
                 )}
               </h2>
-              <label className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 bg-orange-50 px-3 py-1.5 rounded-full cursor-pointer hover:bg-orange-100 transition-colors">
-                <input
-                  type="file"
-                  accept=".pdf,.xls,.xlsx"
-                  multiple
-                  onChange={handleDocUpload}
-                  className="absolute opacity-0 w-px h-px overflow-hidden pointer-events-none"
-                  tabIndex={-1}
-                  disabled={uploadingDoc}
-                />
-                {uploadingDoc
-                  ? <div className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-                  : '+'
-                }
-                Ajouter
-              </label>
+              {can('ajouter_document') && (
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-orange-600 bg-orange-50 px-3 py-1.5 rounded-full cursor-pointer hover:bg-orange-100 transition-colors">
+                  <input
+                    type="file"
+                    accept=".pdf,.xls,.xlsx"
+                    multiple
+                    onChange={handleDocUpload}
+                    className="absolute opacity-0 w-px h-px overflow-hidden pointer-events-none"
+                    tabIndex={-1}
+                    disabled={uploadingDoc}
+                  />
+                  {uploadingDoc
+                    ? <div className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                    : '+'
+                  }
+                  Ajouter
+                </label>
+              )}
             </div>
             {uploadDocError && <p className="px-4 py-2 text-xs text-red-500 bg-red-50">{uploadDocError}</p>}
             {documents.length === 0 ? (
@@ -1268,23 +1272,27 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
             )}
 
             {/* PDF */}
-            <button
-              onClick={() => setShowPdfOptions(true)}
-              disabled={generatingPDF}
-              className="w-full flex items-center justify-center gap-3 text-white font-semibold py-4 rounded-2xl transition-all disabled:opacity-60"
-              style={{ background: 'linear-gradient(135deg, #1f2937 0%, #374151 100%)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
-            >
-              {generatingPDF
-                ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Génération...</>
-                : <>
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                    </svg>
-                    Générer le rapport PDF
-                  </>
-              }
-            </button>
-            {pdfError && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl text-center">{pdfError}</div>}
+            {can('exporter_pdf') && (
+              <>
+                <button
+                  onClick={() => setShowPdfOptions(true)}
+                  disabled={generatingPDF}
+                  className="w-full flex items-center justify-center gap-3 text-white font-semibold py-4 rounded-2xl transition-all disabled:opacity-60"
+                  style={{ background: 'linear-gradient(135deg, #1f2937 0%, #374151 100%)', boxShadow: '0 4px 12px rgba(0,0,0,0.2)' }}
+                >
+                  {generatingPDF
+                    ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Génération...</>
+                    : <>
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        Générer le rapport PDF
+                      </>
+                  }
+                </button>
+                {pdfError && <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl text-center">{pdfError}</div>}
+              </>
+            )}
           </>
         )}
 
@@ -1298,7 +1306,7 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
         {/* ── ANOMALIES ─────────────────────────────────────────────────────── */}
         {activeTab === 'anomalies' && id && (
           <section className="space-y-3">
-            <AnomaliesTabContent chantierId={id} />
+            <AnomaliesTabContent chantierId={id} canResolve={can('resoudre_anomalie')} />
           </section>
         )}
 
