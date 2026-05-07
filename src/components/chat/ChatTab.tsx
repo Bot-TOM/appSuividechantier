@@ -8,6 +8,7 @@ import { supabase } from '@/lib/supabase'
 import Avatar from '@/components/Avatar'
 import VoiceMessage from '@/components/chat/VoiceMessage'
 import type { ChatMessage } from '@/types'
+import { usePermissions } from '@/hooks/usePermissions'
 
 const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👎']
 
@@ -66,6 +67,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
   const { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction, markAllRead } =
     useMessages(chantierId, userId)
   const { enabled: notifEnabled, toggle: toggleNotif } = useChatNotif(userId)
+  const { can } = usePermissions()
   const { techniciens } = useChantierTechniciens(chantierId)
   const { chantiers }   = useChantiers()
 
@@ -619,7 +621,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                         className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors font-medium text-gray-600">
                         ↪ Transférer
                       </button>
-                      {isOwn && (
+                      {(isOwn || can('supprimer_message_autres')) && (
                         <button onClick={() => { deleteMessage(msg.id); dismiss() }}
                           className="text-xs bg-red-50 border border-red-100 text-red-500 rounded-full px-2.5 py-1 shadow-sm hover:bg-red-100 transition-colors font-medium">
                           Supprimer

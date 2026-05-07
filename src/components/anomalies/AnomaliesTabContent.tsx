@@ -13,7 +13,7 @@ const STATUT_CONFIG: Record<AnomalieStatut, { label: string; next: AnomalieStatu
   resolu:   { label: 'Résolu',   next: 'ouvert',   dot: 'bg-green-500',  bg: 'bg-green-50 text-green-700' },
 }
 
-export default function AnomaliesTabContent({ chantierId }: { chantierId: string }) {
+export default function AnomaliesTabContent({ chantierId, canResolve = true }: { chantierId: string; canResolve?: boolean }) {
   const { profile } = useAuth()
   const { anomalies, loading, updateStatut, updateStatutBulk, deleteAnomalies } = useAnomalies(chantierId)
 
@@ -220,7 +220,7 @@ export default function AnomaliesTabContent({ chantierId }: { chantierId: string
                       <span className="text-sm font-semibold text-gray-800">{anomalie.type}</span>
                       <GraviteBadge gravite={anomalie.gravite} />
                     </div>
-                    {!selectMode && (
+                    {!selectMode && (canResolve || statut.next !== 'resolu') && (
                       <button onClick={() => updateStatut(anomalie.id, statut.next)}
                         className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0 transition-all hover:opacity-80 ${statut.bg}`}>
                         <span className={`w-1.5 h-1.5 rounded-full ${statut.dot}`} />
@@ -255,7 +255,7 @@ export default function AnomaliesTabContent({ chantierId }: { chantierId: string
           </p>
           <div className="flex gap-2 max-w-2xl mx-auto">
             <button onClick={() => handleBulkStatut('en_cours')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors">En cours</button>
-            <button onClick={() => handleBulkStatut('resolu')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 transition-colors">Résoudre</button>
+            {canResolve && <button onClick={() => handleBulkStatut('resolu')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 transition-colors">Résoudre</button>}
             <button onClick={() => handleBulkStatut('ouvert')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 transition-colors">Rouvrir</button>
             {isManager && (
               <button onClick={handleBulkDelete} className="py-3 px-4 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
