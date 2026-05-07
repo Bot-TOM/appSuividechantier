@@ -116,6 +116,19 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
     return Array.from(names)
   }, [techniciens, messages])
 
+  // Liste complète des participants : techniciens assignés + tous ceux qui ont écrit
+  // (couvre les managers qui ne sont pas dans chantier_techniciens)
+  const participants = useMemo(() => {
+    const map = new Map<string, { id: string; name: string; avatarUrl?: string | null }>()
+    techniciens.forEach(t => map.set(t.id, { id: t.id, name: t.full_name, avatarUrl: t.avatar_url }))
+    messages.forEach(m => {
+      if (m.user_id && m.profiles?.full_name && !map.has(m.user_id)) {
+        map.set(m.user_id, { id: m.user_id, name: m.profiles.full_name, avatarUrl: m.profiles.avatar_url })
+      }
+    })
+    return Array.from(map.values())
+  }, [techniciens, messages])
+
   // Query après le @ (text from anchor+1 to end, no newline)
   const mentionQuery = useMemo(() => {
     if (mentionAnchor === null) return null
@@ -392,24 +405,28 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
       {/* ── Panneau participants ───────────────────────────────────────── */}
       {showParticipants && (
         <div className="bg-white border-b border-gray-100 px-4 py-3" onClick={e => e.stopPropagation()}>
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5">Participants ({techniciens.length + 1})</p>
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5">
+            Participants ({participants.length})
+          </p>
           <div className="flex flex-col gap-2">
-            {/* Soi-même en premier */}
-            <div className="flex items-center gap-2.5">
-              <Avatar name={myName || 'Moi'} size="sm" online={true} />
-              <span className="text-sm font-medium text-gray-800">{myName || 'Moi'} <span className="text-[11px] text-gray-400 font-normal">(vous)</span></span>
-            </div>
-            {techniciens.filter(t => t.id !== userId).map(t => (
-              <div key={t.id} className="flex items-center gap-2.5">
-                <Avatar name={t.full_name} avatarUrl={t.avatar_url} size="sm" online={onlineUsers.has(t.id)} />
-                <div className="flex-1 min-w-0">
-                  <span className="text-sm font-medium text-gray-800">{t.full_name}</span>
+            {participants.map(p => {
+              const isMe = p.id === userId
+              const online = isMe || onlineUsers.has(p.id)
+              return (
+                <div key={p.id} className="flex items-center gap-2.5">
+                  <Avatar name={p.name} avatarUrl={p.avatarUrl} size="sm" online={online} />
+                  <div className="flex-1 min-w-0">
+                    <span className="text-sm font-medium text-gray-800">
+                      {p.name}
+                      {isMe && <span className="text-[11px] text-gray-400 font-normal ml-1">(vous)</span>}
+                    </span>
+                  </div>
+                  <span className={`text-[11px] font-medium ${online ? 'text-green-500' : 'text-gray-400'}`}>
+                    {online ? 'En ligne' : 'Hors ligne'}
+                  </span>
                 </div>
-                <span className={`text-[11px] font-medium ${onlineUsers.has(t.id) ? 'text-green-500' : 'text-gray-400'}`}>
-                  {onlineUsers.has(t.id) ? 'En ligne' : 'Hors ligne'}
-                </span>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       )}
