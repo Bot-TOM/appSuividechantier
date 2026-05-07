@@ -152,6 +152,7 @@ export default function ChatTab({ chantierId, userId }: Props) {
 
   // ── Refs ────────────────────────────────────────────────────────────────────
   const bottomRef        = useRef<HTMLDivElement>(null)
+  const msgsContainerRef = useRef<HTMLDivElement>(null)
   const fileRef          = useRef<HTMLInputElement>(null)
   const textareaRef      = useRef<HTMLTextAreaElement>(null)
   const prevLengthRef    = useRef(0)
@@ -258,14 +259,20 @@ export default function ChatTab({ chantierId, userId }: Props) {
 
   useEffect(() => {
     if (messages.length === 0) return
-    // Chargement initial (0 → N) : scroll instantané pour garantir d'atteindre le bas
-    // Nouveau message (N → N+1) : scroll smooth pour une transition fluide
     const isInitialLoad = prevLengthRef.current === 0
     prevLengthRef.current = messages.length
-    // requestAnimationFrame garantit que le DOM est peint avant de scroller
-    requestAnimationFrame(() => {
-      bottomRef.current?.scrollIntoView({ behavior: isInitialLoad ? 'instant' : 'smooth' })
-    })
+    const el = msgsContainerRef.current
+    if (!el) return
+    if (isInitialLoad) {
+      // Chargement initial : assignation directe, toujours au bas réel
+      el.scrollTop = el.scrollHeight
+    } else {
+      // Nouveau message : scroll smooth uniquement si déjà près du bas (< 150px)
+      const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight
+      if (distanceFromBottom < 150) {
+        el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' })
+      }
+    }
   }, [messages.length])
 
   useEffect(() => { markAllRead() }, [markAllRead, messages.length])
@@ -397,7 +404,7 @@ export default function ChatTab({ chantierId, userId }: Props) {
       )}
 
       {/* ── Liste des messages ─────────────────────────────────────────── */}
-      <div className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+      <div ref={msgsContainerRef} className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 py-12">
             <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center">
