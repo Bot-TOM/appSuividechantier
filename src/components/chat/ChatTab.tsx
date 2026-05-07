@@ -3,6 +3,8 @@ import { useMessages } from '@/hooks/useMessages'
 import { useChatNotif } from '@/hooks/useChatNotif'
 import { usePresence } from '@/hooks/usePresence'
 import { useChantierTechniciens } from '@/hooks/useChantierTechniciens'
+import { useChantiers } from '@/hooks/useChantiers'
+import { supabase } from '@/lib/supabase'
 import Avatar from '@/components/Avatar'
 import type { ChatMessage } from '@/types'
 
@@ -63,6 +65,7 @@ export default function ChatTab({ chantierId, userId }: Props) {
     useMessages(chantierId, userId)
   const { enabled: notifEnabled, toggle: toggleNotif } = useChatNotif(userId)
   const { techniciens } = useChantierTechniciens(chantierId)
+  const { chantiers }   = useChantiers()
 
   // Nom de l'utilisateur courant — doit être avant usePresence
   const myName = useMemo(
@@ -72,10 +75,32 @@ export default function ChatTab({ chantierId, userId }: Props) {
 
   const { onlineUsers, typingNames, setTyping } = usePresence(chantierId, userId, myName)
 
-  const [text, setText]           = useState('')
-  const [replyTo, setReplyTo]     = useState<ChatMessage | null>(null)
-  const [activeMsg, setActiveMsg] = useState<string | null>(null)
-  const [emojiFor, setEmojiFor]   = useState<string | null>(null)
+  const [text, setText]               = useState('')
+  const [replyTo, setReplyTo]         = useState<ChatMessage | null>(null)
+  const [activeMsg, setActiveMsg]     = useState<string | null>(null)
+  const [emojiFor, setEmojiFor]       = useState<string | null>(null)
+  const [showParticipants, setShowParticipants] = useState(false)
+  const [pdfPreview, setPdfPreview]   = useState<{ url: string; name: string } | null>(null)
+  const [forwardMsg, setForwardMsg]   = useState<ChatMessage | null>(null)
+  const [forwardDone, setForwardDone] = useState(false)
+
+  const handleForward = useCallback(async (targetChantierId: string) => {
+    if (!forwardMsg) return
+    const payload: Record<string, unknown> = {
+      chantier_id: targetChantierId,
+      user_id: userId,
+      content: forwardMsg.content
+        ? `↪ Transféré : ${forwardMsg.content}`
+        : null,
+      file_url:   forwardMsg.file_url,
+      file_name:  forwardMsg.file_name,
+      file_type:  forwardMsg.file_type,
+    }
+    await supabase.from('messages').insert(payload)
+    setForwardMsg(null)
+    setForwardDone(true)
+    setTimeout(() => setForwardDone(false), 2500)
+  }, [forwardMsg, userId])
 
   // ── Mentions ────────────────────────────────────────────────────────────────
   const [mentionAnchor, setMentionAnchor]       = useState<number | null>(null)
@@ -125,10 +150,73 @@ export default function ChatTab({ chantierId, userId }: Props) {
   }, [mentionAnchor, text])
 
   // ── Refs ────────────────────────────────────────────────────────────────────
-  const bottomRef      = useRef<HTMLDivElement>(null)
-  const fileRef        = useRef<HTMLInputElement>(null)
-  const textareaRef    = useRef<HTMLTextAreaElement>(null)
-  const prevLengthRef  = useRef(0)
+  const bottomRef        = useRef<HTMLDivElement>(null)
+  const fileRef          = useRef<HTMLInputElement>(null)
+  const textareaRef      = useRef<HTMLTextAreaElement>(null)
+  const prevLengthRef    = useRef(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef   = useRef<Blob[]>([])
+
+  // ── État enregistrement vocal ────────────────────────────────────────────────
+  const [isRecording, setIsRecording]       = useState(false)
+  const [recordingSeconds, setRecordingSeconds] = useState(0)
+  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Choisir le meilleur format disponible (WebM sur Android, MP4/AAC sur iOS)
+      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+        ? 'audio/webm;codecs=opus'
+        : MediaRecorder.isTypeSupported('audio/mp4')
+          ? 'audio/mp4'
+          : 'audio/webm'
+      const recorder = new MediaRecorder(stream, { mimeType })
+      audioChunksRef.current = []
+      recorder.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
+      recorder.start(100)
+      mediaRecorderRef.current = recorder
+      setIsRecording(true)
+      setRecordingSeconds(0)
+      recordingTimerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
+    } catch {
+      alert("Accès au micro refusé. Vérifiez les permissions de votre navigateur.")
+    }
+  }, [])
+
+  const stopRecording = useCallback(async () => {
+    const recorder = mediaRecorderRef.current
+    if (!recorder) return
+    setIsRecording(false)
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+
+    await new Promise<void>(resolve => {
+      recorder.onstop = () => resolve()
+      recorder.stop()
+      recorder.stream.getTracks().forEach(t => t.stop())
+    })
+
+    const mimeType = recorder.mimeType || 'audio/webm'
+    const ext      = mimeType.includes('mp4') ? 'mp4' : 'webm'
+    const blob     = new Blob(audioChunksRef.current, { type: mimeType })
+    if (blob.size < 1000) return // trop court, ignorer
+
+    const file = new File([blob], `voice_${Date.now()}.${ext}`, { type: mimeType })
+    await sendFile(file, replyTo?.id)
+    setReplyTo(null)
+  }, [sendFile, replyTo])
+
+  const cancelRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current
+    if (!recorder) return
+    recorder.onstop = null
+    recorder.stop()
+    recorder.stream.getTracks().forEach(t => t.stop())
+    setIsRecording(false)
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+    setRecordingSeconds(0)
+    audioChunksRef.current = []
+  }, [])
 
   useEffect(() => {
     if (messages.length === 0) return
@@ -202,14 +290,32 @@ export default function ChatTab({ chantierId, userId }: Props) {
   }
 
   return (
+    <>
     <div
       className="flex flex-col bg-gray-50 rounded-2xl overflow-hidden"
       style={{ height: 'calc(100dvh - 270px)', minHeight: 420 }}
       onClick={dismiss}
     >
-      {/* ── Header clochette ──────────────────────────────────────────── */}
+      {/* ── Header : clochette + participants ────────────────────────── */}
       {notifEnabled !== null && (
-        <div className="flex items-center justify-end px-3 py-2 border-b border-gray-100 bg-white" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-white" onClick={e => e.stopPropagation()}>
+          {/* Bouton participants */}
+          <button
+            onClick={() => setShowParticipants(p => !p)}
+            title="Participants"
+            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+              showParticipants
+                ? 'bg-orange-50 border-orange-200 text-orange-600'
+                : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span>{onlineUsers.size} en ligne</span>
+          </button>
+
+          {/* Clochette notifications */}
           <button
             onClick={toggleNotif}
             title={notifEnabled ? 'Désactiver les notifications du chat' : 'Activer les notifications du chat'}
@@ -224,6 +330,31 @@ export default function ChatTab({ chantierId, userId }: Props) {
             </svg>
             {notifEnabled ? 'Notifs activées' : 'Activer les notifs'}
           </button>
+        </div>
+      )}
+
+      {/* ── Panneau participants ───────────────────────────────────────── */}
+      {showParticipants && (
+        <div className="bg-white border-b border-gray-100 px-4 py-3" onClick={e => e.stopPropagation()}>
+          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5">Participants ({techniciens.length + 1})</p>
+          <div className="flex flex-col gap-2">
+            {/* Soi-même en premier */}
+            <div className="flex items-center gap-2.5">
+              <Avatar name={myName || 'Moi'} size="sm" online={true} />
+              <span className="text-sm font-medium text-gray-800">{myName || 'Moi'} <span className="text-[11px] text-gray-400 font-normal">(vous)</span></span>
+            </div>
+            {techniciens.filter(t => t.id !== userId).map(t => (
+              <div key={t.id} className="flex items-center gap-2.5">
+                <Avatar name={t.full_name} avatarUrl={t.avatar_url} size="sm" online={onlineUsers.has(t.id)} />
+                <div className="flex-1 min-w-0">
+                  <span className="text-sm font-medium text-gray-800">{t.full_name}</span>
+                </div>
+                <span className={`text-[11px] font-medium ${onlineUsers.has(t.id) ? 'text-green-500' : 'text-gray-400'}`}>
+                  {onlineUsers.has(t.id) ? 'En ligne' : 'Hors ligne'}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
@@ -308,6 +439,17 @@ export default function ChatTab({ chantierId, userId }: Props) {
                       </div>
                     )}
 
+                    {msg.file_type === 'audio' && msg.file_url && (
+                      <div className="mb-1" onClick={e => e.stopPropagation()}>
+                        <audio
+                          src={msg.file_url}
+                          controls
+                          className="max-w-[220px] h-9"
+                          style={{ colorScheme: isOwn ? 'dark' : 'light' }}
+                        />
+                      </div>
+                    )}
+
                     {msg.file_type === 'image' && msg.file_url && (
                       <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
                         <img src={msg.file_url} alt={msg.file_name ?? 'image'}
@@ -315,18 +457,39 @@ export default function ChatTab({ chantierId, userId }: Props) {
                       </a>
                     )}
 
-                    {msg.file_type === 'document' && msg.file_url && (
-                      <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                        className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 ${
-                          isOwn ? 'bg-white/20 text-white' : 'bg-gray-50 text-gray-700 border border-gray-100'
-                        }`}
-                      >
-                        <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                        </svg>
-                        <span className="truncate max-w-[150px]">{msg.file_name ?? 'Document'}</span>
-                      </a>
-                    )}
+                    {msg.file_type === 'document' && msg.file_url && (() => {
+                      const isPdf = msg.file_name?.toLowerCase().endsWith('.pdf')
+                      return isPdf ? (
+                        // PDF → aperçu inline via modale
+                        <button
+                          onClick={e => { e.stopPropagation(); setPdfPreview({ url: msg.file_url!, name: msg.file_name ?? 'Document' }) }}
+                          className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 w-full text-left transition-opacity hover:opacity-80 ${
+                            isOwn ? 'bg-white/20 text-white' : 'bg-red-50 text-red-700 border border-red-100'
+                          }`}
+                        >
+                          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span className="truncate max-w-[150px]">{msg.file_name ?? 'Document'}</span>
+                          <svg className="w-3 h-3 flex-shrink-0 ml-auto opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                          </svg>
+                        </button>
+                      ) : (
+                        // Autre document → ouverture directe
+                        <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                          className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 ${
+                            isOwn ? 'bg-white/20 text-white' : 'bg-gray-50 text-gray-700 border border-gray-100'
+                          }`}
+                        >
+                          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <span className="truncate max-w-[150px]">{msg.file_name ?? 'Document'}</span>
+                        </a>
+                      )
+                    })()}
 
                     {/* Texte avec mentions surlignées */}
                     {msg.content && (
@@ -376,6 +539,10 @@ export default function ChatTab({ chantierId, userId }: Props) {
                       <button onClick={() => { setReplyTo(msg); dismiss(); textareaRef.current?.focus() }}
                         className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors font-medium text-gray-600">
                         ↩ Répondre
+                      </button>
+                      <button onClick={() => { setForwardMsg(msg); dismiss() }}
+                        className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors font-medium text-gray-600">
+                        ↪ Transférer
                       </button>
                       {isOwn && (
                         <button onClick={() => { deleteMessage(msg.id); dismiss() }}
@@ -478,25 +645,152 @@ export default function ChatTab({ chantierId, userId }: Props) {
           <input ref={fileRef} type="file" className="hidden" onChange={handleFile}
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
 
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={handleTextChange}
-            onKeyDown={handleKeyDown}
-            placeholder="Message… (@ pour mentionner)"
-            rows={1}
-            className="flex-1 resize-none rounded-2xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-300 focus:ring-1 focus:ring-orange-100 bg-gray-50 max-h-28 overflow-y-auto"
-            style={{ lineHeight: '1.45' }}
-          />
+          {isRecording ? (
+            /* ── Mode enregistrement vocal ── */
+            <>
+              <div className="flex-1 flex items-center gap-2 rounded-2xl border border-red-300 bg-red-50 px-3 py-2">
+                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+                <span className="text-sm text-red-600 font-medium">
+                  {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
+                </span>
+                <span className="text-xs text-red-400 ml-1">Enregistrement…</span>
+              </div>
+              {/* Annuler */}
+              <button onClick={cancelRecording}
+                className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-300 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+              {/* Envoyer */}
+              <button onClick={stopRecording}
+                className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5" />
+                </svg>
+              </button>
+            </>
+          ) : (
+            /* ── Mode saisie texte normal ── */
+            <>
+              <textarea
+                ref={textareaRef}
+                value={text}
+                onChange={handleTextChange}
+                onKeyDown={handleKeyDown}
+                placeholder="Message… (@ pour mentionner)"
+                rows={1}
+                className="flex-1 resize-none rounded-2xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-300 focus:ring-1 focus:ring-orange-100 bg-gray-50 max-h-28 overflow-y-auto"
+                style={{ lineHeight: '1.45' }}
+              />
 
-          <button onClick={handleSend} disabled={!text.trim()}
-            className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 transition-colors disabled:opacity-35 disabled:cursor-not-allowed">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5" />
-            </svg>
-          </button>
+              {/* Micro (si pas de texte tapé) ou Envoyer (si texte) */}
+              {text.trim() ? (
+                <button onClick={handleSend}
+                  className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 transition-colors">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5" />
+                  </svg>
+                </button>
+              ) : (
+                <button onClick={startRecording}
+                  className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-100 hover:text-orange-500 transition-colors"
+                  title="Message vocal">
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                  </svg>
+                </button>
+              )}
+            </>
+          )}
         </div>
       </div>
     </div>
+
+    {/* ── Toast confirmation transfert ─────────────────────────────────── */}
+    {forwardDone && (
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-full shadow-xl">
+        ↪ Message transféré
+      </div>
+    )}
+
+    {/* ── Modale transfert vers chantier ───────────────────────────────── */}
+    {forwardMsg && (
+      <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4 pb-4 sm:pb-0" onClick={() => setForwardMsg(null)}>
+        <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
+          <div className="px-4 py-3.5 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-900 text-sm">Transférer vers…</h3>
+            <button onClick={() => setForwardMsg(null)} className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+            </button>
+          </div>
+          {/* Aperçu du message à transférer */}
+          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
+            <p className="text-xs text-gray-400 mb-1">Message à transférer</p>
+            <p className="text-sm text-gray-700 truncate">
+              {forwardMsg.content ?? forwardMsg.file_name ?? '📎 Fichier'}
+            </p>
+          </div>
+          {/* Liste des chantiers */}
+          <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
+            {chantiers.filter(c => c.id !== chantierId).map(c => (
+              <button key={c.id} onClick={() => handleForward(c.id)}
+                className="w-full text-left px-4 py-3 hover:bg-orange-50 transition-colors flex items-center gap-3">
+                <div className="w-8 h-8 rounded-xl bg-orange-100 flex items-center justify-center flex-shrink-0">
+                  <svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+                  </svg>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-sm font-medium text-gray-800 truncate">{c.nom}</p>
+                  <p className="text-xs text-gray-400 truncate">{c.client_nom}</p>
+                </div>
+              </button>
+            ))}
+            {chantiers.filter(c => c.id !== chantierId).length === 0 && (
+              <p className="text-center text-gray-400 text-sm py-8">Aucun autre chantier disponible</p>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* ── Modale aperçu PDF ─────────────────────────────────────────────── */}
+
+    {pdfPreview && (
+      <div
+        className="fixed inset-0 z-50 flex flex-col bg-black/80"
+        onClick={() => setPdfPreview(null)}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-4 py-3 bg-black/60 flex-shrink-0" onClick={e => e.stopPropagation()}>
+          <span className="text-white text-sm font-medium truncate max-w-[70%]">{pdfPreview.name}</span>
+          <div className="flex items-center gap-2">
+            <a
+              href={`https://docs.google.com/viewer?url=${encodeURIComponent(pdfPreview.url)}`}
+              target="_blank" rel="noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-white/70 hover:text-white text-xs border border-white/20 px-3 py-1.5 rounded-full transition-colors"
+            >
+              Ouvrir ↗
+            </a>
+            <button onClick={() => setPdfPreview(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
+        </div>
+        {/* Visionneuse */}
+        <div className="flex-1 min-h-0" onClick={e => e.stopPropagation()}>
+          <iframe
+            src={`https://docs.google.com/viewer?url=${encodeURIComponent(pdfPreview.url)}&embedded=true`}
+            className="w-full h-full border-0"
+            title={pdfPreview.name}
+          />
+        </div>
+      </div>
+    )}
+    </>
   )
 }
