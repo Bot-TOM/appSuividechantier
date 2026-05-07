@@ -463,8 +463,11 @@ export default function ChantierDetail() {
     const buf  = await file.arrayBuffer()
     const wb   = read(buf)
     const ws   = wb.Sheets[wb.SheetNames[0]]
-    const rows = utils.sheet_to_json<string[]>(ws, { header: 1 }) as string[][]
-    const content = rows.map(r => r.join('\t')).join('\n')
+    const rows = (utils.sheet_to_json<string[]>(ws, { header: 1 }) as string[][])
+      .filter(r => r.some(cell => cell != null && String(cell).trim() !== ''))
+    const MAX_CHARS = 20_000
+    const full = rows.map(r => r.join('\t')).join('\n')
+    const content = full.length > MAX_CHARS ? full.slice(0, MAX_CHARS) : full
 
     setImportedItems([])
     setShowImportModal(true) // ouvrir la modale avec état "chargement"

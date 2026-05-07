@@ -25,6 +25,9 @@ export default async function handler(req: Request) {
     return new Response(JSON.stringify({ error: 'content manquant' }), { status: 400 })
   }
 
+  // Garde-fou côté serveur — tronquer à 20 000 chars pour rester dans les limites
+  const safeContent = content.length > 20_000 ? content.slice(0, 20_000) : content
+
   const apiKey = process.env.ANTHROPIC_API_KEY
   if (!apiKey) {
     return new Response(JSON.stringify({ error: 'clé API manquante' }), { status: 500 })
@@ -50,7 +53,7 @@ Retourne UNIQUEMENT un tableau JSON valide, sans texte autour, sous cette forme 
 [{"nom":"Casque de sécurité","qte":"1 u"},{"nom":"Câble solaire","qte":"100 m"}]
 
 Contenu du fichier :
-${content}`,
+${safeContent}`,
         },
       ],
     }),
