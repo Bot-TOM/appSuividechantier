@@ -401,8 +401,7 @@ export default function ChantierDetail() {
   }, [autocontrole])
 
   const isManager         = profile?.role === 'manager'
-  const anomaliesOuvertes = anomalies.filter(a => a.statut !== 'resolu').length
-  const faites            = etapes.filter(e => e.statut === 'fait').length
+const faites            = etapes.filter(e => e.statut === 'fait').length
   const pct               = etapes.length === 0 ? 0 : Math.round((faites / etapes.length) * 100)
   const terminees         = etapes.filter(e => e.statut === 'fait' && e.started_at && e.finished_at)
   const totalTemps        = terminees.reduce((s, e) => s + getDureeReelle(e.started_at!, e.finished_at!), 0)
