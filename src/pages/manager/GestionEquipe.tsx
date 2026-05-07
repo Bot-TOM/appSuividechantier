@@ -3,13 +3,22 @@ import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
 import { supabaseAuth } from '@/lib/supabaseAuth'
-import { UserProfile } from '@/types'
+import { UserProfile, POSTES_OPTIONS } from '@/types'
 
 interface EditModal {
   user: UserProfile
   full_name: string
   email: string
   password: string
+  poste: string
+}
+
+// Badge couleur selon le poste
+const POSTE_COLORS: Record<string, string> = {
+  'Technicien':           'bg-gray-100 text-gray-600',
+  "Chef d'équipe":        'bg-blue-50 text-blue-600',
+  'Chef de chantier':     'bg-orange-50 text-orange-600',
+  'Conducteur de travaux':'bg-purple-50 text-purple-600',
 }
 
 export default function GestionEquipe() {
@@ -22,7 +31,7 @@ export default function GestionEquipe() {
   const [success, setSuccess] = useState('')
   const [error, setError] = useState('')
 
-  const [form, setForm] = useState({ full_name: '', email: '', password: '' })
+  const [form, setForm] = useState({ full_name: '', email: '', password: '', poste: 'Technicien' })
 
   // Modale édition
   const [editModal, setEditModal] = useState<EditModal | null>(null)
@@ -72,10 +81,11 @@ export default function GestionEquipe() {
       email: form.email,
       full_name: form.full_name,
       role: 'technicien',
+      poste: form.poste || 'Technicien',
     })
 
     setSuccess(`Compte créé pour ${form.full_name}`)
-    setForm({ full_name: '', email: '', password: '' })
+    setForm({ full_name: '', email: '', password: '', poste: 'Technicien' })
     setShowForm(false)
     fetchEquipe()
     setSubmitting(false)
@@ -83,7 +93,7 @@ export default function GestionEquipe() {
 
   // ── Édition ────────────────────────────────────────────────────────────────
   function openEdit(tech: UserProfile) {
-    setEditModal({ user: tech, full_name: tech.full_name, email: tech.email, password: '' })
+    setEditModal({ user: tech, full_name: tech.full_name, email: tech.email, password: '', poste: tech.poste ?? 'Technicien' })
     setEditError('')
   }
 
@@ -93,31 +103,34 @@ export default function GestionEquipe() {
     setEditError('')
     setEditSubmitting(true)
 
+    // Mise à jour du poste directement dans profiles (pas besoin de l'API auth)
+    const posteChanged = editModal.poste !== (editModal.user.poste ?? 'Technicien')
+    if (posteChanged) {
+      await supabase.from('profiles').update({ poste: editModal.poste }).eq('id', editModal.user.id)
+    }
+
+    // Mise à jour des champs auth (nom, email, mdp) via l'API admin
     const payload: Record<string, string> = { userId: editModal.user.id }
     if (editModal.full_name !== editModal.user.full_name) payload.full_name = editModal.full_name
     if (editModal.email    !== editModal.user.email)     payload.email     = editModal.email
     if (editModal.password)                              payload.password  = editModal.password
 
-    if (Object.keys(payload).length === 1) {
-      setEditModal(null)
-      setEditSubmitting(false)
-      return
-    }
+    if (Object.keys(payload).length > 1) {
+      const res = await fetch('/api/admin-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token ?? ''}`,
+        },
+        body: JSON.stringify(payload),
+      })
 
-    const res = await fetch('/api/admin-user', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session?.access_token ?? ''}`,
-      },
-      body: JSON.stringify(payload),
-    })
-
-    if (!res.ok) {
-      const data = await res.json()
-      setEditError(data.error ?? 'Erreur lors de la modification')
-      setEditSubmitting(false)
-      return
+      if (!res.ok) {
+        const data = await res.json()
+        setEditError(data.error ?? 'Erreur lors de la modification')
+        setEditSubmitting(false)
+        return
+      }
     }
 
     setSuccess(`Compte de ${editModal.full_name} mis à jour`)
@@ -227,6 +240,16 @@ export default function GestionEquipe() {
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-sm" />
               </div>
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Poste</label>
+                <select name="poste" value={form.poste}
+                  onChange={e => setForm(f => ({ ...f, poste: e.target.value }))}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-sm bg-white">
+                  {POSTES_OPTIONS.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
+              </div>
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Mot de passe provisoire *</label>
                 <input name="password" value={form.password} onChange={handleChange} required
                   type="text" placeholder="Au moins 6 caractères" minLength={6}
@@ -282,7 +305,14 @@ export default function GestionEquipe() {
                     {tech.full_name.charAt(0).toUpperCase()}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className="font-semibold text-gray-900 text-sm">{tech.full_name}</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-gray-900 text-sm">{tech.full_name}</p>
+                      {tech.poste && (
+                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${POSTE_COLORS[tech.poste] ?? 'bg-gray-100 text-gray-500'}`}>
+                          {tech.poste}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-400 truncate">{tech.email}</p>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
@@ -327,6 +357,16 @@ export default function GestionEquipe() {
                 <input value={editModal.full_name}
                   onChange={e => setEditModal(m => m ? { ...m, full_name: e.target.value } : m)}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">Poste</label>
+                <select value={editModal.poste}
+                  onChange={e => setEditModal(m => m ? { ...m, poste: e.target.value } : m)}
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm bg-white">
+                  {POSTES_OPTIONS.map(p => (
+                    <option key={p} value={p}>{p}</option>
+                  ))}
+                </select>
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
