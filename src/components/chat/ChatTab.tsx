@@ -502,11 +502,14 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                       <span className="text-[11px] font-semibold text-orange-500">
                         {msg.profiles?.full_name ?? 'Inconnu'}
                       </span>
-                      {msg.profiles?.poste && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                          {msg.profiles.poste}
-                        </span>
-                      )}
+                      {(() => {
+                        const label = msg.profiles?.poste ?? (msg.profiles?.role === 'manager' ? 'Manager' : null)
+                        return label ? (
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                            {label}
+                          </span>
+                        ) : null
+                      })()}
                     </div>
                   )}
 
