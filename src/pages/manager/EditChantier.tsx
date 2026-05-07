@@ -3,6 +3,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useTechniciens } from '@/hooks/useTechniciens'
 import { useChantierTechniciens } from '@/hooks/useChantierTechniciens'
+import { usePermissions } from '@/hooks/usePermissions'
 import { ChantierStatut, Etape } from '@/types'
 
 const TYPES_INSTALLATION = ['Résidentiel', 'Professionnel', 'Industriel', 'Agricole']
@@ -34,6 +35,7 @@ interface EtapeEdit {
 export default function EditChantier() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
+  const { can } = usePermissions()
   const { techniciens } = useTechniciens()
   const { assignedIds } = useChantierTechniciens(id!)
 
@@ -358,22 +360,24 @@ export default function EditChantier() {
           </section>
 
           {/* ── Équipe ────────────────────────────────────────────────────── */}
-          <section className="bg-white rounded-2xl p-6 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
-            <h2 className="font-semibold text-gray-900">Équipe assignée</h2>
-            {techniciens.length === 0 ? (
-              <p className="text-sm text-gray-400">Aucun technicien disponible</p>
-            ) : (
-              techniciens.map(tech => (
-                <label key={tech.id} className="flex items-center gap-3 cursor-pointer py-1">
-                  <input type="checkbox" checked={selectedTechs.includes(tech.id)}
-                    onChange={() => toggleTech(tech.id)}
-                    className="w-5 h-5 rounded accent-orange-500" />
-                  <span className="text-sm font-medium text-gray-800">{tech.full_name}</span>
-                  <span className="text-xs text-gray-400">{tech.email}</span>
-                </label>
-              ))
-            )}
-          </section>
+          {can('assigner_techniciens') && (
+            <section className="bg-white rounded-2xl p-6 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+              <h2 className="font-semibold text-gray-900">Équipe assignée</h2>
+              {techniciens.length === 0 ? (
+                <p className="text-sm text-gray-400">Aucun technicien disponible</p>
+              ) : (
+                techniciens.map(tech => (
+                  <label key={tech.id} className="flex items-center gap-3 cursor-pointer py-1">
+                    <input type="checkbox" checked={selectedTechs.includes(tech.id)}
+                      onChange={() => toggleTech(tech.id)}
+                      className="w-5 h-5 rounded accent-orange-500" />
+                    <span className="text-sm font-medium text-gray-800">{tech.full_name}</span>
+                    <span className="text-xs text-gray-400">{tech.email}</span>
+                  </label>
+                ))
+              )}
+            </section>
+          )}
 
           {error && (
             <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl">{error}</div>
