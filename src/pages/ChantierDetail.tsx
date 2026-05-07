@@ -352,8 +352,7 @@ export default function ChantierDetail() {
   const [managers, setManagers] = useState<UserProfile[]>([])
 
   useEffect(() => {
-    supabase.from('profiles').select('*').eq('role', 'manager').then(({ data, error }) => {
-      console.log('[managers fetch]', { data, error })
+    supabase.from('profiles').select('*').eq('role', 'manager').then(({ data }) => {
       if (data) setManagers(data)
     })
   }, [])
