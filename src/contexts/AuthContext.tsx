@@ -53,19 +53,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe()
   }, [])
 
-  // Recharge le profil en temps réel si le manager le modifie
+  // Recharge le profil quand l'onglet redevient visible (ex: manager a modifié le poste)
   useEffect(() => {
     if (!user) return
-    const channel = supabase
-      .channel(`profile-${user.id}`)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'profiles',
-        filter: `id=eq.${user.id}`,
-      }, () => fetchProfile(user.id))
-      .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') fetchProfile(user.id)
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => document.removeEventListener('visibilitychange', onVisible)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.id])
 
