@@ -1079,8 +1079,7 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
               </div>
             )}
 
-            {isManager && (
-              <div className="p-4 border-t border-gray-50 space-y-2">
+            <div className="p-4 border-t border-gray-50 space-y-2">
                 <div className="flex gap-2">
                   <input
                     type="text"
@@ -1129,8 +1128,7 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
                     Scanner
                   </label>
                 </div>
-              </div>
-            )}
+            </div>
           </section>
         )}
 
