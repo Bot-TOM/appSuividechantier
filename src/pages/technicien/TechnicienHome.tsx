@@ -101,7 +101,7 @@ function ChantierCard({
 
 // ─── Onglet Profil ───────────────────────────────────────────────────────────
 function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePush, onAvatarChange }: {
-  profile: { id: string; full_name: string; email?: string; avatar_url?: string | null } | null
+  profile: { id: string; full_name: string; email?: string; avatar_url?: string | null; poste?: string | null } | null
   signOut: () => void
   pushStatus: 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed'
   subscribePush: () => void
@@ -166,7 +166,7 @@ function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePus
         <p className="text-gray-400 text-sm mt-1">{profile?.email}</p>
         <div className="mt-3 inline-flex items-center gap-1.5 bg-orange-50 text-orange-600 text-xs font-semibold px-3 py-1.5 rounded-full">
           <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-          Technicien
+          {profile?.poste ?? 'Technicien'}
         </div>
 
         {/* Toggle notifications push */}
