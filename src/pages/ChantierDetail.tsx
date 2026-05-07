@@ -3,14 +3,12 @@ import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantierDetail } from '@/hooks/useChantierDetail'
 import { useAnomalies } from '@/hooks/useAnomalies'
-import { useChantierTechniciens } from '@/hooks/useChantierTechniciens'
 import { useChecklistMateriel } from '@/hooks/useChecklistMateriel'
 import { useAutoControle, initChecks } from '@/hooks/useAutoControle'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useRapports } from '@/hooks/useRapports'
 import type { RapportPhoto } from '@/hooks/useRapports'
-import { ChantierStatut, Etape, EtapePhoto, Note, AutoControleCheck, UserProfile } from '@/types'
-import { supabase } from '@/lib/supabase'
+import { ChantierStatut, Etape, EtapePhoto, Note, AutoControleCheck } from '@/types'
 import { PdfOptions, PDF_OPTIONS_DEFAULT } from '@/components/pdf/ChantierPDF'
 import AnomaliesTabContent from '@/components/anomalies/AnomaliesTabContent'
 import ChatTab from '@/components/chat/ChatTab'
@@ -342,20 +340,12 @@ export default function ChantierDetail() {
   const { profile, session } = useAuth()
   const { chantier, etapes, notes, photos, loading, updateStatut, advanceEtape, updateConsigne, addNote, deleteNote, uploadEtapePhoto, deleteEtapePhoto, deleteChantier } = useChantierDetail(id!)
   const { anomalies }   = useAnomalies(id!)
-  const { techniciens } = useChantierTechniciens(id!)
   const { items: matItems, total: matTotal, checked: matChecked, toggleItem: toggleMat, addItem: addMat, deleteItem: deleteMat } = useChecklistMateriel(id!)
   const { autocontrole, save: saveAC, signer: signerAC } = useAutoControle(id!)
   const { documents, uploadDocument, deleteDocument } = useDocuments(id!)
   const { rapports, addRapport, deleteRapport, deleteRapportPhoto } = useRapports(id!)
   const userId = profile?.id ?? ''
   const unreadChat = useUnreadMessages(id!, userId)
-  const [managers, setManagers] = useState<UserProfile[]>([])
-
-  useEffect(() => {
-    supabase.from('profiles').select('*').eq('role', 'manager').then(({ data }) => {
-      if (data) setManagers(data)
-    })
-  }, [])
 
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<InnerTab>(() => {
@@ -1423,63 +1413,6 @@ export default function ChantierDetail() {
                 ))}
               </div>
             </section>
-
-            {(managers.length > 0 || techniciens.length > 0) && (
-              <section className="bg-white rounded-2xl p-4 space-y-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                <h2 className="font-semibold text-gray-900 text-sm">Équipe</h2>
-
-                {/* Managers */}
-                {managers.length > 0 && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Responsable</p>
-                    <div className="space-y-2">
-                      {managers.map(m => (
-                        <div key={m.id} className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)' }}>
-                            {m.full_name.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 truncate">{m.full_name}</p>
-                          </div>
-                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-100 flex-shrink-0">
-                            Manager
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {/* Séparateur */}
-                {managers.length > 0 && techniciens.length > 0 && (
-                  <div className="h-px bg-gray-100" />
-                )}
-
-                {/* Techniciens assignés */}
-                {techniciens.length > 0 && (
-                  <div>
-                    <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2">Assignés au chantier</p>
-                    <div className="space-y-2">
-                      {techniciens.map(t => (
-                        <div key={t.id} className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                            style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
-                            {t.full_name.charAt(0).toUpperCase()}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-sm font-semibold text-gray-800 truncate">{t.full_name}</p>
-                            {t.poste && (
-                              <p className="text-xs text-gray-400">{t.poste}</p>
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </section>
-            )}
 
             {can('modifier_chantier') && (
               <button
