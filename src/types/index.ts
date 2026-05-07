@@ -152,7 +152,7 @@ export interface ChatMessage {
   file_type: MessageFileType | null
   reply_to_id: string | null
   created_at: string
-  profiles: { full_name: string; avatar_url?: string | null; poste?: string | null } | null
+  profiles: { full_name: string; avatar_url?: string | null; poste?: string | null; role?: string | null } | null
   message_reactions: MessageReaction[]
   message_reads: MessageRead[]
 }

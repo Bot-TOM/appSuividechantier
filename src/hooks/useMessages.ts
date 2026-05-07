@@ -11,7 +11,7 @@ export function useMessages(chantierId: string, userId: string) {
   const fetchMessages = useCallback(async () => {
     const { data, error } = await supabase
       .from('messages')
-      .select('*, profiles!messages_user_id_fkey(full_name, avatar_url, poste), message_reactions(*), message_reads(user_id, read_at, profiles(full_name))')
+      .select('*, profiles!messages_user_id_fkey(full_name, avatar_url, poste, role), message_reactions(*), message_reads(user_id, read_at, profiles(full_name))')
       .eq('chantier_id', chantierId)
       .order('created_at', { ascending: true })
     if (error) console.error('[chat] fetchMessages:', error)
