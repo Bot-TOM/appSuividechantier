@@ -195,13 +195,12 @@ function RapportLightbox({ photos, initialIndex, onClose, onDelete }: {
 
 // ─── Ligne d'étape ────────────────────────────────────────────────────────────
 function EtapeLine({
-  etape, photos, onAdvance, isManager = false, userPoste, onUpdateConsigne, onUploadPhoto, onDeletePhoto,
+  etape, photos, onAdvance, isManager = false, onUpdateConsigne, onUploadPhoto, onDeletePhoto,
 }: {
   etape: Etape
   photos: EtapePhoto[]
   onAdvance: (e: Etape) => void
   isManager?: boolean
-  userPoste?: string | null
   onUpdateConsigne?: (etapeId: string, consigne: string) => void
   onUploadPhoto?: (etapeId: string, file: File) => Promise<{ error: string | null }>
   onDeletePhoto?: (photo: EtapePhoto) => void
@@ -218,14 +217,7 @@ function EtapeLine({
   const isFait    = localStatut === 'fait'
   const isEnCours = localStatut === 'en_cours'
 
-  // Restriction par poste : null = tout le monde, sinon seuls les postes listés
-  const canAdvance = isManager
-    || !etape.postes_autorises
-    || etape.postes_autorises.length === 0
-    || (userPoste != null && etape.postes_autorises.includes(userPoste))
-
   function handleAdvance() {
-    if (!canAdvance) return
     const next = localStatut === 'non_fait' ? 'en_cours' : localStatut === 'en_cours' ? 'fait' : 'non_fait'
     setLocalStatut(next)
     onAdvance(etape)
@@ -249,12 +241,7 @@ function EtapeLine({
       <div className={`px-4 py-4 transition-colors ${isEnCours ? 'bg-orange-50' : ''}`}>
         <div className="flex items-start gap-3">
           {/* Bouton statut */}
-          <button
-            onClick={handleAdvance}
-            disabled={!canAdvance}
-            className={`flex-shrink-0 mt-0.5 transition-transform ${canAdvance ? 'active:scale-90' : 'opacity-40 cursor-not-allowed'}`}
-            title={!canAdvance ? `Réservé : ${etape.postes_autorises?.join(', ')}` : undefined}
-          >
+          <button onClick={handleAdvance} className="flex-shrink-0 mt-0.5 active:scale-90 transition-transform">
             {isFait ? (
               <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -264,12 +251,6 @@ function EtapeLine({
             ) : isEnCours ? (
               <div className="w-7 h-7 rounded-full border-2 border-orange-500 flex items-center justify-center">
                 <div className="w-3 h-3 rounded-full bg-orange-500 animate-pulse" />
-              </div>
-            ) : !canAdvance ? (
-              <div className="w-7 h-7 rounded-full border-2 border-gray-200 flex items-center justify-center">
-                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                </svg>
               </div>
             ) : (
               <div className="w-7 h-7 rounded-full border-2 border-gray-200" />
@@ -294,18 +275,13 @@ function EtapeLine({
             {!isManager && etape.consigne && !isFait && (
               <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{etape.consigne}</p>
             )}
-            {!canAdvance && !isFait && (
-              <p className="text-[11px] text-gray-400 mt-0.5">🔒 {etape.postes_autorises?.join(', ')}</p>
-            )}
           </div>
 
           {/* Droite : état + bouton photo */}
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
-            {canAdvance && (
-              <span className={`text-[11px] font-semibold ${isEnCours ? 'text-orange-400' : 'text-gray-300'}`}>
-                {isEnCours ? 'Terminer →' : isFait ? '↺' : 'Démarrer'}
-              </span>
-            )}
+            <span className={`text-[11px] font-semibold ${isEnCours ? 'text-orange-400' : 'text-gray-300'}`}>
+              {isEnCours ? 'Terminer →' : isFait ? '↺' : 'Démarrer'}
+            </span>
             <label className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
               uploading ? 'opacity-40 pointer-events-none' : 'text-gray-300 hover:text-orange-400 hover:bg-orange-50 active:bg-orange-100'
             }`} title="Ajouter une photo">
@@ -868,7 +844,6 @@ export default function ChantierDetail() {
                         photos={photos[etape.id] ?? []}
                         onAdvance={advanceEtape}
                         isManager={isManager}
-                        userPoste={profile?.poste}
                         onUpdateConsigne={updateConsigne}
                         onUploadPhoto={uploadEtapePhoto}
                         onDeletePhoto={p => deleteEtapePhoto(p.id, new URL(p.url).pathname.replace(/^\/storage\/v1\/object\/public\/chantier-photos\//, ''))}

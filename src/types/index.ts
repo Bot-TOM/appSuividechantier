@@ -81,7 +81,6 @@ export interface Etape {
   ordre: number
   statut: EtapeStatut
   consigne: string | null
-  postes_autorises: string[] | null  // null = tout le monde peut valider
   started_at: string | null
   finished_at: string | null
   photo_url: string | null   // legacy — remplacé par etape_photos

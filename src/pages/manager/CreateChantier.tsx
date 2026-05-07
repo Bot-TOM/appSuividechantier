@@ -4,7 +4,6 @@ import { supabase } from '@/lib/supabase'
 import { useTechniciens } from '@/hooks/useTechniciens'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
-import { POSTES_OPTIONS } from '@/types'
 
 const TYPES_INSTALLATION = ['Résidentiel', 'Professionnel', 'Industriel', 'Agricole']
 
@@ -18,7 +17,6 @@ const TYPES_CONTRAT: { value: string; label: string }[] = [
 interface EtapeForm {
   nom: string
   consigne: string
-  postes_autorises: string[] // tableau vide = tout le monde
 }
 
 export default function CreateChantier() {
@@ -57,7 +55,7 @@ export default function CreateChantier() {
   function handleAddEtape() {
     const nom = newEtapeNom.trim()
     if (!nom) return
-    setEtapesForm(prev => [...prev, { nom, consigne: '', postes_autorises: [] }])
+    setEtapesForm(prev => [...prev, { nom, consigne: '' }])
     setNewEtapeNom('')
   }
 
@@ -67,19 +65,6 @@ export default function CreateChantier() {
 
   function handleEtapeField(index: number, field: 'nom' | 'consigne', value: string) {
     setEtapesForm(prev => prev.map((e, i) => i === index ? { ...e, [field]: value } : e))
-  }
-
-  function togglePosteEtape(index: number, poste: string) {
-    setEtapesForm(prev => prev.map((e, i) => {
-      if (i !== index) return e
-      const already = e.postes_autorises.includes(poste)
-      return {
-        ...e,
-        postes_autorises: already
-          ? e.postes_autorises.filter(p => p !== poste)
-          : [...e.postes_autorises, poste],
-      }
-    }))
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -127,7 +112,6 @@ export default function CreateChantier() {
           ordre: i + 1,
           statut: 'non_fait',
           consigne: e.consigne.trim() || null,
-          postes_autorises: e.postes_autorises.length > 0 ? e.postes_autorises : null,
         }))
       )
     }
@@ -227,7 +211,7 @@ export default function CreateChantier() {
           <section className="bg-white rounded-2xl p-6 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
             <div>
               <h2 className="font-semibold text-gray-900">Étapes du chantier</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Définissez les étapes et les postes autorisés à les valider</p>
+              <p className="text-xs text-gray-400 mt-0.5">Nom et consignes visibles par le technicien</p>
             </div>
 
             <div className="space-y-2.5">
@@ -235,8 +219,7 @@ export default function CreateChantier() {
                 <p className="text-sm text-gray-400 text-center py-4">Aucune étape — ajoutez-en ci-dessous</p>
               )}
               {etapesForm.map((etape, i) => (
-                <div key={i} className="bg-gray-50 rounded-xl px-4 py-3 space-y-2.5">
-                  {/* Nom + supprimer */}
+                <div key={i} className="bg-gray-50 rounded-xl px-4 py-3 space-y-2">
                   <div className="flex items-center gap-2">
                     <span className="w-5 h-5 rounded-full bg-gray-200 text-gray-500 text-xs font-bold flex items-center justify-center flex-shrink-0">
                       {i + 1}
@@ -255,8 +238,6 @@ export default function CreateChantier() {
                       </svg>
                     </button>
                   </div>
-
-                  {/* Consigne */}
                   <input
                     type="text"
                     value={etape.consigne}
@@ -264,35 +245,6 @@ export default function CreateChantier() {
                     placeholder="Consigne (optionnel) — ex : vérifier les fixations, 2 personnes…"
                     className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent bg-white text-gray-700 placeholder-gray-300"
                   />
-
-                  {/* Postes autorisés */}
-                  <div>
-                    <p className="text-[11px] text-gray-400 font-medium mb-1.5">
-                      Qui peut valider ?
-                      <span className="ml-1 text-gray-300">
-                        {etape.postes_autorises.length === 0 ? '— tous les postes' : ''}
-                      </span>
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {POSTES_OPTIONS.map(poste => {
-                        const active = etape.postes_autorises.includes(poste)
-                        return (
-                          <button
-                            key={poste}
-                            type="button"
-                            onClick={() => togglePosteEtape(i, poste)}
-                            className={`text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
-                              active
-                                ? 'bg-orange-500 text-white border-orange-500'
-                                : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'
-                            }`}
-                          >
-                            {poste}
-                          </button>
-                        )
-                      })}
-                    </div>
-                  </div>
                 </div>
               ))}
             </div>
