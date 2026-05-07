@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
-import { Chantier, Etape, EtapePhoto, Note } from '@/types'
+import { Chantier, Etape, EtapePhoto, EtapeStatut, Note } from '@/types'
 
 export function useChantierDetail(chantierId: string) {
   const [chantier, setChantier]   = useState<Chantier | null>(null)
@@ -51,14 +51,10 @@ export function useChantierDetail(chantierId: string) {
 
   async function advanceEtape(etape: Etape) {
     const now = new Date().toISOString()
-    let updates: Partial<Etape>
-    if (etape.statut === 'non_fait') {
-      updates = { statut: 'en_cours', started_at: now, finished_at: null, updated_at: now }
-    } else if (etape.statut === 'en_cours') {
-      updates = { statut: 'fait', finished_at: now, updated_at: now }
-    } else {
-      updates = { statut: 'non_fait', started_at: null, finished_at: null, updated_at: now }
-    }
+    const next: EtapeStatut =
+      etape.statut === 'non_fait' ? 'en_cours' :
+      etape.statut === 'en_cours' ? 'fait' : 'non_fait'
+    const updates = { statut: next, updated_at: now }
     setEtapes(prev => prev.map(e => e.id === etape.id ? { ...e, ...updates } : e))
     await supabase.from('etapes').update(updates).eq('id', etape.id)
     fetchAll()

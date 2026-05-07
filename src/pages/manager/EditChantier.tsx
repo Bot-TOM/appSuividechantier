@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useTechniciens } from '@/hooks/useTechniciens'
 import { useChantierTechniciens } from '@/hooks/useChantierTechniciens'
 import { usePermissions } from '@/hooks/usePermissions'
-import { ChantierStatut, Etape } from '@/types'
+import { ChantierStatut, Etape, POSTES_OPTIONS } from '@/types'
 
 const TYPES_INSTALLATION = ['Résidentiel', 'Professionnel', 'Industriel', 'Agricole']
 
@@ -29,6 +29,7 @@ interface EtapeEdit {
   ordre: number
   statut: Etape['statut']
   consigne: string
+  postes_autorises: string[]
   isNew?: boolean
 }
 
@@ -82,6 +83,7 @@ export default function EditChantier() {
           ordre: etape.ordre,
           statut: etape.statut,
           consigne: etape.consigne ?? '',
+          postes_autorises: etape.postes_autorises ?? [],
         })))
       }
       setLoading(false)
@@ -109,11 +111,19 @@ export default function EditChantier() {
     setEtapes(prev => prev.map((e, i) => i === index ? { ...e, consigne: value } : e))
   }
 
+  function togglePosteEtape(index: number, poste: string) {
+    setEtapes(prev => prev.map((e, i) => {
+      if (i !== index) return e
+      const already = e.postes_autorises.includes(poste)
+      return { ...e, postes_autorises: already ? e.postes_autorises.filter(p => p !== poste) : [...e.postes_autorises, poste] }
+    }))
+  }
+
   function handleAddEtape() {
     const nom = newEtapeNom.trim()
     if (!nom) return
     const ordre = etapes.length + 1
-    setEtapes(prev => [...prev, { id: `new-${Date.now()}`, nom, ordre, statut: 'non_fait', consigne: '', isNew: true }])
+    setEtapes(prev => [...prev, { id: `new-${Date.now()}`, nom, ordre, statut: 'non_fait', consigne: '', postes_autorises: [], isNew: true }])
     setNewEtapeNom('')
   }
 
@@ -155,9 +165,10 @@ export default function EditChantier() {
     await Promise.all(
       existantes.map(etape =>
         supabase.from('etapes').update({
-          nom:     etape.nom.trim(),
-          consigne: etape.consigne.trim() || null,
-          ordre:   etape.ordre,
+          nom:              etape.nom.trim(),
+          consigne:         etape.consigne.trim() || null,
+          ordre:            etape.ordre,
+          postes_autorises: etape.postes_autorises.length > 0 ? etape.postes_autorises : null,
         }).eq('id', etape.id)
       )
     )
@@ -165,11 +176,12 @@ export default function EditChantier() {
     if (nouvelles.length > 0) {
       await supabase.from('etapes').insert(
         nouvelles.map(e => ({
-          chantier_id: id,
-          nom:         e.nom.trim(),
-          consigne:    e.consigne.trim() || null,
-          ordre:       e.ordre,
-          statut:      'non_fait',
+          chantier_id:      id,
+          nom:              e.nom.trim(),
+          consigne:         e.consigne.trim() || null,
+          ordre:            e.ordre,
+          statut:           'non_fait',
+          postes_autorises: e.postes_autorises.length > 0 ? e.postes_autorises : null,
         }))
       )
     }
@@ -292,7 +304,7 @@ export default function EditChantier() {
           <section className="bg-white rounded-2xl p-6 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
             <div>
               <h2 className="font-semibold text-gray-900">Étapes du chantier</h2>
-              <p className="text-xs text-gray-400 mt-0.5">Nom, ordre et consignes visibles par le technicien</p>
+              <p className="text-xs text-gray-400 mt-0.5">Nom, consignes et restrictions de validation par poste</p>
             </div>
 
             <div className="space-y-2.5">
@@ -303,7 +315,7 @@ export default function EditChantier() {
                   ? 'bg-orange-500 animate-pulse'
                   : 'bg-gray-200'
                 return (
-                  <div key={etape.id} className="bg-gray-50 rounded-xl px-4 py-3 space-y-2">
+                  <div key={etape.id} className="bg-gray-50 rounded-xl px-4 py-3 space-y-2.5">
                     <div className="flex items-center gap-2">
                       <span className={`w-2 h-2 rounded-full flex-shrink-0 ${statutDot}`} />
                       <span className="text-xs text-gray-400 w-5 text-center">{i + 1}.</span>
@@ -329,9 +341,33 @@ export default function EditChantier() {
                       type="text"
                       value={etape.consigne}
                       onChange={e => handleEtapeConsigne(i, e.target.value)}
-                      placeholder="Consigne (optionnel) — ex : vérifier les fixations, ~45 min…"
+                      placeholder="Consigne (optionnel) — ex : vérifier les fixations…"
                       className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent bg-white text-gray-700 placeholder-gray-300"
                     />
+                    <div>
+                      <p className="text-[11px] text-gray-400 mb-1.5">
+                        Qui peut valider — <span className="text-gray-500">{etape.postes_autorises.length === 0 ? 'tout le monde' : etape.postes_autorises.join(', ')}</span>
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {POSTES_OPTIONS.map(poste => {
+                          const active = etape.postes_autorises.includes(poste)
+                          return (
+                            <button
+                              key={poste}
+                              type="button"
+                              onClick={() => togglePosteEtape(i, poste)}
+                              className={`text-xs font-semibold px-2.5 py-1 rounded-full border transition-all ${
+                                active
+                                  ? 'bg-orange-500 text-white border-orange-500'
+                                  : 'bg-white text-gray-500 border-gray-200 hover:border-orange-300'
+                              }`}
+                            >
+                              {poste}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
                   </div>
                 )
               })}
