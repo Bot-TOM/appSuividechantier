@@ -46,11 +46,21 @@ export default async function handler(req: Request) {
       messages: [
         {
           role: 'user',
-          content: `Voici le contenu d'un fichier Excel de listing matériel de chantier photovoltaïque.
-Extrais uniquement les éléments matériels : leur nom et leur quantité.
-Ignore les lignes d'en-tête, les numéros de référence, les descriptions longues, les colonnes de statut ou d'observations.
+          content: `Voici le contenu d'un fichier Excel de chantier photovoltaïque.
+Ta mission : extraire UNIQUEMENT les articles physiques (matériel, fournitures, équipements).
+
+INCLURE : panneaux solaires, onduleurs, câbles, connecteurs, fixations, rails, boîtiers, visserie, protections électriques, gaines, chevilles, disjoncteurs, interrupteurs, compteurs, accessoires de pose, EPI, outils, consommables physiques.
+
+EXCLURE impérativement :
+- Main d'œuvre, heures de travail (ex : "MO Chef d'équipe", "Pose 2j", "Technicien 8h")
+- Lignes budgétaires ou financières (ex : "Budget communication", "Frais déplacement", "Marge")
+- En-têtes, titres de section, totaux, sous-totaux
+- Références administratives, numéros de devis, codes clients
+- Lignes vides, commentaires, notes
+
 Retourne UNIQUEMENT un tableau JSON valide, sans texte autour, sous cette forme exacte :
-[{"nom":"Casque de sécurité","qte":"1 u"},{"nom":"Câble solaire","qte":"100 m"}]
+[{"nom":"Panneau solaire 400Wc","qte":"12 u"},{"nom":"Câble solaire 6mm²","qte":"50 m"}]
+Si aucun matériel physique n'est trouvé, retourne [].
 
 Contenu du fichier :
 ${safeContent}`,
