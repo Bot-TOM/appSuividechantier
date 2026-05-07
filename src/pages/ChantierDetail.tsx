@@ -488,11 +488,18 @@ export default function ChantierDetail() {
         return
       }
       const data = await res.json()
-      if (data.error) { console.error('Parse error', data.raw); }
+      if (data.error) {
+        console.error('Parse error', data.raw)
+        setImportedItems(['⚠️ Analyse impossible — réessaie ou vérifie le format du fichier'])
+        return
+      }
       const items: string[] = (data.items ?? []).map((i: { nom: string; qte?: string }) =>
         i.qte ? `${i.nom} — ${i.qte}` : i.nom
       )
-      if (items.length === 0) { setShowImportModal(false); return }
+      if (items.length === 0) {
+        setImportedItems(['⚠️ Aucun matériel trouvé dans ce fichier'])
+        return
+      }
       setImportedItems(items)
     } catch (err) {
       console.error('fetch error', err)

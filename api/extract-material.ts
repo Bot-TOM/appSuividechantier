@@ -42,25 +42,19 @@ export default async function handler(req: Request) {
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      max_tokens: 2048,
       messages: [
         {
           role: 'user',
           content: `Voici le contenu d'un fichier Excel de chantier photovoltaïque.
-Ta mission : extraire UNIQUEMENT les articles physiques (matériel, fournitures, équipements).
+Extrais uniquement les articles physiques (matériel, fournitures, équipements) avec leur quantité.
 
-INCLURE : panneaux solaires, onduleurs, câbles, connecteurs, fixations, rails, boîtiers, visserie, protections électriques, gaines, chevilles, disjoncteurs, interrupteurs, compteurs, accessoires de pose, EPI, outils, consommables physiques.
+N'inclus PAS : lignes de main d'œuvre (MO, pose, technicien, chef d'équipe, journées), frais (déplacement, communication, marge, budget), en-têtes de colonnes, totaux.
 
-EXCLURE impérativement :
-- Main d'œuvre, heures de travail (ex : "MO Chef d'équipe", "Pose 2j", "Technicien 8h")
-- Lignes budgétaires ou financières (ex : "Budget communication", "Frais déplacement", "Marge")
-- En-têtes, titres de section, totaux, sous-totaux
-- Références administratives, numéros de devis, codes clients
-- Lignes vides, commentaires, notes
+Exemples de ce qu'il FAUT inclure : "Panneau solaire 400Wc", "Onduleur 6kW", "Câble solaire 6mm²", "Rail de fixation", "Disjoncteur 32A", "Casque de sécurité".
 
-Retourne UNIQUEMENT un tableau JSON valide, sans texte autour, sous cette forme exacte :
+Retourne UNIQUEMENT un tableau JSON, sans texte autour :
 [{"nom":"Panneau solaire 400Wc","qte":"12 u"},{"nom":"Câble solaire 6mm²","qte":"50 m"}]
-Si aucun matériel physique n'est trouvé, retourne [].
 
 Contenu du fichier :
 ${safeContent}`,
