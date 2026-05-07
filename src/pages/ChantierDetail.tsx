@@ -578,14 +578,16 @@ export default function ChantierDetail() {
   }
 
   async function handleDocUpload(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file || !profile) return
+    const files = Array.from(e.target.files ?? [])
+    if (!files.length || !profile) return
+    e.target.value = ''
     setUploadingDoc(true)
     setUploadDocError('')
-    const { error } = await uploadDocument(file, profile.id)
-    if (error) setUploadDocError(error)
+    for (const file of files) {
+      const { error } = await uploadDocument(file, profile.id)
+      if (error) { setUploadDocError(error); break }
+    }
     setUploadingDoc(false)
-    e.target.value = ''
   }
 
   function handleRapportPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -954,6 +956,7 @@ export default function ChantierDetail() {
                 <input
                   type="file"
                   accept=".pdf,.xls,.xlsx"
+                  multiple
                   onChange={handleDocUpload}
                   className="absolute opacity-0 w-px h-px overflow-hidden pointer-events-none"
                   tabIndex={-1}
