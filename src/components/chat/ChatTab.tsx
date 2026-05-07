@@ -498,9 +498,16 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
 
                 <div className={`max-w-[75%] flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}>
                   {showAuthor && (
-                    <span className="text-[11px] font-semibold text-orange-500 pl-1 mb-0.5">
-                      {msg.profiles?.full_name ?? 'Inconnu'}
-                    </span>
+                    <div className="flex items-center gap-1.5 pl-1 mb-0.5">
+                      <span className="text-[11px] font-semibold text-orange-500">
+                        {msg.profiles?.full_name ?? 'Inconnu'}
+                      </span>
+                      {msg.profiles?.poste && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                          {msg.profiles.poste}
+                        </span>
+                      )}
+                    </div>
                   )}
 
                   <div className={`relative rounded-2xl px-3 py-2 ${
