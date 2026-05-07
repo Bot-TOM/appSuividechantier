@@ -57,7 +57,7 @@ export function useMessages(chantierId: string, userId: string) {
         user_id: userId,
         file_url: publicUrl,
         file_name: file.name,
-        file_type: file.type.startsWith('image/') ? 'image' : 'document',
+        file_type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'audio' : 'document',
         reply_to_id: replyToId ?? null,
       })
       if (insertErr) console.error('[chat] sendFile insert:', insertErr)
