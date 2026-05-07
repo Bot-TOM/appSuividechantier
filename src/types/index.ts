@@ -6,9 +6,18 @@ export interface UserProfile {
   email: string
   full_name: string
   role: UserRole
+  poste?: string | null
   created_at: string
   avatar_url?: string | null
 }
+
+// Liste des postes disponibles
+export const POSTES_OPTIONS = [
+  'Technicien',
+  "Chef d'équipe",
+  'Chef de chantier',
+  'Conducteur de travaux',
+] as const
 
 // Statuts possibles d'un chantier
 export type ChantierStatut = 'planifie' | 'en_attente' | 'en_cours' | 'termine' | 'bloque'
@@ -119,7 +128,7 @@ export interface ChatMessage {
   file_type: MessageFileType | null
   reply_to_id: string | null
   created_at: string
-  profiles: { full_name: string; avatar_url?: string | null } | null
+  profiles: { full_name: string; avatar_url?: string | null; poste?: string | null } | null
   message_reactions: MessageReaction[]
   message_reads: MessageRead[]
 }

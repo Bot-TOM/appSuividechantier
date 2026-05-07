@@ -119,11 +119,11 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
   // Liste complète des participants : techniciens assignés + tous ceux qui ont écrit
   // (couvre les managers qui ne sont pas dans chantier_techniciens)
   const participants = useMemo(() => {
-    const map = new Map<string, { id: string; name: string; avatarUrl?: string | null }>()
-    techniciens.forEach(t => map.set(t.id, { id: t.id, name: t.full_name, avatarUrl: t.avatar_url }))
+    const map = new Map<string, { id: string; name: string; avatarUrl?: string | null; poste?: string | null }>()
+    techniciens.forEach(t => map.set(t.id, { id: t.id, name: t.full_name, avatarUrl: t.avatar_url, poste: t.poste }))
     messages.forEach(m => {
       if (m.user_id && m.profiles?.full_name && !map.has(m.user_id)) {
-        map.set(m.user_id, { id: m.user_id, name: m.profiles.full_name, avatarUrl: m.profiles.avatar_url })
+        map.set(m.user_id, { id: m.user_id, name: m.profiles.full_name, avatarUrl: m.profiles.avatar_url, poste: m.profiles.poste })
       }
     })
     return Array.from(map.values())
@@ -416,12 +416,19 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                 <div key={p.id} className="flex items-center gap-2.5">
                   <Avatar name={p.name} avatarUrl={p.avatarUrl} size="sm" online={online} />
                   <div className="flex-1 min-w-0">
-                    <span className="text-sm font-medium text-gray-800">
-                      {p.name}
-                      {isMe && <span className="text-[11px] text-gray-400 font-normal ml-1">(vous)</span>}
-                    </span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="text-sm font-medium text-gray-800">
+                        {p.name}
+                        {isMe && <span className="text-[11px] text-gray-400 font-normal ml-1">(vous)</span>}
+                      </span>
+                      {p.poste && (
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                          {p.poste}
+                        </span>
+                      )}
+                    </div>
                   </div>
-                  <span className={`text-[11px] font-medium ${online ? 'text-green-500' : 'text-gray-400'}`}>
+                  <span className={`text-[11px] font-medium flex-shrink-0 ${online ? 'text-green-500' : 'text-gray-400'}`}>
                     {online ? 'En ligne' : 'Hors ligne'}
                   </span>
                 </div>
