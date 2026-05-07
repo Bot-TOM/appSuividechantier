@@ -125,7 +125,8 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
     techniciens.forEach(t => map.set(t.id, { id: t.id, name: t.full_name, avatarUrl: t.avatar_url, poste: t.poste }))
     messages.forEach(m => {
       if (m.user_id && m.profiles?.full_name && !map.has(m.user_id)) {
-        map.set(m.user_id, { id: m.user_id, name: m.profiles.full_name, avatarUrl: m.profiles.avatar_url, poste: m.profiles.poste })
+        const poste = m.profiles.poste ?? (m.profiles.role === 'manager' ? 'Manager' : null)
+        map.set(m.user_id, { id: m.user_id, name: m.profiles.full_name, avatarUrl: m.profiles.avatar_url, poste })
       }
     })
     return Array.from(map.values())
