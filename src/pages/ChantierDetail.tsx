@@ -195,12 +195,13 @@ function RapportLightbox({ photos, initialIndex, onClose, onDelete }: {
 
 // ─── Ligne d'étape ────────────────────────────────────────────────────────────
 function EtapeLine({
-  etape, photos, onAdvance, isManager = false, onUpdateConsigne, onUploadPhoto, onDeletePhoto,
+  etape, photos, onAdvance, isManager = false, canValidate = true, onUpdateConsigne, onUploadPhoto, onDeletePhoto,
 }: {
   etape: Etape
   photos: EtapePhoto[]
   onAdvance: (e: Etape) => void
   isManager?: boolean
+  canValidate?: boolean
   onUpdateConsigne?: (etapeId: string, consigne: string) => void
   onUploadPhoto?: (etapeId: string, file: File) => Promise<{ error: string | null }>
   onDeletePhoto?: (photo: EtapePhoto) => void
@@ -218,6 +219,7 @@ function EtapeLine({
   const isEnCours = localStatut === 'en_cours'
 
   function handleAdvance() {
+    if (!canValidate) return
     const next = localStatut === 'non_fait' ? 'en_cours' : localStatut === 'en_cours' ? 'fait' : 'non_fait'
     setLocalStatut(next)
     onAdvance(etape)
@@ -241,7 +243,11 @@ function EtapeLine({
       <div className={`px-4 py-4 transition-colors ${isEnCours ? 'bg-orange-50' : ''}`}>
         <div className="flex items-start gap-3">
           {/* Bouton statut */}
-          <button onClick={handleAdvance} className="flex-shrink-0 mt-0.5 active:scale-90 transition-transform">
+          <button
+            onClick={handleAdvance}
+            disabled={!canValidate}
+            className={`flex-shrink-0 mt-0.5 transition-transform ${canValidate ? 'active:scale-90' : 'opacity-40 cursor-not-allowed'}`}
+          >
             {isFait ? (
               <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -385,9 +391,10 @@ export default function ChantierDetail() {
     }
   }, [autocontrole])
 
-  const isManager         = profile?.role === 'manager'
-  const { can }           = usePermissions()
-  const faites            = etapes.filter(e => e.statut === 'fait').length
+  const isManager              = profile?.role === 'manager'
+  const { can }                = usePermissions()
+  const canValidateEtapes      = isManager || can('creer_chantier')
+  const faites                 = etapes.filter(e => e.statut === 'fait').length
   const pct               = etapes.length === 0 ? 0 : Math.round((faites / etapes.length) * 100)
 
   async function handleDownloadPDF() {
@@ -844,6 +851,7 @@ export default function ChantierDetail() {
                         photos={photos[etape.id] ?? []}
                         onAdvance={advanceEtape}
                         isManager={isManager}
+                        canValidate={canValidateEtapes}
                         onUpdateConsigne={updateConsigne}
                         onUploadPhoto={uploadEtapePhoto}
                         onDeletePhoto={p => deleteEtapePhoto(p.id, new URL(p.url).pathname.replace(/^\/storage\/v1\/object\/public\/chantier-photos\//, ''))}
