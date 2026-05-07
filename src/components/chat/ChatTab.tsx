@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { useMessages } from '@/hooks/useMessages'
 import { useChatNotif } from '@/hooks/useChatNotif'
+import { usePresence } from '@/hooks/usePresence'
 import Avatar from '@/components/Avatar'
 import type { ChatMessage } from '@/types'
 
@@ -32,6 +33,7 @@ export default function ChatTab({ chantierId, userId }: Props) {
   const { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction, markAllRead } =
     useMessages(chantierId, userId)
   const { enabled: notifEnabled, toggle: toggleNotif } = useChatNotif(userId)
+  const { onlineUsers } = usePresence(chantierId, userId)
 
   const [text, setText] = useState('')
   const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
@@ -164,7 +166,8 @@ export default function ChatTab({ chantierId, userId }: Props) {
                     name={msg.profiles?.full_name ?? '?'}
                     avatarUrl={msg.profiles?.avatar_url}
                     size="sm"
-                    className="mr-1.5 flex-shrink-0 self-end mb-1"
+                    online={onlineUsers.has(msg.user_id)}
+                    className="mr-1.5 self-end mb-1"
                   />
                 )}
 
