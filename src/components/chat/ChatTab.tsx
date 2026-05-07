@@ -1,7 +1,8 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useMessages } from '@/hooks/useMessages'
 import { useChatNotif } from '@/hooks/useChatNotif'
 import { usePresence } from '@/hooks/usePresence'
+import { useChantierTechniciens } from '@/hooks/useChantierTechniciens'
 import Avatar from '@/components/Avatar'
 import type { ChatMessage } from '@/types'
 
@@ -24,6 +25,34 @@ function sameDay(a: string, b: string) {
   return new Date(a).toDateString() === new Date(b).toDateString()
 }
 
+// Surligne les @mentions dans le contenu d'un message
+function renderWithMentions(
+  content: string,
+  knownNames: string[],
+  myName: string,
+  isOwn: boolean
+): React.ReactNode {
+  if (!content.includes('@') || knownNames.length === 0) return content
+  const escaped = knownNames.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+  const pattern = new RegExp(`(@(?:${escaped.join('|')}))`, 'g')
+  const parts = content.split(pattern)
+  return parts.map((part, i) => {
+    if (knownNames.some(n => part === `@${n}`)) {
+      const isMe = part === `@${myName}`
+      return (
+        <span key={i} className={`font-semibold rounded px-0.5 ${
+          isMe
+            ? isOwn ? 'bg-white/25 text-white' : 'bg-orange-100 text-orange-600'
+            : isOwn ? 'text-white/90 underline underline-offset-2' : 'text-blue-500'
+        }`}>
+          {part}
+        </span>
+      )
+    }
+    return part
+  })
+}
+
 interface Props {
   chantierId: string
   userId: string
@@ -33,38 +62,112 @@ export default function ChatTab({ chantierId, userId }: Props) {
   const { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction, markAllRead } =
     useMessages(chantierId, userId)
   const { enabled: notifEnabled, toggle: toggleNotif } = useChatNotif(userId)
-  const { onlineUsers } = usePresence(chantierId, userId)
+  const { onlineUsers }  = usePresence(chantierId, userId)
+  const { techniciens }  = useChantierTechniciens(chantierId)
 
-  const [text, setText] = useState('')
-  const [replyTo, setReplyTo] = useState<ChatMessage | null>(null)
+  const [text, setText]           = useState('')
+  const [replyTo, setReplyTo]     = useState<ChatMessage | null>(null)
   const [activeMsg, setActiveMsg] = useState<string | null>(null)
-  const [emojiFor, setEmojiFor] = useState<string | null>(null)
+  const [emojiFor, setEmojiFor]   = useState<string | null>(null)
 
-  const bottomRef = useRef<HTMLDivElement>(null)
-  const fileRef = useRef<HTMLInputElement>(null)
+  // ── Mentions ────────────────────────────────────────────────────────────────
+  const [mentionAnchor, setMentionAnchor]       = useState<number | null>(null)
+  const [mentionHighlight, setMentionHighlight] = useState(0)
+
+  // Tous les noms connus (techniciens + auteurs des messages) pour le surlignage
+  const allNames = useMemo(() => {
+    const names = new Set<string>()
+    techniciens.forEach(t => names.add(t.full_name))
+    messages.forEach(m => { if (m.profiles?.full_name) names.add(m.profiles.full_name) })
+    return Array.from(names)
+  }, [techniciens, messages])
+
+  // Nom de l'utilisateur courant (pour le surlignage "mention de moi")
+  const myName = useMemo(
+    () => messages.find(m => m.user_id === userId)?.profiles?.full_name ?? '',
+    [messages, userId]
+  )
+
+  // Query après le @ (text from anchor+1 to end, no newline)
+  const mentionQuery = useMemo(() => {
+    if (mentionAnchor === null) return null
+    const afterAt = text.slice(mentionAnchor + 1)
+    const stop = afterAt.indexOf('\n')
+    return (stop >= 0 ? afterAt.slice(0, stop) : afterAt).toLowerCase()
+  }, [mentionAnchor, text])
+
+  // Résultats filtrés (max 5, hors soi-même)
+  const mentionResults = useMemo(() => {
+    if (mentionQuery === null) return []
+    return techniciens
+      .filter(t => t.id !== userId && t.full_name.toLowerCase().includes(mentionQuery))
+      .slice(0, 5)
+  }, [mentionQuery, techniciens, userId])
+
+  // Reset highlight quand les résultats changent
+  useEffect(() => { setMentionHighlight(0) }, [mentionResults.length])
+
+  const selectMention = useCallback((name: string) => {
+    if (mentionAnchor === null) return
+    const cursor = textareaRef.current?.selectionStart ?? text.length
+    const before  = text.slice(0, mentionAnchor)
+    const after   = text.slice(cursor)
+    const newText = `${before}@${name} ${after}`
+    setText(newText)
+    setMentionAnchor(null)
+    setMentionHighlight(0)
+    const newCursor = mentionAnchor + name.length + 2
+    setTimeout(() => {
+      textareaRef.current?.focus()
+      textareaRef.current?.setSelectionRange(newCursor, newCursor)
+    }, 0)
+  }, [mentionAnchor, text])
+
+  // ── Refs ────────────────────────────────────────────────────────────────────
+  const bottomRef   = useRef<HTMLDivElement>(null)
+  const fileRef     = useRef<HTMLInputElement>(null)
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages.length])
 
-  useEffect(() => {
-    markAllRead()
-  }, [markAllRead, messages.length])
+  useEffect(() => { markAllRead() }, [markAllRead, messages.length])
 
   const handleSend = useCallback(async () => {
     const trimmed = text.trim()
     if (!trimmed) return
     setText('')
     setReplyTo(null)
+    setMentionAnchor(null)
     await sendMessage(trimmed, replyTo?.id)
   }, [text, replyTo, sendMessage])
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault()
-      handleSend()
+  const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val    = e.target.value
+    const cursor = e.target.selectionStart ?? val.length
+    setText(val)
+
+    // Ouvrir mention quand @ est tapé
+    if (val.length > text.length && val[cursor - 1] === '@') {
+      setMentionAnchor(cursor - 1)
+      return
     }
+    // Fermer si le @ a été supprimé
+    if (mentionAnchor !== null && (val.length <= mentionAnchor || val[mentionAnchor] !== '@')) {
+      setMentionAnchor(null)
+    }
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Navigation dans le dropdown mentions
+    if (mentionAnchor !== null && mentionResults.length > 0) {
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionHighlight(p => Math.min(p + 1, mentionResults.length - 1)); return }
+      if (e.key === 'ArrowUp')   { e.preventDefault(); setMentionHighlight(p => Math.max(p - 1, 0)); return }
+      if (e.key === 'Enter')     { e.preventDefault(); selectMention(mentionResults[mentionHighlight].full_name); return }
+    }
+    if (e.key === 'Escape') { setMentionAnchor(null); return }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
   }
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -126,15 +229,14 @@ export default function ChatTab({ chantierId, userId }: Props) {
         )}
 
         {messages.map((msg, i) => {
-          const isOwn = msg.user_id === userId
-          const prev = messages[i - 1]
+          const isOwn       = msg.user_id === userId
+          const prev        = messages[i - 1]
           const showDateSep = !prev || !sameDay(prev.created_at, msg.created_at)
-          const showAuthor = !isOwn && (!prev || prev.user_id !== msg.user_id || showDateSep)
-          const replyMsg = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null
-          const isActive = activeMsg === msg.id
-          const showEmoji = emojiFor === msg.id
+          const showAuthor  = !isOwn && (!prev || prev.user_id !== msg.user_id || showDateSep)
+          const replyMsg    = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null
+          const isActive    = activeMsg === msg.id
+          const showEmoji   = emojiFor === msg.id
 
-          // Grouper les réactions
           const reactionGroups: Record<string, { count: number; mine: boolean }> = {}
           for (const r of msg.message_reactions ?? []) {
             if (!reactionGroups[r.emoji]) reactionGroups[r.emoji] = { count: 0, mine: false }
@@ -146,7 +248,6 @@ export default function ChatTab({ chantierId, userId }: Props) {
 
           return (
             <div key={msg.id}>
-              {/* Séparateur de date */}
               {showDateSep && (
                 <div className="flex items-center gap-3 py-3 px-2">
                   <div className="flex-1 h-px bg-gray-200" />
@@ -155,12 +256,10 @@ export default function ChatTab({ chantierId, userId }: Props) {
                 </div>
               )}
 
-              {/* Ligne du message */}
               <div
                 className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-1 mb-0.5`}
                 onClick={e => { e.stopPropagation(); setActiveMsg(p => p === msg.id ? null : msg.id); setEmojiFor(null) }}
               >
-                {/* Avatar (autres) */}
                 {!isOwn && (
                   <Avatar
                     name={msg.profiles?.full_name ?? '?'}
@@ -172,14 +271,12 @@ export default function ChatTab({ chantierId, userId }: Props) {
                 )}
 
                 <div className={`max-w-[75%] flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}>
-                  {/* Nom auteur */}
                   {showAuthor && (
                     <span className="text-[11px] font-semibold text-orange-500 pl-1 mb-0.5">
                       {msg.profiles?.full_name ?? 'Inconnu'}
                     </span>
                   )}
 
-                  {/* Bulle */}
                   <div className={`relative rounded-2xl px-3 py-2 ${
                     isOwn
                       ? 'bg-orange-500 text-white rounded-br-sm'
@@ -187,7 +284,6 @@ export default function ChatTab({ chantierId, userId }: Props) {
                   } ${isActive ? 'ring-2 ring-orange-300 ring-offset-1' : ''}`}
                     style={isOwn ? {} : { boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}
                   >
-                    {/* Aperçu réponse */}
                     {replyMsg && (
                       <div className={`mb-2 pl-2 border-l-2 rounded ${isOwn ? 'border-white/40' : 'border-orange-400'}`}>
                         <p className={`text-[10px] font-semibold ${isOwn ? 'text-white/70' : 'text-orange-500'}`}>
@@ -199,24 +295,15 @@ export default function ChatTab({ chantierId, userId }: Props) {
                       </div>
                     )}
 
-                    {/* Image */}
                     {msg.file_type === 'image' && msg.file_url && (
                       <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
-                        <img
-                          src={msg.file_url}
-                          alt={msg.file_name ?? 'image'}
-                          className="rounded-xl max-w-[200px] max-h-[200px] object-cover mb-1 block"
-                        />
+                        <img src={msg.file_url} alt={msg.file_name ?? 'image'}
+                          className="rounded-xl max-w-[200px] max-h-[200px] object-cover mb-1 block" />
                       </a>
                     )}
 
-                    {/* Document */}
                     {msg.file_type === 'document' && msg.file_url && (
-                      <a
-                        href={msg.file_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        onClick={e => e.stopPropagation()}
+                      <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
                         className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 ${
                           isOwn ? 'bg-white/20 text-white' : 'bg-gray-50 text-gray-700 border border-gray-100'
                         }`}
@@ -228,29 +315,26 @@ export default function ChatTab({ chantierId, userId }: Props) {
                       </a>
                     )}
 
-                    {/* Texte */}
+                    {/* Texte avec mentions surlignées */}
                     {msg.content && (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{msg.content}</p>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                        {renderWithMentions(msg.content, allNames, myName, isOwn)}
+                      </p>
                     )}
 
-                    {/* Heure + double coche si lu */}
                     <p className={`text-[10px] mt-1 leading-none ${isOwn ? 'text-white/55 text-right' : 'text-gray-400'}`}>
                       {formatTime(msg.created_at)}
                       {isOwn && readers.length > 0 && <span className="ml-1 text-white/80">✓✓</span>}
                     </p>
                   </div>
 
-                  {/* Réactions */}
                   {Object.keys(reactionGroups).length > 0 && (
                     <div className={`flex gap-1 flex-wrap ${isOwn ? 'justify-end' : 'justify-start'} px-1`}>
                       {Object.entries(reactionGroups).map(([emoji, { count, mine }]) => (
-                        <button
-                          key={emoji}
+                        <button key={emoji}
                           onClick={e => { e.stopPropagation(); toggleReaction(msg.id, emoji) }}
                           className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
-                            mine
-                              ? 'bg-orange-100 border-orange-300 text-orange-700'
-                              : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            mine ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
                           }`}
                         >
                           {emoji}{count > 1 && <span className="ml-0.5 font-medium">{count}</span>}
@@ -259,52 +343,35 @@ export default function ChatTab({ chantierId, userId }: Props) {
                     </div>
                   )}
 
-                  {/* Vu par */}
                   {isOwn && readers.length > 0 && (
                     <p className="text-[10px] text-gray-400 pr-1">Vu</p>
                   )}
 
-                  {/* Barre d'actions (après tap) */}
                   {isActive && (
-                    <div
-                      className={`flex gap-1 ${isOwn ? 'justify-end' : 'justify-start'} flex-wrap`}
-                      onClick={e => e.stopPropagation()}
-                    >
-                      <button
-                        onClick={() => setEmojiFor(p => p === msg.id ? null : msg.id)}
-                        className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors"
-                      >
+                    <div className={`flex gap-1 ${isOwn ? 'justify-end' : 'justify-start'} flex-wrap`} onClick={e => e.stopPropagation()}>
+                      <button onClick={() => setEmojiFor(p => p === msg.id ? null : msg.id)}
+                        className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors">
                         😊
                       </button>
-                      <button
-                        onClick={() => { setReplyTo(msg); dismiss(); textareaRef.current?.focus() }}
-                        className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors font-medium text-gray-600"
-                      >
+                      <button onClick={() => { setReplyTo(msg); dismiss(); textareaRef.current?.focus() }}
+                        className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors font-medium text-gray-600">
                         ↩ Répondre
                       </button>
                       {isOwn && (
-                        <button
-                          onClick={() => { deleteMessage(msg.id); dismiss() }}
-                          className="text-xs bg-red-50 border border-red-100 text-red-500 rounded-full px-2.5 py-1 shadow-sm hover:bg-red-100 transition-colors font-medium"
-                        >
+                        <button onClick={() => { deleteMessage(msg.id); dismiss() }}
+                          className="text-xs bg-red-50 border border-red-100 text-red-500 rounded-full px-2.5 py-1 shadow-sm hover:bg-red-100 transition-colors font-medium">
                           Supprimer
                         </button>
                       )}
                     </div>
                   )}
 
-                  {/* Sélecteur emoji */}
                   {showEmoji && (
-                    <div
-                      className={`flex gap-1 bg-white border border-gray-100 rounded-2xl p-2 shadow-xl ${isOwn ? 'self-end' : 'self-start'}`}
-                      onClick={e => e.stopPropagation()}
-                    >
+                    <div className={`flex gap-1 bg-white border border-gray-100 rounded-2xl p-2 shadow-xl ${isOwn ? 'self-end' : 'self-start'}`}
+                      onClick={e => e.stopPropagation()}>
                       {EMOJIS.map(e => (
-                        <button
-                          key={e}
-                          onClick={() => { toggleReaction(msg.id, e); dismiss() }}
-                          className="text-xl hover:scale-125 transition-transform active:scale-90 leading-none"
-                        >
+                        <button key={e} onClick={() => { toggleReaction(msg.id, e); dismiss() }}
+                          className="text-xl hover:scale-125 transition-transform active:scale-90 leading-none">
                           {e}
                         </button>
                       ))}
@@ -320,7 +387,33 @@ export default function ChatTab({ chantierId, userId }: Props) {
       </div>
 
       {/* ── Barre de saisie ───────────────────────────────────────────── */}
-      <div className="border-t border-gray-200 bg-white px-3 py-2.5" onClick={e => e.stopPropagation()}>
+      <div className="border-t border-gray-200 bg-white px-3 py-2.5 relative" onClick={e => e.stopPropagation()}>
+
+        {/* ── Dropdown mentions ──────────────────────────────────────── */}
+        {mentionAnchor !== null && mentionResults.length > 0 && (
+          <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden z-20">
+            {mentionResults.map((tech, idx) => (
+              <button
+                key={tech.id}
+                onMouseDown={e => { e.preventDefault(); selectMention(tech.full_name) }}
+                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
+                  idx === mentionHighlight ? 'bg-orange-50' : 'hover:bg-gray-50'
+                }`}
+              >
+                <Avatar name={tech.full_name} avatarUrl={tech.avatar_url} size="sm"
+                  online={onlineUsers.has(tech.id)} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-800 truncate">{tech.full_name}</p>
+                  <p className="text-[11px] text-gray-400">Technicien</p>
+                </div>
+                {onlineUsers.has(tech.id) && (
+                  <span className="text-[10px] text-green-500 font-medium flex-shrink-0">En ligne</span>
+                )}
+              </button>
+            ))}
+          </div>
+        )}
+
         {/* Bandeau de réponse */}
         {replyTo && (
           <div className="flex items-center gap-2 mb-2 pl-3 border-l-2 border-orange-400 bg-orange-50 rounded-r-xl py-1.5 pr-2">
@@ -328,10 +421,7 @@ export default function ChatTab({ chantierId, userId }: Props) {
               <p className="text-[11px] font-semibold text-orange-500">{replyTo.profiles?.full_name ?? 'Inconnu'}</p>
               <p className="text-xs text-gray-500 truncate">{replyTo.content ?? replyTo.file_name ?? '📎 Fichier'}</p>
             </div>
-            <button
-              onClick={() => setReplyTo(null)}
-              className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-0.5"
-            >
+            <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-0.5">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -340,12 +430,8 @@ export default function ChatTab({ chantierId, userId }: Props) {
         )}
 
         <div className="flex items-end gap-2">
-          {/* Bouton fichier */}
-          <button
-            onClick={() => fileRef.current?.click()}
-            disabled={uploading}
-            className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-100 hover:text-orange-500 transition-colors disabled:opacity-50"
-          >
+          <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-100 hover:text-orange-500 transition-colors disabled:opacity-50">
             {uploading
               ? <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
               : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -353,32 +439,22 @@ export default function ChatTab({ chantierId, userId }: Props) {
                 </svg>
             }
           </button>
-          <input
-            ref={fileRef}
-            type="file"
-            className="hidden"
-            onChange={handleFile}
-            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt"
-          />
+          <input ref={fileRef} type="file" className="hidden" onChange={handleFile}
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
 
-          {/* Zone de texte */}
           <textarea
             ref={textareaRef}
             value={text}
-            onChange={e => setText(e.target.value)}
+            onChange={handleTextChange}
             onKeyDown={handleKeyDown}
-            placeholder="Message…"
+            placeholder="Message… (@ pour mentionner)"
             rows={1}
             className="flex-1 resize-none rounded-2xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-300 focus:ring-1 focus:ring-orange-100 bg-gray-50 max-h-28 overflow-y-auto"
             style={{ lineHeight: '1.45' }}
           />
 
-          {/* Bouton envoyer */}
-          <button
-            onClick={handleSend}
-            disabled={!text.trim()}
-            className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 transition-colors disabled:opacity-35 disabled:cursor-not-allowed"
-          >
+          <button onClick={handleSend} disabled={!text.trim()}
+            className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 transition-colors disabled:opacity-35 disabled:cursor-not-allowed">
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5" />
             </svg>
