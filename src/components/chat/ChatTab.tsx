@@ -6,6 +6,7 @@ import { useChantierTechniciens } from '@/hooks/useChantierTechniciens'
 import { useChantiers } from '@/hooks/useChantiers'
 import { supabase } from '@/lib/supabase'
 import Avatar from '@/components/Avatar'
+import VoiceMessage from '@/components/chat/VoiceMessage'
 import type { ChatMessage } from '@/types'
 
 const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👎']
@@ -156,21 +157,92 @@ export default function ChatTab({ chantierId, userId }: Props) {
   const prevLengthRef    = useRef(0)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef   = useRef<Blob[]>([])
+  const recordingTimerRef  = useRef<ReturnType<typeof setInterval> | null>(null)
+  const pointerStartXRef   = useRef(0)
+  const isCancelledRef     = useRef(false)
+  const micBtnRef          = useRef<HTMLButtonElement>(null)
 
-  // ── État enregistrement vocal ────────────────────────────────────────────────
-  const [isRecording, setIsRecording]       = useState(false)
+  // ── État enregistrement vocal (press & hold) ─────────────────────────────────
+  const [isRecording,      setIsRecording]      = useState(false)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
-  const recordingTimerRef = useRef<ReturnType<typeof setInterval> | null>(null)
+  const [cancelProgress,   setCancelProgress]   = useState(0) // 0→1 : glissement gauche
 
-  const startRecording = useCallback(async () => {
+  const CANCEL_THRESHOLD = 80 // pixels à glisser pour annuler
+
+  const doStopRecorder = useCallback((cancelled: boolean) => {
+    const recorder = mediaRecorderRef.current
+    if (!recorder) return Promise.resolve()
+    return new Promise<void>(resolve => {
+      if (cancelled) { recorder.onstop = null }
+      else { recorder.onstop = () => resolve() }
+      recorder.stop()
+      recorder.stream.getTracks().forEach(t => t.stop())
+      if (cancelled) resolve()
+    })
+  }, [])
+
+  const cancelRecording = useCallback(() => {
+    isCancelledRef.current = true
+    doStopRecorder(true)
+    setIsRecording(false)
+    setCancelProgress(0)
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+    setRecordingSeconds(0)
+    audioChunksRef.current = []
+  }, [doStopRecorder])
+
+  const stopAndSend = useCallback(async () => {
+    if (isCancelledRef.current) return
+    setIsRecording(false)
+    setCancelProgress(0)
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
+    await doStopRecorder(false)
+    const recorder = mediaRecorderRef.current
+    if (!recorder) return
+    const mimeType = recorder.mimeType || 'audio/webm'
+    const ext      = mimeType.includes('mp4') ? 'mp4' : 'webm'
+    const blob     = new Blob(audioChunksRef.current, { type: mimeType })
+    if (blob.size < 500) return // trop court
+    const file = new File([blob], `voice_${Date.now()}.${ext}`, { type: mimeType })
+    await sendFile(file, replyTo?.id)
+    setReplyTo(null)
+  }, [doStopRecorder, sendFile, replyTo])
+
+  // Listeners globaux pointer pendant l'enregistrement
+  useEffect(() => {
+    if (!isRecording) return
+
+    const onMove = (e: PointerEvent) => {
+      const dx = pointerStartXRef.current - e.clientX
+      const progress = Math.min(1, Math.max(0, dx / CANCEL_THRESHOLD))
+      setCancelProgress(progress)
+      if (dx > CANCEL_THRESHOLD) cancelRecording()
+    }
+
+    const onUp = () => {
+      if (!isCancelledRef.current) stopAndSend()
+    }
+
+    window.addEventListener('pointermove', onMove)
+    window.addEventListener('pointerup', onUp)
+    return () => {
+      window.removeEventListener('pointermove', onMove)
+      window.removeEventListener('pointerup', onUp)
+    }
+  }, [isRecording, cancelRecording, stopAndSend])
+
+  const handleMicPointerDown = useCallback(async (e: React.PointerEvent<HTMLButtonElement>) => {
+    e.preventDefault()
+    if (isRecording) return
+    isCancelledRef.current = false
+    pointerStartXRef.current = e.clientX
+    micBtnRef.current?.setPointerCapture(e.pointerId)
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
-      // Choisir le meilleur format disponible (WebM sur Android, MP4/AAC sur iOS)
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
         ? 'audio/webm;codecs=opus'
-        : MediaRecorder.isTypeSupported('audio/mp4')
-          ? 'audio/mp4'
-          : 'audio/webm'
+        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : 'audio/webm'
       const recorder = new MediaRecorder(stream, { mimeType })
       audioChunksRef.current = []
       recorder.ondataavailable = e => { if (e.data.size > 0) audioChunksRef.current.push(e.data) }
@@ -180,43 +252,9 @@ export default function ChatTab({ chantierId, userId }: Props) {
       setRecordingSeconds(0)
       recordingTimerRef.current = setInterval(() => setRecordingSeconds(s => s + 1), 1000)
     } catch {
-      alert("Accès au micro refusé. Vérifiez les permissions de votre navigateur.")
+      alert('Accès au micro refusé. Vérifiez les permissions de votre navigateur.')
     }
-  }, [])
-
-  const stopRecording = useCallback(async () => {
-    const recorder = mediaRecorderRef.current
-    if (!recorder) return
-    setIsRecording(false)
-    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
-
-    await new Promise<void>(resolve => {
-      recorder.onstop = () => resolve()
-      recorder.stop()
-      recorder.stream.getTracks().forEach(t => t.stop())
-    })
-
-    const mimeType = recorder.mimeType || 'audio/webm'
-    const ext      = mimeType.includes('mp4') ? 'mp4' : 'webm'
-    const blob     = new Blob(audioChunksRef.current, { type: mimeType })
-    if (blob.size < 1000) return // trop court, ignorer
-
-    const file = new File([blob], `voice_${Date.now()}.${ext}`, { type: mimeType })
-    await sendFile(file, replyTo?.id)
-    setReplyTo(null)
-  }, [sendFile, replyTo])
-
-  const cancelRecording = useCallback(() => {
-    const recorder = mediaRecorderRef.current
-    if (!recorder) return
-    recorder.onstop = null
-    recorder.stop()
-    recorder.stream.getTracks().forEach(t => t.stop())
-    setIsRecording(false)
-    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current)
-    setRecordingSeconds(0)
-    audioChunksRef.current = []
-  }, [])
+  }, [isRecording])
 
   useEffect(() => {
     if (messages.length === 0) return
@@ -441,12 +479,7 @@ export default function ChatTab({ chantierId, userId }: Props) {
 
                     {msg.file_type === 'audio' && msg.file_url && (
                       <div className="mb-1" onClick={e => e.stopPropagation()}>
-                        <audio
-                          src={msg.file_url}
-                          controls
-                          className="max-w-[220px] h-9"
-                          style={{ colorScheme: isOwn ? 'dark' : 'light' }}
-                        />
+                        <VoiceMessage url={msg.file_url} isOwn={isOwn} />
                       </div>
                     )}
 
@@ -646,27 +679,40 @@ export default function ChatTab({ chantierId, userId }: Props) {
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
 
           {isRecording ? (
-            /* ── Mode enregistrement vocal ── */
+            /* ── Barre enregistrement press & hold ── */
             <>
-              <div className="flex-1 flex items-center gap-2 rounded-2xl border border-red-300 bg-red-50 px-3 py-2">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
-                <span className="text-sm text-red-600 font-medium">
-                  {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
+              {/* Indicateur "glisser pour annuler" */}
+              <div className="flex-1 flex items-center gap-2 px-3 overflow-hidden">
+                {/* Texte annuler qui glisse selon cancelProgress */}
+                <span
+                  className="text-xs text-gray-400 flex items-center gap-1 transition-all duration-75 select-none"
+                  style={{ opacity: 0.3 + cancelProgress * 0.7, transform: `translateX(${-cancelProgress * 12}px)` }}
+                >
+                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                  </svg>
+                  Annuler
                 </span>
-                <span className="text-xs text-red-400 ml-1">Enregistrement…</span>
+
+                <div className="flex-1 flex items-center justify-end gap-2">
+                  {/* Point rouge clignotant */}
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+                  {/* Timer */}
+                  <span className="text-sm font-semibold text-red-500 tabular-nums">
+                    {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
+                  </span>
+                </div>
               </div>
-              {/* Annuler */}
-              <button onClick={cancelRecording}
-                className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-200 flex items-center justify-center text-gray-500 hover:bg-gray-300 transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-              </button>
-              {/* Envoyer */}
-              <button onClick={stopRecording}
-                className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 transition-colors">
-                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5" />
+
+              {/* Bouton micro maintenu — relâcher = envoyer */}
+              <button
+                ref={micBtnRef}
+                onPointerDown={handleMicPointerDown}
+                className="flex-shrink-0 w-11 h-11 rounded-full bg-red-500 flex items-center justify-center text-white shadow-lg"
+                style={{ touchAction: 'none', transform: 'scale(1.1)' }}
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                 </svg>
               </button>
             </>
@@ -684,8 +730,8 @@ export default function ChatTab({ chantierId, userId }: Props) {
                 style={{ lineHeight: '1.45' }}
               />
 
-              {/* Micro (si pas de texte tapé) ou Envoyer (si texte) */}
               {text.trim() ? (
+                /* Bouton envoyer texte */
                 <button onClick={handleSend}
                   className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 transition-colors">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -693,9 +739,14 @@ export default function ChatTab({ chantierId, userId }: Props) {
                   </svg>
                 </button>
               ) : (
-                <button onClick={startRecording}
-                  className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-100 hover:text-orange-500 transition-colors"
-                  title="Message vocal">
+                /* Bouton micro : maintenir appuyé pour enregistrer */
+                <button
+                  ref={micBtnRef}
+                  onPointerDown={handleMicPointerDown}
+                  className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-100 hover:text-orange-500 transition-colors select-none"
+                  style={{ touchAction: 'none' }}
+                  title="Maintenir pour enregistrer"
+                >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                   </svg>
