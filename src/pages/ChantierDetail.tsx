@@ -716,15 +716,17 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
               ? (
                 <div className="flex items-center gap-2 flex-shrink-0 mt-0.5">
                   {can('modifier_chantier') && <StatutSelector current={chantier.statut} onChange={updateStatut} />}
-                  <button
-                    onClick={() => navigate(`/chantier/${id}/modifier`)}
-                    className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
-                    title="Modifier le chantier"
-                  >
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
-                    </svg>
-                  </button>
+                  {can('modifier_chantier') && (
+                    <button
+                      onClick={() => navigate(`/chantier/${id}/modifier`)}
+                      className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+                      title="Modifier le chantier"
+                    >
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                      </svg>
+                    </button>
+                  )}
                   <button
                     onClick={() => setConfirmDelete(true)}
                     className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors"
@@ -1469,7 +1471,7 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
               </section>
             )}
 
-            {isManager && (
+            {can('modifier_chantier') && (
               <button
                 onClick={() => navigate(`/chantier/${id}/modifier`)}
                 className="w-full flex items-center justify-center gap-2 border border-gray-200 text-gray-600 font-semibold py-4 rounded-2xl hover:bg-gray-50 transition-colors text-sm bg-white"
