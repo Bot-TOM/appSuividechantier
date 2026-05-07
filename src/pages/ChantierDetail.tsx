@@ -978,6 +978,11 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
                   const isPdf    = ext === 'pdf'
                   const isExcel  = ['xls','xlsx'].includes(ext)
                   const iconColor = isPdf ? 'bg-red-50 text-red-400' : isExcel ? 'bg-green-50 text-green-500' : 'bg-gray-50 text-gray-400'
+                  // PDFs : Google Docs Viewer pour ouverture directe sur tous les appareils (évite le téléchargement sur Android)
+                  // Excel/autres : URL directe
+                  const openUrl = isPdf
+                    ? `https://docs.google.com/viewer?url=${encodeURIComponent(doc.url)}`
+                    : doc.url
                   return (
                     <div key={doc.id} className="px-4 py-3 flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconColor}`}>
@@ -993,7 +998,7 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
                         </p>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
-                        <a href={doc.url} target="_blank" rel="noreferrer"
+                        <a href={openUrl} target="_blank" rel="noreferrer"
                           className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
                           title="Ouvrir"
                         >
