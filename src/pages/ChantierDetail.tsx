@@ -14,6 +14,7 @@ import { ChantierStatut, Etape, EtapePhoto, Note, AutoControleCheck } from '@/ty
 import { PdfOptions, PDF_OPTIONS_DEFAULT } from '@/components/pdf/ChantierPDF'
 import AnomaliesTabContent from '@/components/anomalies/AnomaliesTabContent'
 import ChatTab from '@/components/chat/ChatTab'
+import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 
 type InnerTab = 'etapes' | 'rapport' | 'chat' | 'docs' | 'notes' | 'materiel' | 'anomalies' | 'autocontrole' | 'infos'
 
@@ -357,6 +358,8 @@ export default function ChantierDetail() {
   const { autocontrole, save: saveAC, signer: signerAC } = useAutoControle(id!)
   const { documents, uploadDocument, deleteDocument } = useDocuments(id!)
   const { rapports, addRapport, deleteRapport, deleteRapportPhoto } = useRapports(id!)
+  const userId = profile?.id ?? ''
+  const unreadChat = useUnreadMessages(id!, userId)
 
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<InnerTab>(() => {
@@ -765,7 +768,7 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
             {([
               { key: 'etapes',      label: 'Étapes' },
               { key: 'rapport',     label: 'Rapport',     badge: rapports.length || undefined },
-              { key: 'chat',        label: 'Chat' },
+              { key: 'chat',        label: 'Chat',        badge: activeTab !== 'chat' && unreadChat > 0 ? unreadChat : undefined },
               { key: 'docs',        label: 'Docs',        badge: documents.length || undefined },
               { key: 'notes',       label: 'Notes',       badge: notes.length || undefined },
               { key: 'materiel',    label: 'Matériel',    badge: matTotal > 0 ? matChecked === matTotal ? undefined : matTotal - matChecked : undefined },

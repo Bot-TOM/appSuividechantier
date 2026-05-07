@@ -92,7 +92,7 @@ export interface AutoControle {
 }
 
 // Chat
-export type MessageFileType = 'image' | 'document'
+export type MessageFileType = 'image' | 'document' | 'audio'
 
 export interface MessageReaction {
   id: string
