@@ -1454,45 +1454,6 @@ export default function ChantierDetail() {
               </section>
             )}
 
-            {/* Matériel + Anomalies */}
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => navigate(`/chantier/${id}/materiel`)}
-                className="bg-white rounded-2xl p-4 text-left active:scale-[0.98] transition-all"
-                style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
-              >
-                <div className="w-9 h-9 bg-orange-50 rounded-xl flex items-center justify-center mb-3">
-                  <svg className="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
-                  </svg>
-                </div>
-                <p className="font-semibold text-gray-800 text-sm">Matériel</p>
-                <p className="text-xs text-gray-400 mt-0.5">{matChecked}/{matTotal} vérifié{matChecked > 1 ? 's' : ''}</p>
-                {matTotal > 0 && (
-                  <div className="mt-2 h-1 bg-gray-100 rounded-full overflow-hidden">
-                    <div className={`h-full rounded-full ${matChecked === matTotal ? 'bg-green-500' : 'bg-orange-500'}`}
-                      style={{ width: `${Math.round((matChecked / matTotal) * 100)}%` }} />
-                  </div>
-                )}
-              </button>
-              <button
-                onClick={() => navigate(`/chantier/${id}/anomalies`)}
-                className="bg-white rounded-2xl p-4 text-left active:scale-[0.98] transition-all"
-                style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
-              >
-                <div className="w-9 h-9 bg-red-50 rounded-xl flex items-center justify-center mb-3">
-                  <svg className="w-5 h-5 text-red-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                  </svg>
-                </div>
-                <p className="font-semibold text-gray-800 text-sm">Anomalies</p>
-                {anomaliesOuvertes > 0
-                  ? <span className="text-xs font-semibold text-red-500 mt-0.5 block">{anomaliesOuvertes} ouverte{anomaliesOuvertes > 1 ? 's' : ''}</span>
-                  : <span className="text-xs text-green-500 font-semibold mt-0.5 block">Tout OK</span>
-                }
-              </button>
-            </div>
-
             {/* Auto-contrôle */}
             <button
               onClick={() => navigate(`/chantier/${id}/autocontrole`)}
