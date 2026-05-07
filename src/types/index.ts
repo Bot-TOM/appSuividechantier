@@ -106,6 +106,7 @@ export interface MessageRead {
   message_id: string
   user_id: string
   read_at: string
+  profiles: { full_name: string } | null
 }
 
 export interface ChatMessage {

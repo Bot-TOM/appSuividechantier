@@ -357,7 +357,14 @@ export default function ChatTab({ chantierId, userId }: Props) {
                   )}
 
                   {isOwn && readers.length > 0 && (
-                    <p className="text-[10px] text-gray-400 pr-1">Vu</p>
+                    <p className="text-[10px] text-gray-400 pr-1">
+                      {(() => {
+                        const names = readers
+                          .map(r => r.profiles?.full_name?.split(' ')[0] ?? '?')
+                        if (names.length <= 2) return `Vu par ${names.join(', ')}`
+                        return `Vu par ${names.slice(0, 2).join(', ')} +${names.length - 2}`
+                      })()}
+                    </p>
                   )}
 
                   {isActive && (
