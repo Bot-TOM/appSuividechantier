@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantierDetail } from '@/hooks/useChantierDetail'
@@ -79,62 +79,73 @@ function Lightbox({ photos, initialIndex, onClose, onDelete }: {
   const photo = photos[index]
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={onClose}>
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
-        <span className="text-white/60 text-sm">{index + 1} / {photos.length}</span>
-        <div className="flex items-center gap-3">
-          <button
-            onClick={() => downloadPhoto(photo.url)}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
-            title="Télécharger"
-          >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-          </button>
-          {onDelete && (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.85)', padding: '20px' }}
+      onClick={onClose}
+    >
+      {/* Modal centré, taille fixe */}
+      <div
+        className="flex flex-col w-full bg-black rounded-2xl overflow-hidden"
+        style={{ maxWidth: '840px', height: '88vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
+          <span className="text-white/60 text-sm">{index + 1} / {photos.length}</span>
+          <div className="flex items-center gap-3">
             <button
-              onClick={() => { onDelete(photo); if (photos.length === 1) onClose() }}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors"
+              onClick={() => downloadPhoto(photo.url)}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors"
+              title="Télécharger"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
             </button>
-          )}
-          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-lg">
-            ✕
-          </button>
-        </div>
-      </div>
-
-      {/* Image */}
-      <div className="flex-1 flex items-center justify-center px-4" onClick={e => e.stopPropagation()}>
-        <img src={photo.url} alt="Photo" className="max-w-full max-h-full rounded-xl object-contain" />
-      </div>
-
-      {/* Navigation */}
-      {photos.length > 1 && (
-        <div className="flex justify-center gap-3 py-5 flex-shrink-0" onClick={e => e.stopPropagation()}>
-          <button
-            onClick={() => setIndex(i => Math.max(0, i - 1))}
-            disabled={index === 0}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors"
-          >←</button>
-          <div className="flex items-center gap-1.5">
-            {photos.map((_, i) => (
-              <button key={i} onClick={() => setIndex(i)}
-                className={`w-2 h-2 rounded-full transition-all ${i === index ? 'bg-white scale-125' : 'bg-white/40'}`} />
-            ))}
+            {onDelete && (
+              <button
+                onClick={() => { onDelete(photo); if (photos.length === 1) onClose() }}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors"
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
+            <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-lg">
+              ✕
+            </button>
           </div>
-          <button
-            onClick={() => setIndex(i => Math.min(photos.length - 1, i + 1))}
-            disabled={index === photos.length - 1}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors"
-          >→</button>
         </div>
-      )}
+
+        {/* Image — prend l'espace restant */}
+        <div className="flex-1 min-h-0 flex items-center justify-center px-6 pb-4">
+          <img src={photo.url} alt="Photo" className="max-w-full max-h-full rounded-xl object-contain" />
+        </div>
+
+        {/* Navigation */}
+        {photos.length > 1 && (
+          <div className="flex justify-center gap-3 py-4 flex-shrink-0">
+            <button
+              onClick={() => setIndex(i => Math.max(0, i - 1))}
+              disabled={index === 0}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors"
+            >←</button>
+            <div className="flex items-center gap-1.5">
+              {photos.map((_, i) => (
+                <button key={i} onClick={() => setIndex(i)}
+                  className={`w-2 h-2 rounded-full transition-all ${i === index ? 'bg-white scale-125' : 'bg-white/40'}`} />
+              ))}
+            </div>
+            <button
+              onClick={() => setIndex(i => Math.min(photos.length - 1, i + 1))}
+              disabled={index === photos.length - 1}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors"
+            >→</button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
@@ -150,43 +161,108 @@ function RapportLightbox({ photos, initialIndex, onClose, onDelete }: {
   const photo = photos[index]
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={onClose}>
-      <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
-        <span className="text-white/60 text-sm">{index + 1} / {photos.length}</span>
-        <div className="flex items-center gap-3">
-          <button onClick={() => downloadPhoto(photo.url)}
-            className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors" title="Télécharger">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-            </svg>
-          </button>
-          {onDelete && (
-            <button onClick={() => { onDelete(photo); if (photos.length === 1) onClose() }}
-              className="w-9 h-9 flex items-center justify-center rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.85)', padding: '20px' }}
+      onClick={onClose}
+    >
+      <div
+        className="flex flex-col w-full bg-black rounded-2xl overflow-hidden"
+        style={{ maxWidth: '840px', height: '88vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0">
+          <span className="text-white/60 text-sm">{index + 1} / {photos.length}</span>
+          <div className="flex items-center gap-3">
+            <button onClick={() => downloadPhoto(photo.url)}
+              className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors" title="Télécharger">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
             </button>
-          )}
-          <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-lg">✕</button>
-        </div>
-      </div>
-      <div className="flex-1 flex items-center justify-center px-4" onClick={e => e.stopPropagation()}>
-        <img src={photo.url} alt="Photo" className="max-w-full max-h-full rounded-xl object-contain" />
-      </div>
-      {photos.length > 1 && (
-        <div className="flex justify-center gap-3 py-5 flex-shrink-0" onClick={e => e.stopPropagation()}>
-          <button onClick={() => setIndex(i => Math.max(0, i - 1))} disabled={index === 0}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors">←</button>
-          <div className="flex items-center gap-1.5">
-            {photos.map((_, i) => (
-              <button key={i} onClick={() => setIndex(i)}
-                className={`w-2 h-2 rounded-full transition-all ${i === index ? 'bg-white scale-125' : 'bg-white/40'}`} />
-            ))}
+            {onDelete && (
+              <button onClick={() => { onDelete(photo); if (photos.length === 1) onClose() }}
+                className="w-9 h-9 flex items-center justify-center rounded-full bg-red-500/20 text-red-400 hover:bg-red-500/40 transition-colors">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+              </button>
+            )}
+            <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-lg">✕</button>
           </div>
-          <button onClick={() => setIndex(i => Math.min(photos.length - 1, i + 1))} disabled={index === photos.length - 1}
-            className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors">→</button>
         </div>
+        <div className="flex-1 min-h-0 flex items-center justify-center px-6 pb-4">
+          <img src={photo.url} alt="Photo" className="max-w-full max-h-full rounded-xl object-contain" />
+        </div>
+        {photos.length > 1 && (
+          <div className="flex justify-center gap-3 py-4 flex-shrink-0">
+            <button onClick={() => setIndex(i => Math.max(0, i - 1))} disabled={index === 0}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors">←</button>
+            <div className="flex items-center gap-1.5">
+              {photos.map((_, i) => (
+                <button key={i} onClick={() => setIndex(i)}
+                  className={`w-2 h-2 rounded-full transition-all ${i === index ? 'bg-white scale-125' : 'bg-white/40'}`} />
+              ))}
+            </div>
+            <button onClick={() => setIndex(i => Math.min(photos.length - 1, i + 1))} disabled={index === photos.length - 1}
+              className="w-10 h-10 flex items-center justify-center rounded-full bg-white/10 text-white disabled:opacity-30 hover:bg-white/20 transition-colors">→</button>
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ─── Galerie photos scrollable (desktop : flèches prev/next) ─────────────────
+function PhotoScroller({ children, count, className }: {
+  children: React.ReactNode
+  count: number
+  className?: string
+}) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const [scrollState, setScrollState] = useState({ left: false, right: false })
+
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el) return
+    const check = () => setScrollState({
+      left: el.scrollLeft > 0,
+      right: el.scrollLeft < el.scrollWidth - el.clientWidth - 1,
+    })
+    check()
+    el.addEventListener('scroll', check, { passive: true })
+    const ro = new ResizeObserver(check)
+    ro.observe(el)
+    return () => { el.removeEventListener('scroll', check); ro.disconnect() }
+  }, [count])
+
+  const scroll = (dir: 'left' | 'right') =>
+    scrollRef.current?.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' })
+
+  return (
+    <div className={`relative ${className ?? ''}`}>
+      {scrollState.left && (
+        <button
+          onClick={() => scroll('left')}
+          className="hidden md:flex absolute left-0 top-0 bottom-1 z-10 items-center justify-center w-8 bg-gradient-to-r from-white via-white/80 to-transparent text-gray-400 hover:text-orange-500 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+          </svg>
+        </button>
+      )}
+      <div ref={scrollRef} className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+        {children}
+      </div>
+      {scrollState.right && (
+        <button
+          onClick={() => scroll('right')}
+          className="hidden md:flex absolute right-0 top-0 bottom-1 z-10 items-center justify-center w-8 bg-gradient-to-l from-white via-white/80 to-transparent text-gray-400 hover:text-orange-500 transition-colors"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+          </svg>
+        </button>
       )}
     </div>
   )
@@ -307,7 +383,7 @@ function EtapeLine({
 
         {/* Galerie photos */}
         {photos.length > 0 && (
-          <div className="mt-3 ml-10 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+          <PhotoScroller count={photos.length} className="mt-3 ml-10">
             {photos.map((photo, i) => (
               <button key={photo.id} onClick={() => setLightboxIndex(i)} className="flex-shrink-0">
                 <img
@@ -317,7 +393,7 @@ function EtapeLine({
                 />
               </button>
             ))}
-          </div>
+          </PhotoScroller>
         )}
       </div>
 
@@ -1101,8 +1177,11 @@ export default function ChantierDetail() {
         {/* ── RAPPORT ───────────────────────────────────────────────────────── */}
         {activeTab === 'rapport' && (
           <>
+            {/* Grid formulaire + liste (2 colonnes sur desktop) */}
+            <div className="grid grid-cols-1 md:grid-cols-5 gap-4 md:gap-6 md:items-start">
+
             {/* Formulaire nouveau rapport */}
-            <section className="bg-white rounded-2xl p-5 space-y-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <section className="md:col-span-2 bg-white rounded-2xl p-5 space-y-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
               <h2 className="font-semibold text-gray-900 text-sm">Ajouter une entrée</h2>
 
               <textarea
@@ -1155,7 +1234,8 @@ export default function ChantierDetail() {
               {rapportError && <p className="text-xs text-red-500">{rapportError}</p>}
             </section>
 
-            {/* Liste des entrées */}
+            {/* Col droite — Liste des entrées */}
+            <div className="md:col-span-3 space-y-3">
             {rapports.length === 0 ? (
               <div className="bg-white rounded-2xl p-10 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
                 <p className="text-gray-400 text-sm">Aucune entrée de rapport pour l'instant</p>
@@ -1205,7 +1285,7 @@ export default function ChantierDetail() {
                         <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{rapport.message}</p>
 
                         {photos.length > 0 && (
-                          <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                          <PhotoScroller count={photos.length} className="mt-3">
                             {photos.map((photo, i) => (
                               <button
                                 key={photo.id}
@@ -1224,7 +1304,7 @@ export default function ChantierDetail() {
                                 )}
                               </button>
                             ))}
-                          </div>
+                          </PhotoScroller>
                         )}
                       </div>
                     </div>
@@ -1232,6 +1312,8 @@ export default function ChantierDetail() {
                 })}
               </div>
             )}
+            </div> {/* fin col droite */}
+            </div> {/* fin grid rapport */}
 
             {/* PDF */}
             {can('exporter_pdf') && (

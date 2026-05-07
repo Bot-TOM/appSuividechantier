@@ -695,7 +695,7 @@ export default function ManagerDashboard() {
             </p>
           </div>
         ) : (
-          <div className="space-y-3 pb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-6">
             {chantiersFiltres.map(c => (
               <ChantierCard
                 key={c.id}
