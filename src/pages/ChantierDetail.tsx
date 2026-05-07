@@ -9,7 +9,6 @@ import { useAutoControle, initChecks } from '@/hooks/useAutoControle'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useRapports } from '@/hooks/useRapports'
 import type { RapportPhoto } from '@/hooks/useRapports'
-import { formatDuree, getElapsedMinutes, getDureeReelle } from '@/lib/duree'
 import { ChantierStatut, Etape, EtapePhoto, Note, AutoControleCheck } from '@/types'
 import { PdfOptions, PDF_OPTIONS_DEFAULT } from '@/components/pdf/ChantierPDF'
 import AnomaliesTabContent from '@/components/anomalies/AnomaliesTabContent'
@@ -58,16 +57,6 @@ function StatutSelector({ current, onChange }: { current: ChantierStatut; onChan
       )}
     </div>
   )
-}
-
-// ─── Timer en cours ───────────────────────────────────────────────────────────
-function ElapsedBadge({ startedAt }: { startedAt: string }) {
-  const [minutes, setMinutes] = useState(() => getElapsedMinutes(startedAt))
-  useEffect(() => {
-    const id = setInterval(() => setMinutes(getElapsedMinutes(startedAt)), 60_000)
-    return () => clearInterval(id)
-  }, [startedAt])
-  return <span className="text-xs font-semibold text-orange-500 tabular-nums">⏱ {formatDuree(minutes)}</span>
 }
 
 // ─── Lightbox photos ──────────────────────────────────────────────────────────
@@ -206,12 +195,13 @@ function RapportLightbox({ photos, initialIndex, onClose, onDelete }: {
 
 // ─── Ligne d'étape ────────────────────────────────────────────────────────────
 function EtapeLine({
-  etape, photos, onAdvance, isManager = false, onUpdateConsigne, onUploadPhoto, onDeletePhoto,
+  etape, photos, onAdvance, isManager = false, userPoste, onUpdateConsigne, onUploadPhoto, onDeletePhoto,
 }: {
   etape: Etape
   photos: EtapePhoto[]
   onAdvance: (e: Etape) => void
   isManager?: boolean
+  userPoste?: string | null
   onUpdateConsigne?: (etapeId: string, consigne: string) => void
   onUploadPhoto?: (etapeId: string, file: File) => Promise<{ error: string | null }>
   onDeletePhoto?: (photo: EtapePhoto) => void
@@ -227,10 +217,15 @@ function EtapeLine({
 
   const isFait    = localStatut === 'fait'
   const isEnCours = localStatut === 'en_cours'
-  const dureeReelle = isFait && etape.started_at && etape.finished_at
-    ? getDureeReelle(etape.started_at, etape.finished_at) : null
+
+  // Restriction par poste : null = tout le monde, sinon seuls les postes listés
+  const canAdvance = isManager
+    || !etape.postes_autorises
+    || etape.postes_autorises.length === 0
+    || (userPoste != null && etape.postes_autorises.includes(userPoste))
 
   function handleAdvance() {
+    if (!canAdvance) return
     const next = localStatut === 'non_fait' ? 'en_cours' : localStatut === 'en_cours' ? 'fait' : 'non_fait'
     setLocalStatut(next)
     onAdvance(etape)
@@ -254,7 +249,12 @@ function EtapeLine({
       <div className={`px-4 py-4 transition-colors ${isEnCours ? 'bg-orange-50' : ''}`}>
         <div className="flex items-start gap-3">
           {/* Bouton statut */}
-          <button onClick={handleAdvance} className="flex-shrink-0 mt-0.5 active:scale-90 transition-transform">
+          <button
+            onClick={handleAdvance}
+            disabled={!canAdvance}
+            className={`flex-shrink-0 mt-0.5 transition-transform ${canAdvance ? 'active:scale-90' : 'opacity-40 cursor-not-allowed'}`}
+            title={!canAdvance ? `Réservé : ${etape.postes_autorises?.join(', ')}` : undefined}
+          >
             {isFait ? (
               <div className="w-7 h-7 rounded-full flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
@@ -264,6 +264,12 @@ function EtapeLine({
             ) : isEnCours ? (
               <div className="w-7 h-7 rounded-full border-2 border-orange-500 flex items-center justify-center">
                 <div className="w-3 h-3 rounded-full bg-orange-500 animate-pulse" />
+              </div>
+            ) : !canAdvance ? (
+              <div className="w-7 h-7 rounded-full border-2 border-gray-200 flex items-center justify-center">
+                <svg className="w-3.5 h-3.5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
               </div>
             ) : (
               <div className="w-7 h-7 rounded-full border-2 border-gray-200" />
@@ -288,19 +294,18 @@ function EtapeLine({
             {!isManager && etape.consigne && !isFait && (
               <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{etape.consigne}</p>
             )}
-            {isEnCours && etape.started_at && (
-              <span className="block mt-1"><ElapsedBadge startedAt={etape.started_at} /></span>
-            )}
-            {isFait && dureeReelle !== null && (
-              <span className="text-xs text-green-500 font-medium mt-0.5 block">✓ {formatDuree(dureeReelle)}</span>
+            {!canAdvance && !isFait && (
+              <p className="text-[11px] text-gray-400 mt-0.5">🔒 {etape.postes_autorises?.join(', ')}</p>
             )}
           </div>
 
           {/* Droite : état + bouton photo */}
           <div className="flex flex-col items-end gap-2 flex-shrink-0">
-            <span className={`text-[11px] font-semibold ${isEnCours ? 'text-orange-400' : 'text-gray-300'}`}>
-              {isEnCours ? 'Terminer →' : isFait ? '↺' : 'Démarrer'}
-            </span>
+            {canAdvance && (
+              <span className={`text-[11px] font-semibold ${isEnCours ? 'text-orange-400' : 'text-gray-300'}`}>
+                {isEnCours ? 'Terminer →' : isFait ? '↺' : 'Démarrer'}
+              </span>
+            )}
             <label className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors cursor-pointer ${
               uploading ? 'opacity-40 pointer-events-none' : 'text-gray-300 hover:text-orange-400 hover:bg-orange-50 active:bg-orange-100'
             }`} title="Ajouter une photo">
@@ -406,10 +411,8 @@ export default function ChantierDetail() {
 
   const isManager         = profile?.role === 'manager'
   const { can }           = usePermissions()
-const faites            = etapes.filter(e => e.statut === 'fait').length
+  const faites            = etapes.filter(e => e.statut === 'fait').length
   const pct               = etapes.length === 0 ? 0 : Math.round((faites / etapes.length) * 100)
-  const terminees         = etapes.filter(e => e.statut === 'fait' && e.started_at && e.finished_at)
-  const totalTemps        = terminees.reduce((s, e) => s + getDureeReelle(e.started_at!, e.finished_at!), 0)
 
   async function handleDownloadPDF() {
     if (!chantier) return
@@ -865,6 +868,7 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
                         photos={photos[etape.id] ?? []}
                         onAdvance={advanceEtape}
                         isManager={isManager}
+                        userPoste={profile?.poste}
                         onUpdateConsigne={updateConsigne}
                         onUploadPhoto={uploadEtapePhoto}
                         onDeletePhoto={p => deleteEtapePhoto(p.id, new URL(p.url).pathname.replace(/^\/storage\/v1\/object\/public\/chantier-photos\//, ''))}
@@ -874,31 +878,6 @@ const faites            = etapes.filter(e => e.statut === 'fait').length
               }
             </section>
 
-            {/* Synthèse temps */}
-            {terminees.length > 0 && (
-              <section className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                <div className="px-4 py-3.5 border-b border-gray-50 flex items-center gap-2">
-                  <h2 className="font-semibold text-gray-900 text-sm">Temps enregistrés</h2>
-                  <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">{terminees.length}</span>
-                </div>
-                <div className="p-4 space-y-3">
-                  <div className="flex items-center justify-between bg-orange-50 rounded-xl px-4 py-3">
-                    <span className="text-sm font-medium text-orange-800">Total terrain</span>
-                    <span className="text-lg font-bold text-orange-600 tabular-nums">{formatDuree(totalTemps)}</span>
-                  </div>
-                  <div className="space-y-2">
-                    {terminees.map(e => (
-                      <div key={e.id} className="flex items-center justify-between text-sm">
-                        <span className="text-gray-600 truncate flex-1 mr-3">{e.nom}</span>
-                        <span className="text-gray-500 font-medium tabular-nums flex-shrink-0">
-                          {formatDuree(getDureeReelle(e.started_at!, e.finished_at!))}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </section>
-            )}
           </>
         )}
 
