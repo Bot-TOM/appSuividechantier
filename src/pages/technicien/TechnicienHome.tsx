@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantiers } from '@/hooks/useChantiers'
@@ -6,7 +6,7 @@ import { useEtapesProgression } from '@/hooks/useEtapesProgression'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import Avatar from '@/components/Avatar'
 import { supabase } from '@/lib/supabase'
-import { Chantier, ChantierStatut } from '@/types'
+import { Chantier, ChantierStatut, UserProfile } from '@/types'
 import { usePermissions } from '@/hooks/usePermissions'
 
 const STATUT_LABEL: Record<ChantierStatut, string> = {
@@ -245,7 +245,14 @@ export default function TechnicienHome() {
   const { chantiers, loading } = useChantiers()
   const { can } = usePermissions()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'chantiers' | 'profil'>('chantiers')
+  const [activeTab, setActiveTab] = useState<'chantiers' | 'equipe' | 'profil'>('chantiers')
+  const [teamMembers, setTeamMembers] = useState<UserProfile[]>([])
+
+  useEffect(() => {
+    supabase.from('profiles').select('*').order('role').then(({ data }) => {
+      if (data) setTeamMembers(data)
+    })
+  }, [])
   const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
 
   const progression = useEtapesProgression(chantiers.map(c => c.id))
@@ -372,6 +379,68 @@ export default function TechnicienHome() {
           </>
         )}
 
+        {/* ── Onglet Équipe ─────────────────────────────────────────────────── */}
+        {activeTab === 'equipe' && (() => {
+          const managers     = teamMembers.filter(m => m.role === 'manager')
+          const techniciens  = teamMembers.filter(m => m.role === 'technicien')
+          return (
+            <div className="space-y-4 pb-6">
+              {/* Managers */}
+              {managers.length > 0 && (
+                <section className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Responsable</p>
+                  <div className="space-y-3">
+                    {managers.map(m => (
+                      <div key={m.id} className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
+                          style={{ background: 'linear-gradient(135deg, #7C3AED 0%, #A78BFA 100%)' }}>
+                          {m.full_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{m.full_name}</p>
+                        </div>
+                        <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-purple-50 text-purple-600 border border-purple-100 flex-shrink-0">
+                          Manager
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* Techniciens */}
+              {techniciens.length > 0 && (
+                <section className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Équipe terrain</p>
+                  <div className="space-y-3">
+                    {techniciens.map(t => (
+                      <div key={t.id} className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
+                          style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
+                          {t.full_name.charAt(0).toUpperCase()}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-800 truncate">{t.full_name}</p>
+                          {t.poste && <p className="text-xs text-gray-400">{t.poste}</p>}
+                        </div>
+                        {t.id === profile?.id && (
+                          <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-500 border border-orange-100 flex-shrink-0">
+                            Vous
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {teamMembers.length === 0 && (
+                <p className="text-center text-gray-400 text-sm py-10">Aucun membre</p>
+              )}
+            </div>
+          )
+        })()}
+
         {activeTab === 'profil' && (
           <div className="mt-2">
             <ProfilTab profile={profile} signOut={signOut} pushStatus={pushStatus} subscribePush={subscribePush} unsubscribePush={unsubscribePush} onAvatarChange={refreshProfile} />
@@ -391,6 +460,17 @@ export default function TechnicienHome() {
             </svg>
             <span className="text-[11px] font-semibold">Chantiers</span>
             {activeTab === 'chantiers' && <span className="w-1 h-1 rounded-full bg-orange-500 mt-0.5" />}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('equipe')}
+            className={`flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors ${activeTab === 'equipe' ? 'text-orange-500' : 'text-gray-400'}`}
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={activeTab === 'equipe' ? 2.5 : 1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            <span className="text-[11px] font-semibold">Équipe</span>
+            {activeTab === 'equipe' && <span className="w-1 h-1 rounded-full bg-orange-500 mt-0.5" />}
           </button>
 
           <button
