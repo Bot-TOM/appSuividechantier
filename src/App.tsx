@@ -26,7 +26,7 @@ export default function App() {
             <ProtectedRoute allowedRole="manager"><ManagerDashboard /></ProtectedRoute>
           } />
           <Route path="/manager/nouveau-chantier" element={
-            <ProtectedRoute allowedRole="manager"><CreateChantier /></ProtectedRoute>
+            <ProtectedRoute allowedRole="manager" permissionKey="creer_chantier"><CreateChantier /></ProtectedRoute>
           } />
           <Route path="/manager/equipe" element={
             <ProtectedRoute allowedRole="manager"><GestionEquipe /></ProtectedRoute>
@@ -43,7 +43,7 @@ export default function App() {
             <ProtectedRoute><ChecklistMateriel /></ProtectedRoute>
           } />
           <Route path="/chantier/:id/modifier" element={
-            <ProtectedRoute allowedRole="manager"><EditChantier /></ProtectedRoute>
+            <ProtectedRoute allowedRole="manager" permissionKey="modifier_chantier"><EditChantier /></ProtectedRoute>
           } />
           <Route path="/chantier/:id/autocontrole" element={
             <ProtectedRoute><AutoControle /></ProtectedRoute>

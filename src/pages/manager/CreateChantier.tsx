@@ -2,6 +2,7 @@ import { useState, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useTechniciens } from '@/hooks/useTechniciens'
+import { useAuth } from '@/contexts/AuthContext'
 
 const ETAPES_DEFAUT = [
   'Pose de la structure',
@@ -27,7 +28,9 @@ interface EtapeForm {
 
 export default function CreateChantier() {
   const navigate = useNavigate()
+  const { profile } = useAuth()
   const { techniciens } = useTechniciens()
+  const backUrl = profile?.role === 'manager' ? '/manager' : '/technicien'
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
 
@@ -108,7 +111,7 @@ export default function CreateChantier() {
       }))
     )
 
-    navigate('/manager')
+    navigate(backUrl)
   }
 
   return (

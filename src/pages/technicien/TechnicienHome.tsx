@@ -7,6 +7,7 @@ import { usePushNotifications } from '@/hooks/usePushNotifications'
 import Avatar from '@/components/Avatar'
 import { supabase } from '@/lib/supabase'
 import { Chantier, ChantierStatut } from '@/types'
+import { usePermissions } from '@/hooks/usePermissions'
 
 const STATUT_LABEL: Record<ChantierStatut, string> = {
   planifie:   'Planifié',
@@ -242,6 +243,7 @@ function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePus
 export default function TechnicienHome() {
   const { profile, signOut, refreshProfile } = useAuth()
   const { chantiers, loading } = useChantiers()
+  const { can } = usePermissions()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'chantiers' | 'profil'>('chantiers')
   const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
@@ -329,6 +331,17 @@ export default function TechnicienHome() {
 
         {activeTab === 'chantiers' && (
           <>
+            {/* Bouton créer — visible seulement si permission creer_chantier */}
+            {can('creer_chantier') && (
+              <button
+                onClick={() => navigate('/manager/nouveau-chantier')}
+                className="w-full text-white font-semibold py-3.5 rounded-xl transition-all hover:opacity-90 text-sm mb-4"
+                style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}
+              >
+                + Nouveau chantier
+              </button>
+            )}
+
             {loading ? (
               <div className="flex justify-center py-16">
                 <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
@@ -336,8 +349,12 @@ export default function TechnicienHome() {
             ) : chantiers.length === 0 ? (
               <div className="bg-white rounded-2xl p-12 text-center mt-2" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                 <div className="text-5xl mb-4">📋</div>
-                <p className="font-semibold text-gray-700 mb-1">Aucun chantier assigné</p>
-                <p className="text-sm text-gray-400">Votre manager vous assignera bientôt un chantier</p>
+                <p className="font-semibold text-gray-700 mb-1">
+                  {can('voir_tous_chantiers') ? 'Aucun chantier' : 'Aucun chantier assigné'}
+                </p>
+                <p className="text-sm text-gray-400">
+                  {can('voir_tous_chantiers') ? 'Créez votre premier chantier ci-dessus' : 'Votre manager vous assignera bientôt un chantier'}
+                </p>
               </div>
             ) : (
               <div className="space-y-3 mt-2">
