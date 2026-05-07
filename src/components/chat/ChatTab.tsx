@@ -125,12 +125,21 @@ export default function ChatTab({ chantierId, userId }: Props) {
   }, [mentionAnchor, text])
 
   // ── Refs ────────────────────────────────────────────────────────────────────
-  const bottomRef   = useRef<HTMLDivElement>(null)
-  const fileRef     = useRef<HTMLInputElement>(null)
-  const textareaRef = useRef<HTMLTextAreaElement>(null)
+  const bottomRef      = useRef<HTMLDivElement>(null)
+  const fileRef        = useRef<HTMLInputElement>(null)
+  const textareaRef    = useRef<HTMLTextAreaElement>(null)
+  const prevLengthRef  = useRef(0)
 
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+    if (messages.length === 0) return
+    // Chargement initial (0 → N) : scroll instantané pour garantir d'atteindre le bas
+    // Nouveau message (N → N+1) : scroll smooth pour une transition fluide
+    const isInitialLoad = prevLengthRef.current === 0
+    prevLengthRef.current = messages.length
+    // requestAnimationFrame garantit que le DOM est peint avant de scroller
+    requestAnimationFrame(() => {
+      bottomRef.current?.scrollIntoView({ behavior: isInitialLoad ? 'instant' : 'smooth' })
+    })
   }, [messages.length])
 
   useEffect(() => { markAllRead() }, [markAllRead, messages.length])
