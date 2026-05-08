@@ -108,7 +108,7 @@ const PRICING = [
     ],
     cta: 'Contacter l\'équipe',
     ctaStyle: 'border border-gray-300 text-gray-700 hover:bg-gray-50',
-    href: 'mailto:contact@pvpilot.app',
+    href: 'mailto:contact@mypvpilot.fr',
   },
 ]
 
@@ -534,7 +534,7 @@ export default function LandingPage() {
               style={{ color: '#EA580C' }}>
               Commencer gratuitement →
             </Link>
-            <a href="mailto:contact@pvpilot.app"
+            <a href="mailto:contact@mypvpilot.fr"
               className="border-2 border-white/40 text-white font-semibold px-8 py-4 rounded-xl text-sm hover:bg-white/10 transition-colors">
               Demander une démo
             </a>
@@ -571,7 +571,7 @@ export default function LandingPage() {
                 <p className="font-semibold text-white mb-3">Support</p>
                 <ul className="space-y-2">
                   <li><a href="#faq" className="hover:text-white transition-colors">FAQ</a></li>
-                  <li><a href="mailto:contact@pvpilot.app" className="hover:text-white transition-colors">Contact</a></li>
+                  <li><a href="mailto:contact@mypvpilot.fr" className="hover:text-white transition-colors">Contact</a></li>
                 </ul>
               </div>
               <div>
