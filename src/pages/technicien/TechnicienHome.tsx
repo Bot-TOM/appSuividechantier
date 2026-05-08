@@ -279,7 +279,7 @@ export default function TechnicienHome() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-white text-xl">☀️</span>
-              <span className="text-white/80 text-sm font-medium">SolarTrack</span>
+              <span className="text-white/80 text-sm font-medium">PVPilot</span>
             </div>
             <button onClick={() => { setActiveTab('profil'); refreshProfile() }} className="flex-shrink-0">
               <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="md" className="border-2 border-white/30" />

@@ -13,11 +13,22 @@ import { Chantier, ChantierStatut, Anomalie } from '@/types'
 
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
-type Tab = 'chantiers' | 'anomalies' | 'equipe' | 'profil'
+type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil'
 
 type AnomalieWithRelations = Anomalie & {
   profiles?: { full_name?: string } | null
   chantiers?: { nom?: string } | null
+}
+
+type TechStat = {
+  id: string
+  full_name: string
+  avatar_url: string | null
+  poste: string | null
+  nb_actifs: number
+  nb_total: number
+  nb_anomalies: number
+  progression_moy: number
 }
 
 const STATUT_LABEL: Record<ChantierStatut, string> = {
@@ -190,11 +201,74 @@ export default function ManagerDashboard() {
   const anomaliesFiltrees = anomalieFilter === 'tous' ? anomalies : anomalies.filter(a => a.statut === anomalieFilter)
 
   const stats = {
-    total:    chantiers.length,
-    en_cours: chantiers.filter(c => c.statut === 'en_cours').length,
-    bloques:  chantiers.filter(c => c.statut === 'bloque').length,
-    termines: chantiers.filter(c => c.statut === 'termine').length,
+    total:      chantiers.length,
+    en_cours:   chantiers.filter(c => c.statut === 'en_cours').length,
+    bloques:    chantiers.filter(c => c.statut === 'bloque').length,
+    termines:   chantiers.filter(c => c.statut === 'termine').length,
+    planifies:  chantiers.filter(c => c.statut === 'planifie').length,
+    en_attente: chantiers.filter(c => c.statut === 'en_attente').length,
   }
+
+  // ── Stats avancées ──────────────────────────────────────────────────────────
+  const [techStats, setTechStats]     = useState<TechStat[]>([])
+  const [loadingStats, setLoadingStats] = useState(false)
+
+  const enhancedStats = useMemo(() => {
+    const kwc_en_cours = chantiers
+      .filter(c => c.statut === 'en_cours')
+      .reduce((s, c) => s + (c.puissance_kwc ?? 0), 0)
+    const kwc_installe = chantiers
+      .filter(c => c.statut === 'termine')
+      .reduce((s, c) => s + (c.puissance_kwc ?? 0), 0)
+    const pcts = chantiers.map(c => progression[c.id]?.pct ?? 0)
+    const progression_moy = pcts.length > 0
+      ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length)
+      : 0
+    return {
+      kwc_en_cours: Math.round(kwc_en_cours * 10) / 10,
+      kwc_installe: Math.round(kwc_installe * 10) / 10,
+      progression_moy,
+    }
+  }, [chantiers, progression])
+
+  useEffect(() => {
+    if (activeTab !== 'stats') return
+    setLoadingStats(true)
+    async function fetchTechStats() {
+      const [profilesRes, assignmentsRes] = await Promise.all([
+        supabase.from('profiles').select('id, full_name, avatar_url, poste').neq('role', 'manager'),
+        supabase.from('chantier_techniciens').select('technicien_id, chantier_id'),
+      ])
+      const profiles    = profilesRes.data    ?? []
+      const assignments = assignmentsRes.data ?? []
+
+      const anomaliesPerTech: Record<string, number> = {}
+      anomalies.forEach(a => {
+        if (a.technicien_id) anomaliesPerTech[a.technicien_id] = (anomaliesPerTech[a.technicien_id] ?? 0) + 1
+      })
+
+      const result: TechStat[] = profiles.map(p => {
+        const ids = new Set(assignments.filter(a => a.technicien_id === p.id).map(a => a.chantier_id))
+        const mine = chantiers.filter(c => ids.has(c.id))
+        const actifs = mine.filter(c => c.statut === 'en_cours')
+        const pcts = actifs.map(c => progression[c.id]?.pct ?? 0)
+        return {
+          id:             p.id,
+          full_name:      p.full_name ?? '',
+          avatar_url:     p.avatar_url ?? null,
+          poste:          p.poste ?? null,
+          nb_actifs:      actifs.length,
+          nb_total:       mine.length,
+          nb_anomalies:   anomaliesPerTech[p.id] ?? 0,
+          progression_moy: pcts.length > 0 ? Math.round(pcts.reduce((a, b) => a + b, 0) / pcts.length) : 0,
+        }
+      })
+      result.sort((a, b) => b.nb_actifs - a.nb_actifs || b.nb_total - a.nb_total)
+      setTechStats(result)
+      setLoadingStats(false)
+    }
+    fetchTechStats()
+  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const chantiersFiltres = useMemo(() => {
     let result = [...chantiers]
@@ -235,7 +309,7 @@ export default function ManagerDashboard() {
                 style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 ☀️
               </div>
-              <span className="font-bold text-gray-900 text-lg tracking-tight">SolarTrack</span>
+              <span className="font-bold text-gray-900 text-lg tracking-tight">PVPilot</span>
             </div>
 
             <div className="flex items-center gap-3">
@@ -339,6 +413,7 @@ export default function ManagerDashboard() {
             {([
               { key: 'chantiers', label: 'Chantiers' },
               { key: 'anomalies', label: 'Anomalies', badge: anomaliesOuvertes.length || undefined },
+              { key: 'stats',     label: 'Stats' },
               { key: 'equipe',    label: 'Équipe' },
               { key: 'profil',    label: 'Profil' },
             ] as { key: Tab; label: string; badge?: number }[]).map(tab => (
@@ -479,6 +554,114 @@ export default function ManagerDashboard() {
           </>
         )}
 
+
+        {/* ── Onglet Stats ──────────────────────────────────────────────────── */}
+        {activeTab === 'stats' && (
+          <div className="space-y-5 pb-6">
+
+            {/* Métriques globales */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { label: 'kWc en cours', value: enhancedStats.kwc_en_cours || '—', unit: enhancedStats.kwc_en_cours ? 'kWc' : '', color: 'text-orange-500' },
+                { label: 'kWc installés', value: enhancedStats.kwc_installe || '—', unit: enhancedStats.kwc_installe ? 'kWc' : '', color: 'text-green-500' },
+                { label: 'Progression moy.', value: `${enhancedStats.progression_moy}%`, unit: 'tous chantiers', color: 'text-blue-500' },
+                { label: 'Anomalies ouvertes', value: anomaliesOuvertes.length, unit: 'à traiter', color: anomaliesOuvertes.length > 0 ? 'text-red-500' : 'text-green-500' },
+              ].map(kpi => (
+                <div key={kpi.label} className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+                  <p className="text-xs font-medium text-gray-400 mb-2">{kpi.label}</p>
+                  <p className={`text-3xl font-bold ${kpi.color}`}>{kpi.value}</p>
+                  {kpi.unit && <p className="text-xs text-gray-400 mt-1">{kpi.unit}</p>}
+                </div>
+              ))}
+            </div>
+
+            {/* Répartition statuts */}
+            {stats.total > 0 && (
+              <div className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+                <h3 className="font-semibold text-gray-800 text-sm mb-4">Répartition des chantiers</h3>
+                <div className="space-y-3">
+                  {[
+                    { label: 'En cours',   count: stats.en_cours,   color: 'bg-blue-500' },
+                    { label: 'Terminés',   count: stats.termines,   color: 'bg-green-500' },
+                    { label: 'Planifiés',  count: stats.planifies,  color: 'bg-purple-400' },
+                    { label: 'En attente', count: stats.en_attente, color: 'bg-gray-400' },
+                    { label: 'Bloqués',    count: stats.bloques,    color: 'bg-red-500' },
+                  ].map(item => (
+                    <div key={item.label}>
+                      <div className="flex justify-between text-xs mb-1.5">
+                        <span className="font-medium text-gray-600">{item.label}</span>
+                        <span className="text-gray-400">{item.count} / {stats.total}</span>
+                      </div>
+                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                          className={`h-full rounded-full transition-all duration-700 ${item.color}`}
+                          style={{ width: `${Math.round(item.count / stats.total * 100)}%` }}
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Performance équipe */}
+            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+              <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2.5">
+                <h3 className="font-semibold text-gray-800 text-sm">Performance équipe</h3>
+                {loadingStats && <div className="w-3 h-3 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />}
+              </div>
+              {!loadingStats && techStats.length === 0 ? (
+                <div className="py-10 text-center text-sm text-gray-400">Aucun technicien</div>
+              ) : (
+                <>
+                  {/* En-tête colonnes */}
+                  <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-5 py-2 bg-gray-50 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                    <span>Technicien</span>
+                    <span className="text-center w-16">Actifs</span>
+                    <span className="text-center w-16">Total</span>
+                    <span className="text-center w-16">Anomalies</span>
+                    <span className="text-center w-20">Progression</span>
+                  </div>
+                  <div className="divide-y divide-gray-50">
+                    {techStats.map(tech => (
+                      <div key={tech.id} className="flex items-center gap-4 px-5 py-4">
+                        <Avatar name={tech.full_name} avatarUrl={tech.avatar_url} size="md" />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">{tech.full_name}</p>
+                          <p className="text-xs text-gray-400">{tech.poste ?? 'Technicien'}</p>
+                        </div>
+                        <div className="text-center w-16">
+                          <p className="text-lg font-bold text-blue-500">{tech.nb_actifs}</p>
+                          <p className="text-[10px] text-gray-400 md:hidden">actifs</p>
+                        </div>
+                        <div className="text-center w-16">
+                          <p className="text-lg font-bold text-gray-500">{tech.nb_total}</p>
+                          <p className="text-[10px] text-gray-400 md:hidden">total</p>
+                        </div>
+                        <div className="text-center w-16">
+                          <p className={`text-lg font-bold ${tech.nb_anomalies > 0 ? 'text-red-500' : 'text-gray-300'}`}>{tech.nb_anomalies}</p>
+                          <p className="text-[10px] text-gray-400 md:hidden">anomalies</p>
+                        </div>
+                        <div className="text-center w-20 hidden md:block">
+                          {tech.nb_actifs > 0 ? (
+                            <>
+                              <p className="text-lg font-bold text-orange-500">{tech.progression_moy}%</p>
+                              <div className="h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
+                                <div className="h-full bg-orange-400 rounded-full" style={{ width: `${tech.progression_moy}%` }} />
+                              </div>
+                            </>
+                          ) : (
+                            <p className="text-sm text-gray-300">—</p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* ── Onglet Profil ─────────────────────────────────────────────────── */}
         {activeTab === 'profil' && (

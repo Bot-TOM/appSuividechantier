@@ -37,8 +37,8 @@ export default function LoginPage() {
             style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 8px 24px rgba(249,115,22,0.35)' }}>
             ☀️
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">SolarTrack</h1>
-          <p className="text-gray-500 text-sm mt-1.5">Gestion de chantiers photovoltaïques</p>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">PVPilot</h1>
+          <p className="text-gray-500 text-sm mt-1.5">Pilotage de chantiers photovoltaïques</p>
         </div>
 
         {/* Card formulaire */}
@@ -113,7 +113,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-gray-400 mt-8">
-          © 2025 SolarTrack · Gestion professionnelle de chantiers PV
+          © 2025 PVPilot · Pilotage professionnel de chantiers PV
         </p>
       </div>
     </div>
