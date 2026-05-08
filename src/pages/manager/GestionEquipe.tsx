@@ -142,13 +142,14 @@ export default function GestionEquipe() {
     const { data } = await supabase
       .from('profiles')
       .select('*')
-      .eq('role', 'technicien')
+      .neq('id', profile?.id ?? '')
+      .order('role')
       .order('full_name')
     setTechniciens(data ?? [])
     setLoading(false)
   }
 
-  useEffect(() => { fetchEquipe() }, [])
+  useEffect(() => { if (profile?.id) fetchEquipe() }, [profile?.id])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -273,7 +274,7 @@ export default function GestionEquipe() {
                 style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 ☀️
               </div>
-              <span className="font-bold text-gray-900 text-lg tracking-tight">SolarTrack</span>
+              <span className="font-bold text-gray-900 text-lg tracking-tight">PVPilot</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
@@ -378,7 +379,7 @@ export default function GestionEquipe() {
         {/* ── Liste équipe ──────────────────────────────────────────────────── */}
         <div>
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-3">
-            Équipe — {techniciens.length} technicien{techniciens.length !== 1 ? 's' : ''}
+            Équipe — {techniciens.length} membre{techniciens.length !== 1 ? 's' : ''}
           </h2>
 
           {loading ? (
@@ -404,11 +405,15 @@ export default function GestionEquipe() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-gray-900 text-sm">{tech.full_name}</p>
-                      {tech.poste && (
+                      {tech.role === 'manager' ? (
+                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 bg-orange-50 text-orange-600">
+                          Manager
+                        </span>
+                      ) : tech.poste ? (
                         <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${POSTE_COLORS[tech.poste] ?? 'bg-gray-100 text-gray-500'}`}>
                           {tech.poste}
                         </span>
-                      )}
+                      ) : null}
                     </div>
                     <p className="text-xs text-gray-400 truncate">{tech.email}</p>
                   </div>
