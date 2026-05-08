@@ -11,7 +11,7 @@ export function useMessages(chantierId: string, userId: string) {
   const fetchMessages = useCallback(async () => {
     const { data, error } = await supabase
       .from('messages')
-      .select('*, profiles!messages_user_id_fkey(full_name, avatar_url, poste, role), message_reactions(*), message_reads(user_id, read_at, profiles(full_name))')
+      .select('*, profiles!messages_user_id_fkey(full_name, avatar_url, poste, role), message_reactions(*), message_reads(user_id, read_at, profiles(full_name)), edited_at')
       .eq('chantier_id', chantierId)
       .order('created_at', { ascending: true })
     if (error) console.error('[chat] fetchMessages:', error)
@@ -100,5 +100,12 @@ export function useMessages(chantierId: string, userId: string) {
     )
   }, [userId])
 
-  return { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction, markAllRead }
+  const updateMessage = useCallback(async (id: string, content: string) => {
+    await supabase
+      .from('messages')
+      .update({ content, edited_at: new Date().toISOString() })
+      .eq('id', id)
+  }, [])
+
+  return { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction, markAllRead, updateMessage }
 }
