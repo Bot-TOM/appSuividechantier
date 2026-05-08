@@ -129,14 +129,14 @@ export default function ChantierPDF({ chantier, etapes, photos, notes, anomalies
   const acCategories = [...new Set(acChecks.map(c => c.categorie))]
 
   return (
-    <Document title={`Rapport - ${safeStr(chantier.nom)}`} author="SolarTrack">
+    <Document title={`Rapport - ${safeStr(chantier.nom)}`} author="PVPilot">
       <Page size="A4" style={S.page}>
 
         {/* HEADER */}
         <View style={S.header}>
           <View style={S.headerLeft}>
             <Text style={S.headerTitle}>RAPPORT DE CHANTIER</Text>
-            <Text style={S.headerSub}>SolarTrack - Suivi chantier PV</Text>
+            <Text style={S.headerSub}>PVPilot - Pilotage chantier PV</Text>
           </View>
           <Text style={S.headerDate}>Genere le {new Date().toLocaleDateString('fr-FR')}</Text>
         </View>
@@ -342,7 +342,7 @@ export default function ChantierPDF({ chantier, etapes, photos, notes, anomalies
 
         {/* FOOTER */}
         <View style={S.footer} fixed>
-          <Text style={S.footerTxt}>SolarTrack</Text>
+          <Text style={S.footerTxt}>PVPilot</Text>
           <Text style={S.footerTxt} render={({ pageNumber, totalPages }) => `Page ${pageNumber} / ${totalPages}`} />
         </View>
 
