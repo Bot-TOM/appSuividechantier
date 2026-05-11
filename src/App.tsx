@@ -1,7 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { AuthProvider } from '@/contexts/AuthContext'
 import ProtectedRoute from '@/components/ProtectedRoute'
-import LandingPage from '@/pages/LandingPage'
 import LoginPage from '@/pages/LoginPage'
 import ManagerDashboard from '@/pages/manager/ManagerDashboard'
 import CreateChantier from '@/pages/manager/CreateChantier'
@@ -13,6 +12,7 @@ import AnomaliesChantier from '@/pages/anomalies/AnomaliesChantier'
 import ChecklistMateriel from '@/pages/chantier/ChecklistMateriel'
 import AutoControle from '@/pages/chantier/AutoControle'
 import EditChantier from '@/pages/manager/EditChantier'
+import LandingPage from '@/pages/LandingPage'
 
 export default function App() {
   return (
@@ -56,7 +56,7 @@ export default function App() {
           } />
 
           <Route path="/" element={<LandingPage />} />
-          <Route path="*" element={<Navigate to="/" replace />} />
+          <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
     </AuthProvider>

@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useState } from 'react'
+import Logo from '@/components/Logo'
 
 // ── Données ───────────────────────────────────────────────────────────────────
 
@@ -131,101 +132,31 @@ const FAQS = [
   },
 ]
 
-// ── Composant Mockup téléphone ────────────────────────────────────────────────
+// ── Composant Mockup téléphone avec vraie capture ────────────────────────────
 
 function PhoneMockup() {
   return (
     <div className="relative mx-auto" style={{ width: 260 }}>
-      {/* Téléphone */}
       <div className="rounded-[2.5rem] bg-gray-900 p-2 shadow-2xl"
         style={{ boxShadow: '0 30px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08)' }}>
-        <div className="rounded-[2rem] overflow-hidden bg-[#F8FAFC]" style={{ height: 520 }}>
-          {/* Status bar */}
-          <div className="flex items-center justify-between px-4 py-2 bg-white">
-            <span className="text-[10px] font-semibold text-gray-700">9:41</span>
-            <div className="w-16 h-4 rounded-full bg-gray-900 mx-auto" />
-            <div className="flex gap-1 items-center">
-              <div className="w-3 h-2 rounded-sm bg-gray-700" />
-              <div className="w-1 h-1 rounded-full bg-gray-700" />
-            </div>
-          </div>
-
-          {/* Header app */}
-          <div className="px-4 py-3 flex items-center justify-between border-b border-gray-100 bg-white">
-            <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center text-sm"
-                style={{ background: 'linear-gradient(135deg, #EA580C, #F97316)' }}>☀️</div>
-              <span className="font-bold text-gray-900 text-sm">PVPilot</span>
-            </div>
-            <div className="w-7 h-7 rounded-full bg-orange-100 flex items-center justify-center text-xs font-bold text-orange-600">T</div>
-          </div>
-
-          {/* Contenu */}
-          <div className="px-3 py-3 space-y-2.5 overflow-hidden" style={{ height: 440 }}>
-            {/* Titre chantier */}
-            <div>
-              <p className="text-[11px] text-gray-400">Chantier en cours</p>
-              <p className="text-sm font-bold text-gray-900">Résidence Les Pins — 12 kWc</p>
-            </div>
-
-            {/* Barre progression */}
-            <div className="bg-white rounded-xl p-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
-              <div className="flex justify-between text-[11px] text-gray-400 mb-1.5">
-                <span>Progression</span>
-                <span className="font-bold text-orange-500">75%</span>
-              </div>
-              <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                <div className="h-full rounded-full bg-orange-500" style={{ width: '75%' }} />
-              </div>
-            </div>
-
-            {/* Étapes */}
-            {[
-              { label: 'Pose de la structure', done: true },
-              { label: 'Câblage DC', done: true },
-              { label: 'Raccordement onduleur', done: true },
-              { label: 'Mise en service', done: false, active: true },
-              { label: 'Test de production', done: false },
-            ].map((step, i) => (
-              <div key={i} className={`flex items-center gap-2.5 rounded-xl px-3 py-2 ${step.active ? 'bg-orange-50 border border-orange-200' : 'bg-white'}`}
-                style={!step.active ? { boxShadow: '0 1px 2px rgba(0,0,0,0.06)' } : {}}>
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 text-[10px] ${
-                  step.done ? 'bg-green-500 text-white' :
-                  step.active ? 'border-2 border-orange-400 bg-white' :
-                  'bg-gray-100'
-                }`}>
-                  {step.done ? '✓' : step.active ? '' : ''}
-                </div>
-                <span className={`text-xs ${step.done ? 'text-gray-400 line-through' : step.active ? 'font-semibold text-orange-600' : 'text-gray-600'}`}>
-                  {step.label}
-                </span>
-              </div>
-            ))}
-
-            {/* Bouton action */}
-            <button className="w-full text-white text-xs font-bold py-2.5 rounded-xl mt-1"
-              style={{ background: 'linear-gradient(135deg, #EA580C, #F97316)' }}>
-              ✓ Valider l'étape
-            </button>
-          </div>
+        <div className="rounded-[2rem] overflow-hidden bg-white" style={{ height: 520 }}>
+          <img src="/Dashboard.png" alt="Dashboard PVPilot" className="w-full h-full object-cover object-top" />
         </div>
       </div>
-
       {/* Notification flottante */}
       <div className="absolute -top-3 -right-8 bg-white rounded-2xl px-3 py-2 shadow-xl border border-gray-100 flex items-center gap-2 animate-bounce" style={{ animationDuration: '3s' }}>
-        <span className="text-sm">📸</span>
+        <span className="text-sm">⚠️</span>
         <div>
-          <p className="text-[10px] font-bold text-gray-800">Photo ajoutée</p>
-          <p className="text-[9px] text-gray-400">Étape validée ✓</p>
+          <p className="text-[10px] font-bold text-gray-800">Anomalie signalée</p>
+          <p className="text-[9px] text-gray-400">Gravité haute</p>
         </div>
       </div>
-
-      {/* Badge chat */}
+      {/* Badge statut */}
       <div className="absolute -bottom-2 -left-10 bg-white rounded-2xl px-3 py-2 shadow-xl border border-gray-100 flex items-center gap-2">
-        <div className="w-6 h-6 rounded-full bg-orange-100 flex items-center justify-center text-xs">💬</div>
+        <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center text-xs">✓</div>
         <div>
-          <p className="text-[10px] font-bold text-gray-800">Manager</p>
-          <p className="text-[9px] text-gray-400">RAS, continuez 👍</p>
+          <p className="text-[10px] font-bold text-gray-800">Étape validée</p>
+          <p className="text-[9px] text-gray-400">Mise en service</p>
         </div>
       </div>
     </div>
@@ -244,10 +175,7 @@ export default function LandingPage() {
       <nav className="sticky top-0 z-50 bg-white/90 backdrop-blur border-b border-gray-100">
         <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg shadow-sm"
-              style={{ background: 'linear-gradient(135deg, #EA580C, #F97316)' }}>
-              ☀️
-            </div>
+            <Logo size={32} />
             <span className="font-bold text-gray-900 text-lg tracking-tight">PVPilot</span>
           </div>
 
@@ -386,6 +314,59 @@ export default function LandingPage() {
                 </div>
                 <h3 className="font-bold text-gray-900 mb-2">{f.title}</h3>
                 <p className="text-sm text-gray-500 leading-relaxed">{f.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── Aperçu de l'application ───────────────────────────────────────── */}
+      <section className="py-24 bg-gray-50">
+        <div className="max-w-6xl mx-auto px-6">
+          <div className="text-center mb-16">
+            <p className="text-orange-500 font-semibold text-sm mb-3">Aperçu</p>
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              L'app telle qu'elle est vraiment
+            </h2>
+            <p className="text-gray-500 max-w-xl mx-auto">
+              Conçue pour être utilisée sur le terrain, en deux clics, même avec des gants.
+            </p>
+          </div>
+
+          {/* Planning desktop */}
+          <div className="mb-10 rounded-2xl overflow-hidden border border-gray-200 shadow-xl">
+            {/* Barre navigateur */}
+            <div className="bg-gray-100 border-b border-gray-200 px-4 py-2.5 flex items-center gap-3">
+              <div className="flex gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-red-400" />
+                <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                <div className="w-3 h-3 rounded-full bg-green-400" />
+              </div>
+              <div className="flex-1 bg-white rounded-lg px-3 py-1 text-xs text-gray-400 border border-gray-200">
+                app.mypvpilot.fr
+              </div>
+            </div>
+            <img src="/Planning.png" alt="Planning équipe PVPilot" className="w-full" />
+          </div>
+
+          {/* 3 mobiles côte à côte */}
+          <div className="grid grid-cols-3 gap-6 max-w-3xl mx-auto">
+            {[
+              { src: '/PlanningTechnicien.png', label: 'Mon planning', desc: 'Vue personnelle de la semaine' },
+              { src: '/Etapes.png',             label: 'Suivi terrain',  desc: 'Étapes chantier en temps réel' },
+              { src: '/Chat.png',               label: 'Chat intégré',   desc: 'Messagerie par chantier' },
+            ].map(item => (
+              <div key={item.label} className="flex flex-col items-center gap-3">
+                <div className="rounded-[2rem] bg-gray-900 p-1.5 shadow-xl w-full"
+                  style={{ boxShadow: '0 20px 50px rgba(0,0,0,0.25), 0 0 0 1px rgba(255,255,255,0.06)' }}>
+                  <div className="rounded-[1.6rem] overflow-hidden bg-white aspect-[9/19]">
+                    <img src={item.src} alt={item.label} className="w-full h-full object-cover object-top" />
+                  </div>
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold text-gray-900 text-sm">{item.label}</p>
+                  <p className="text-xs text-gray-400">{item.desc}</p>
+                </div>
               </div>
             ))}
           </div>
@@ -548,8 +529,7 @@ export default function LandingPage() {
           <div className="flex flex-col md:flex-row items-start justify-between gap-8 mb-10">
             <div>
               <div className="flex items-center gap-2 mb-3">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center text-base"
-                  style={{ background: 'linear-gradient(135deg, #EA580C, #F97316)' }}>☀️</div>
+                <Logo size={28} />
                 <span className="font-bold text-white">PVPilot</span>
               </div>
               <p className="text-sm max-w-xs leading-relaxed">
