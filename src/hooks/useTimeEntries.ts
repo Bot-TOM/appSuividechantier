@@ -4,10 +4,11 @@ import { useAuth } from '@/contexts/AuthContext'
 import type { TimeEntry } from '@/types'
 import { getWeekDays } from './usePlanning'
 
+// Calcule la durée travaillée en h/hhmm
 export function calcDuree(
   arrivee: string | null,
-  depart: string | null,
-  pause: number | null,
+  depart:  string | null,
+  pause:   number | null,
 ): string {
   if (!arrivee || !depart) return '—'
   const [ah, am] = arrivee.split(':').map(Number)
@@ -40,35 +41,38 @@ export function useMyTimeEntries(weekStart: string) {
   }, [profile?.id, weekStart, weekEnd])
 
   const upsert = useCallback(async (
-    date: string,
+    date:    string,
     updates: { arrivee?: string | null; depart?: string | null; pause?: number | null },
   ) => {
     if (!profile?.id) return
     const existing = entries.find(e => e.date === date)
     const merged: TimeEntry = {
-      id: existing?.id ?? `tmp-${Date.now()}`,
+      id:            existing?.id ?? `tmp-${Date.now()}`,
       technicien_id: profile.id,
       date,
-      arrivee: updates.arrivee !== undefined ? updates.arrivee : (existing?.arrivee ?? null),
-      depart:  updates.depart  !== undefined ? updates.depart  : (existing?.depart  ?? null),
-      pause:   updates.pause   !== undefined ? updates.pause   : (existing?.pause   ?? null),
+      arrivee:    updates.arrivee !== undefined ? updates.arrivee : (existing?.arrivee ?? null),
+      depart:     updates.depart  !== undefined ? updates.depart  : (existing?.depart  ?? null),
+      pause:      updates.pause   !== undefined ? updates.pause   : (existing?.pause   ?? null),
       created_at: existing?.created_at ?? new Date().toISOString(),
     }
+    // Optimistic update
     setEntries(prev => {
       const idx = prev.findIndex(e => e.date === date)
       if (idx >= 0) { const n = [...prev]; n[idx] = merged; return n }
       return [...prev, merged]
     })
-    await supabase.from('time_entries').upsert(
-      {
-        technicien_id: profile.id,
-        date,
-        arrivee: merged.arrivee,
-        depart:  merged.depart,
-        pause:   merged.pause ?? 0,
-      },
-      { onConflict: 'technicien_id,date' },
-    )
+    await supabase
+      .from('time_entries')
+      .upsert(
+        {
+          technicien_id: profile.id,
+          date,
+          arrivee: merged.arrivee,
+          depart:  merged.depart,
+          pause:   merged.pause ?? 0,
+        },
+        { onConflict: 'technicien_id,date' },
+      )
   }, [profile?.id, entries])
 
   return { entries, loading, upsert }

@@ -2,9 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import type { PlanningEntry, PlanningType } from '@/types'
 
+// ─── Helpers dates ────────────────────────────────────────────────────────────
+
 export function getMondayOfWeek(d = new Date()): string {
   const date = new Date(d)
-  const day = date.getDay()
+  const day  = date.getDay()
   const diff = day === 0 ? -6 : 1 - day
   date.setDate(date.getDate() + diff)
   return date.toISOString().split('T')[0]
@@ -19,11 +21,11 @@ export function getWeekDays(weekStart: string): string[] {
 }
 
 export function fmtDay(iso: string): { short: string; num: string } {
-  const d = new Date(iso + 'T00:00:00')
+  const d     = new Date(iso + 'T00:00:00')
   const short = d.toLocaleDateString('fr-FR', { weekday: 'short' })
   return {
     short: short.charAt(0).toUpperCase() + short.slice(1, 3),
-    num: d.getDate().toString(),
+    num:   d.getDate().toString(),
   }
 }
 
@@ -45,6 +47,8 @@ export function nextMonday(weekStart: string): string {
   return d.toISOString().split('T')[0]
 }
 
+// ─── Hook planning ────────────────────────────────────────────────────────────
+
 export function usePlanning(weekStart: string) {
   const [entries, setEntries] = useState<PlanningEntry[]>([])
   const [loading, setLoading] = useState(true)
@@ -64,20 +68,22 @@ export function usePlanning(weekStart: string) {
 
   useEffect(() => { refetch() }, [refetch])
 
+  // Upsert une seule cellule
   const upsert = useCallback(async (
     technicienId: string,
     date: string,
     type: PlanningType,
     texte: string,
   ) => {
+    // Optimistic update
     setEntries(prev => {
       const idx = prev.findIndex(e => e.technicien_id === technicienId && e.date === date)
       const updated: PlanningEntry = {
-        id: prev[idx]?.id ?? `tmp-${Date.now()}`,
+        id:            prev[idx]?.id ?? `tmp-${Date.now()}`,
         technicien_id: technicienId,
         date,
         type,
-        texte: texte || null,
+        texte:      texte || null,
         created_at: prev[idx]?.created_at ?? new Date().toISOString(),
       }
       if (idx >= 0) { const n = [...prev]; n[idx] = updated; return n }
@@ -85,22 +91,37 @@ export function usePlanning(weekStart: string) {
     })
     await supabase
       .from('planning_entries')
-      .upsert({ technicien_id: technicienId, date, type, texte: texte || null }, { onConflict: 'technicien_id,date' })
+      .upsert(
+        { technicien_id: technicienId, date, type, texte: texte || null },
+        { onConflict: 'technicien_id,date' },
+      )
   }, [])
 
+  // Upsert multiple cellules en même temps (sélection bulk)
   const upsertBulk = useCallback(async (
     cells: { techId: string; date: string }[],
     type: PlanningType,
   ) => {
-    const rows = cells.map(c => ({ technicien_id: c.techId, date: c.date, type, texte: null }))
+    const rows = cells.map(c => ({
+      technicien_id: c.techId,
+      date:          c.date,
+      type,
+      texte:         null,
+    }))
     setEntries(prev => {
       const next = [...prev]
       for (const r of rows) {
-        const idx = next.findIndex(e => e.technicien_id === r.technicien_id && e.date === r.date)
+        const idx = next.findIndex(
+          e => e.technicien_id === r.technicien_id && e.date === r.date,
+        )
         if (idx >= 0) {
           next[idx] = { ...next[idx], type: r.type, texte: null }
         } else {
-          next.push({ ...r, id: `tmp-${Date.now()}-${r.date}`, created_at: new Date().toISOString() })
+          next.push({
+            ...r,
+            id:         `tmp-${Date.now()}-${r.date}`,
+            created_at: new Date().toISOString(),
+          })
         }
       }
       return next

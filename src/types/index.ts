@@ -58,7 +58,6 @@ export interface PlanningEntry {
   created_at: string
 }
 
-// Feuille d'heures
 export interface TimeEntry {
   id: string
   technicien_id: string

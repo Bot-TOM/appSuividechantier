@@ -9,9 +9,8 @@ import { useNotifications } from '@/hooks/useNotifications'
 import GraviteBadge from '@/components/anomalies/GraviteBadge'
 import Avatar from '@/components/Avatar'
 import { supabase } from '@/lib/supabase'
-import { Chantier, ChantierStatut, Anomalie, UserProfile } from '@/types'
+import { Chantier, ChantierStatut, Anomalie } from '@/types'
 import PlanningManagerTab from '@/components/planning/PlanningManagerTab'
-
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
 type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning'
@@ -211,15 +210,6 @@ export default function ManagerDashboard() {
     planifies:  chantiers.filter(c => c.statut === 'planifie').length,
     en_attente: chantiers.filter(c => c.statut === 'en_attente').length,
   }
-
-  // ── Profiles (planning) ─────────────────────────────────────────────────────
-  const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
-
-  useEffect(() => {
-    supabase.from('profiles').select('*').then(({ data }) => {
-      if (data) setAllProfiles(data as UserProfile[])
-    })
-  }, [])
 
   // ── Stats avancées ──────────────────────────────────────────────────────────
   const [techStats, setTechStats]     = useState<TechStat[]>([])
@@ -906,7 +896,7 @@ export default function ManagerDashboard() {
 
         {/* ── Onglet Planning ───────────────────────────────────────────────── */}
         {activeTab === 'planning' && (
-          <PlanningManagerTab profiles={allProfiles} />
+          <PlanningManagerTab />
         )}
       </main>
     </div>

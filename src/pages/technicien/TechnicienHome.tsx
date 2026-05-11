@@ -453,7 +453,7 @@ export default function TechnicienHome() {
         })()}
 
         {activeTab === 'planning' && (
-          <PlanningTechTab profiles={teamMembers} />
+          <PlanningTechTab />
         )}
 
         {activeTab === 'profil' && (
