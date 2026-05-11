@@ -9,11 +9,12 @@ import { useNotifications } from '@/hooks/useNotifications'
 import GraviteBadge from '@/components/anomalies/GraviteBadge'
 import Avatar from '@/components/Avatar'
 import { supabase } from '@/lib/supabase'
-import { Chantier, ChantierStatut, Anomalie } from '@/types'
+import { Chantier, ChantierStatut, Anomalie, UserProfile } from '@/types'
+import PlanningManagerTab from '@/components/planning/PlanningManagerTab'
 
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
-type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil'
+type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning'
 
 type AnomalieWithRelations = Anomalie & {
   profiles?: { full_name?: string } | null
@@ -60,13 +61,15 @@ function ChantierCard({ chantier, pct, onClick }: { chantier: Chantier; pct: num
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-2xl border-l-4 ${STATUT_BORDER[chantier.statut]} cursor-pointer hover:shadow-md transition-all duration-200`}
-      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)' }}
+      className={`bg-white rounded-2xl border-l-4 ${STATUT_BORDER[chantier.statut]} cursor-pointer transition-all duration-200 hover:-translate-y-0.5`}
+      style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}
+      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06)')}
+      onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)')}
     >
-      <div className="p-5">
-        <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="p-6">
+        <div className="flex items-start justify-between gap-3 mb-4">
           <div className="min-w-0">
-            <h3 className="font-semibold text-gray-900 truncate text-[15px]">{chantier.nom}</h3>
+            <h3 className="font-semibold text-gray-900 truncate text-base">{chantier.nom}</h3>
             <p className="text-sm text-gray-500 mt-0.5">{chantier.client_nom}</p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
@@ -75,7 +78,7 @@ function ChantierCard({ chantier, pct, onClick }: { chantier: Chantier; pct: num
           </div>
         </div>
 
-        <div className="mb-3">
+        <div className="mb-4">
           <div className="flex justify-between text-xs text-gray-400 mb-1.5">
             <span>Progression</span>
             <span className={`font-semibold ${pct === 100 ? 'text-green-600' : 'text-gray-600'}`}>{pct}%</span>
@@ -209,6 +212,15 @@ export default function ManagerDashboard() {
     en_attente: chantiers.filter(c => c.statut === 'en_attente').length,
   }
 
+  // ── Profiles (planning) ─────────────────────────────────────────────────────
+  const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
+
+  useEffect(() => {
+    supabase.from('profiles').select('*').then(({ data }) => {
+      if (data) setAllProfiles(data as UserProfile[])
+    })
+  }, [])
+
   // ── Stats avancées ──────────────────────────────────────────────────────────
   const [techStats, setTechStats]     = useState<TechStat[]>([])
   const [loadingStats, setLoadingStats] = useState(false)
@@ -303,7 +315,7 @@ export default function ManagerDashboard() {
         <div className="max-w-4xl md:max-w-6xl mx-auto px-6">
 
           {/* Ligne principale */}
-          <div className="flex items-center justify-between py-4">
+          <div className="flex items-center justify-between py-5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
                 style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
@@ -414,6 +426,7 @@ export default function ManagerDashboard() {
               { key: 'chantiers', label: 'Chantiers' },
               { key: 'anomalies', label: 'Anomalies', badge: anomaliesOuvertes.length || undefined },
               { key: 'stats',     label: 'Stats' },
+              { key: 'planning',  label: 'Planning' },
               { key: 'equipe',    label: 'Équipe' },
               { key: 'profil',    label: 'Profil' },
             ] as { key: Tab; label: string; badge?: number }[]).map(tab => (
@@ -438,7 +451,7 @@ export default function ManagerDashboard() {
         </div>
       </header>
 
-      <main className="max-w-4xl md:max-w-6xl mx-auto px-6 py-6 space-y-5">
+      <main className="max-w-4xl md:max-w-6xl mx-auto px-6 py-8 space-y-6">
 
         {/* ── Onglet Anomalies ──────────────────────────────────────────────── */}
         {activeTab === 'anomalies' && (
@@ -481,7 +494,7 @@ export default function ManagerDashboard() {
             </p>
 
             {anomaliesFiltrees.length === 0 ? (
-              <div className="bg-white rounded-2xl p-14 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+              <div className="bg-white rounded-2xl p-14 text-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
                 <div className="text-5xl mb-4">✅</div>
                 <p className="font-semibold text-gray-700 mb-1">Aucune anomalie</p>
                 <p className="text-sm text-gray-400">Tout est en ordre</p>
@@ -494,8 +507,8 @@ export default function ManagerDashboard() {
                   return (
                     <div key={a.id}
                       onClick={() => anomalieSelectMode && toggleAnomalieSelect(a.id)}
-                      className={`bg-white rounded-2xl p-5 space-y-3 transition-all ${anomalieSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-2 ring-red-400' : ''}`}
-                      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                      className={`bg-white rounded-2xl p-6 space-y-4 transition-all ${anomalieSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-2 ring-red-400' : ''}`}
+                      style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0 flex items-start gap-3">
                           {anomalieSelectMode && (
@@ -560,26 +573,26 @@ export default function ManagerDashboard() {
           <div className="space-y-5 pb-6">
 
             {/* Métriques globales */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { label: 'kWc en cours', value: enhancedStats.kwc_en_cours || '—', unit: enhancedStats.kwc_en_cours ? 'kWc' : '', color: 'text-orange-500' },
                 { label: 'kWc installés', value: enhancedStats.kwc_installe || '—', unit: enhancedStats.kwc_installe ? 'kWc' : '', color: 'text-green-500' },
                 { label: 'Progression moy.', value: `${enhancedStats.progression_moy}%`, unit: 'tous chantiers', color: 'text-blue-500' },
                 { label: 'Anomalies ouvertes', value: anomaliesOuvertes.length, unit: 'à traiter', color: anomaliesOuvertes.length > 0 ? 'text-red-500' : 'text-green-500' },
               ].map(kpi => (
-                <div key={kpi.label} className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
-                  <p className="text-xs font-medium text-gray-400 mb-2">{kpi.label}</p>
-                  <p className={`text-3xl font-bold ${kpi.color}`}>{kpi.value}</p>
-                  {kpi.unit && <p className="text-xs text-gray-400 mt-1">{kpi.unit}</p>}
+                <div key={kpi.label} className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{kpi.label}</p>
+                  <p className={`text-4xl font-bold ${kpi.color}`}>{kpi.value}</p>
+                  {kpi.unit && <p className="text-xs text-gray-400 mt-1.5">{kpi.unit}</p>}
                 </div>
               ))}
             </div>
 
             {/* Répartition statuts */}
             {stats.total > 0 && (
-              <div className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
-                <h3 className="font-semibold text-gray-800 text-sm mb-4">Répartition des chantiers</h3>
-                <div className="space-y-3">
+              <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+                <h3 className="font-semibold text-gray-900 mb-5">Répartition des chantiers</h3>
+                <div className="space-y-4">
                   {[
                     { label: 'En cours',   count: stats.en_cours,   color: 'bg-blue-500' },
                     { label: 'Terminés',   count: stats.termines,   color: 'bg-green-500' },
@@ -605,9 +618,9 @@ export default function ManagerDashboard() {
             )}
 
             {/* Performance équipe */}
-            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
-              <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2.5">
-                <h3 className="font-semibold text-gray-800 text-sm">Performance équipe</h3>
+            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+              <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2.5">
+                <h3 className="font-semibold text-gray-900">Performance équipe</h3>
                 {loadingStats && <div className="w-3 h-3 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />}
               </div>
               {!loadingStats && techStats.length === 0 ? (
@@ -615,7 +628,7 @@ export default function ManagerDashboard() {
               ) : (
                 <>
                   {/* En-tête colonnes */}
-                  <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-5 py-2 bg-gray-50 text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-6 py-3 bg-gray-50 text-xs font-semibold text-gray-400 uppercase tracking-wide">
                     <span>Technicien</span>
                     <span className="text-center w-16">Actifs</span>
                     <span className="text-center w-16">Total</span>
@@ -624,7 +637,7 @@ export default function ManagerDashboard() {
                   </div>
                   <div className="divide-y divide-gray-50">
                     {techStats.map(tech => (
-                      <div key={tech.id} className="flex items-center gap-4 px-5 py-4">
+                      <div key={tech.id} className="flex items-center gap-4 px-6 py-4">
                         <Avatar name={tech.full_name} avatarUrl={tech.avatar_url} size="md" />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-900 truncate">{tech.full_name}</p>
@@ -666,7 +679,7 @@ export default function ManagerDashboard() {
         {/* ── Onglet Profil ─────────────────────────────────────────────────── */}
         {activeTab === 'profil' && (
           <div className="max-w-lg space-y-4 pb-6">
-            <div className="bg-white rounded-2xl p-6 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+            <div className="bg-white rounded-2xl p-6 text-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
               <label className="relative inline-block cursor-pointer mb-4">
                 <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="xl" />
                 <div className="absolute bottom-0 right-0 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center border-2 border-white">
@@ -685,7 +698,7 @@ export default function ManagerDashboard() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
               <button
                 onClick={() => { setShowPwd(v => !v); setPwdMsg(null) }}
                 className="w-full px-5 py-4 flex items-center justify-between text-left"
@@ -741,7 +754,7 @@ export default function ManagerDashboard() {
         {activeTab === 'chantiers' && (<>
 
         {/* ── KPIs ──────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[
             { label: 'Total',    value: stats.total,    dot: 'bg-gray-400',  filter: 'tous'       },
             { label: 'En cours', value: stats.en_cours, dot: 'bg-blue-500',  filter: 'en_cours'   },
@@ -751,27 +764,27 @@ export default function ManagerDashboard() {
             <button
               key={kpi.label}
               onClick={() => setFilterStatut(kpi.filter as FilterStatut)}
-              className={`bg-white rounded-2xl p-4 text-left transition-all duration-150 ${
+              className={`bg-white rounded-2xl p-5 text-left transition-all duration-200 ${
                 filterStatut === kpi.filter
-                  ? 'ring-2 ring-orange-400 ring-offset-1'
-                  : 'hover:shadow-sm'
+                  ? 'ring-2 ring-orange-400 ring-offset-2'
+                  : 'hover:-translate-y-0.5'
               }`}
-              style={{ boxShadow: filterStatut === kpi.filter ? undefined : '0 1px 3px rgba(0,0,0,0.07)' }}
+              style={{ boxShadow: filterStatut === kpi.filter ? undefined : '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}
             >
-              <div className="flex items-center gap-1.5 mb-2">
+              <div className="flex items-center gap-1.5 mb-3">
                 <span className={`w-2 h-2 rounded-full ${kpi.dot}`} />
-                <span className="text-xs font-medium text-gray-500">{kpi.label}</span>
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{kpi.label}</span>
               </div>
-              <div className="text-3xl font-bold text-gray-900">{kpi.value}</div>
+              <div className="text-4xl font-bold text-gray-900">{kpi.value}</div>
             </button>
           ))}
         </div>
 
         {/* ── Anomalies ouvertes ────────────────────────────────────────────── */}
         {anomaliesOuvertes.length > 0 && (
-          <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-            <div className="px-5 py-3.5 border-b border-gray-50 flex items-center gap-2.5">
-              <h2 className="font-semibold text-gray-800 text-sm">Anomalies ouvertes</h2>
+          <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+            <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2.5">
+              <h2 className="font-semibold text-gray-900">Anomalies ouvertes</h2>
               <span className="bg-red-500 text-white text-xs font-bold px-2 py-0.5 rounded-full">
                 {anomaliesOuvertes.length}
               </span>
@@ -781,7 +794,7 @@ export default function ManagerDashboard() {
                 <button
                   key={a.id}
                   onClick={() => navigate(`/chantier/${a.chantier_id}/anomalies`)}
-                  className="w-full flex items-center gap-3 px-5 py-3 hover:bg-gray-50 text-left transition-colors"
+                  className="w-full flex items-center gap-3 px-6 py-3.5 hover:bg-gray-50 text-left transition-colors"
                 >
                   <GraviteBadge gravite={a.gravite} />
                   <span className="flex-1 text-sm text-gray-700 truncate">{a.type} — {a.description}</span>
@@ -868,7 +881,7 @@ export default function ManagerDashboard() {
             <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
           </div>
         ) : chantiersFiltres.length === 0 ? (
-          <div className="bg-white rounded-2xl p-14 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+          <div className="bg-white rounded-2xl p-14 text-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
             <div className="text-5xl mb-4">🏗️</div>
             <p className="font-semibold text-gray-700 mb-1">
               {searchQuery ? 'Aucun résultat' : 'Aucun chantier ici'}
@@ -878,7 +891,7 @@ export default function ManagerDashboard() {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 pb-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 pb-8">
             {chantiersFiltres.map(c => (
               <ChantierCard
                 key={c.id}
@@ -890,6 +903,11 @@ export default function ManagerDashboard() {
           </div>
         )}
         </>)}
+
+        {/* ── Onglet Planning ───────────────────────────────────────────────── */}
+        {activeTab === 'planning' && (
+          <PlanningManagerTab profiles={allProfiles} />
+        )}
       </main>
     </div>
   )

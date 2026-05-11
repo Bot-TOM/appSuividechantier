@@ -122,7 +122,7 @@ export default function CreateChantier() {
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
-        <div className="max-w-2xl md:max-w-5xl mx-auto px-4 py-4 flex items-center gap-3">
+        <div className="max-w-2xl md:max-w-5xl mx-auto px-4 py-5 flex items-center gap-3">
           <button
             onClick={() => navigate(backUrl)}
             className="w-9 h-9 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-50 transition-colors text-xl"
@@ -131,12 +131,12 @@ export default function CreateChantier() {
         </div>
       </header>
 
-      <main className="max-w-2xl md:max-w-5xl mx-auto px-4 py-6">
-        <form onSubmit={handleSubmit} className="space-y-4">
+      <main className="max-w-2xl md:max-w-5xl mx-auto px-4 py-8">
+        <form onSubmit={handleSubmit} className="space-y-5">
 
           {/* ── Informations chantier ──────────────────────────────────────── */}
-          <section className="bg-white rounded-2xl p-6 space-y-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
-            <h2 className="font-semibold text-gray-900">Informations chantier</h2>
+          <section className="bg-white rounded-2xl p-6 space-y-4" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Informations chantier</h2>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom du chantier *</label>
@@ -184,8 +184,8 @@ export default function CreateChantier() {
           </section>
 
           {/* ── Client ────────────────────────────────────────────────────── */}
-          <section className="bg-white rounded-2xl p-6 space-y-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
-            <h2 className="font-semibold text-gray-900">Client</h2>
+          <section className="bg-white rounded-2xl p-6 space-y-4" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+            <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Client</h2>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom *</label>
@@ -208,9 +208,9 @@ export default function CreateChantier() {
           </section>
 
           {/* ── Étapes ────────────────────────────────────────────────────── */}
-          <section className="bg-white rounded-2xl p-6 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+          <section className="bg-white rounded-2xl p-6 space-y-3" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
             <div>
-              <h2 className="font-semibold text-gray-900">Étapes du chantier</h2>
+              <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Étapes du chantier</h2>
               <p className="text-xs text-gray-400 mt-0.5">Nom et consignes visibles par le technicien</p>
             </div>
 
@@ -273,8 +273,8 @@ export default function CreateChantier() {
 
           {/* ── Équipe assignée ───────────────────────────────────────────── */}
           {can('assigner_techniciens') && (
-            <section className="bg-white rounded-2xl p-6 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
-              <h2 className="font-semibold text-gray-900">Équipe assignée</h2>
+            <section className="bg-white rounded-2xl p-6 space-y-3" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+              <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Équipe assignée</h2>
               {techniciens.length === 0 ? (
                 <p className="text-sm text-gray-400">Aucun technicien disponible</p>
               ) : (

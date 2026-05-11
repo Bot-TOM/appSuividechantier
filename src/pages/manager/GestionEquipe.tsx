@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { supabaseAuth } from '@/lib/supabaseAuth'
 import { UserProfile, POSTES_OPTIONS, PERMISSION_LABELS, type PermissionKey } from '@/types'
 import { useRolePermissions } from '@/hooks/useRolePermissions'
+import Avatar from '@/components/Avatar'
 
 interface EditModal {
   user: UserProfile
@@ -32,7 +33,7 @@ function PermissionsSection() {
       <button
         onClick={() => setOpen(o => !o)}
         className="w-full flex items-center justify-between px-5 py-4 bg-white rounded-2xl text-left transition-colors hover:bg-gray-50"
-        style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}
+        style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-xl bg-purple-50 flex items-center justify-center flex-shrink-0">
@@ -51,7 +52,7 @@ function PermissionsSection() {
       </button>
 
       {open && (
-        <div className="mt-2 bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+        <div className="mt-2 bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
           {/* Indicateur de sauvegarde */}
           {saving && (
             <div className="px-4 py-2 bg-orange-50 border-b border-orange-100 flex items-center gap-2">
@@ -268,7 +269,7 @@ export default function GestionEquipe() {
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-gray-100 sticky top-0 z-20">
         <div className="max-w-4xl mx-auto px-6">
-          <div className="flex items-center justify-between py-4">
+          <div className="flex items-center justify-between py-5">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
                 style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
@@ -281,10 +282,7 @@ export default function GestionEquipe() {
                 <p className="text-sm font-semibold text-gray-900 leading-tight">{profile?.full_name}</p>
                 <p className="text-xs text-gray-400">Manager</p>
               </div>
-              <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold flex-shrink-0"
-                style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
-                {profile?.full_name?.charAt(0).toUpperCase()}
-              </div>
+              <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="md" />
               <button onClick={signOut} title="Se déconnecter"
                 className="text-gray-300 hover:text-red-400 transition-colors text-lg leading-none ml-1">
                 ↩
@@ -307,7 +305,7 @@ export default function GestionEquipe() {
         </div>
       </header>
 
-      <main className="max-w-2xl md:max-w-5xl mx-auto px-6 py-6 space-y-5">
+      <main className="max-w-2xl md:max-w-5xl mx-auto px-6 py-8 space-y-6">
 
         {success && (
           <div className="bg-green-50 border border-green-100 text-green-700 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
@@ -387,7 +385,7 @@ export default function GestionEquipe() {
               <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : techniciens.length === 0 ? (
-            <div className="bg-white rounded-2xl p-12 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+            <div className="bg-white rounded-2xl p-12 text-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
               <div className="text-4xl mb-3">👥</div>
               <p className="font-semibold text-gray-700 mb-1">Aucun technicien</p>
               <p className="text-sm text-gray-400">Ajoutez votre premier technicien ci-dessus</p>
@@ -397,7 +395,7 @@ export default function GestionEquipe() {
               {techniciens.map(tech => (
                 <div key={tech.id}
                   className="bg-white rounded-2xl px-5 py-4 flex items-center gap-4"
-                  style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+                  style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
                   <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0"
                     style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                     {tech.full_name.charAt(0).toUpperCase()}
@@ -406,11 +404,11 @@ export default function GestionEquipe() {
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-gray-900 text-sm">{tech.full_name}</p>
                       {tech.role === 'manager' ? (
-                        <span className="text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 bg-orange-50 text-orange-600">
+                        <span className="text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 bg-orange-50 text-orange-600">
                           Manager
                         </span>
                       ) : tech.poste ? (
-                        <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${POSTE_COLORS[tech.poste] ?? 'bg-gray-100 text-gray-500'}`}>
+                        <span className={`text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 ${POSTE_COLORS[tech.poste] ?? 'bg-gray-100 text-gray-500'}`}>
                           {tech.poste}
                         </span>
                       ) : null}

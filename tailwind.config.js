@@ -15,6 +15,9 @@ export default {
           700: '#c2410c',
         },
       },
+      transitionDuration: {
+        DEFAULT: '200ms',
+      },
     },
   },
   plugins: [],

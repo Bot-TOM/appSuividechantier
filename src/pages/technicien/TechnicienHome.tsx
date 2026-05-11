@@ -8,6 +8,7 @@ import Avatar from '@/components/Avatar'
 import { supabase } from '@/lib/supabase'
 import { Chantier, ChantierStatut, UserProfile } from '@/types'
 import { usePermissions } from '@/hooks/usePermissions'
+import PlanningTechTab from '@/components/planning/PlanningTechTab'
 
 const STATUT_LABEL: Record<ChantierStatut, string> = {
   planifie:   'Planifié',
@@ -48,14 +49,14 @@ function ChantierCard({
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-2xl border-l-4 ${STATUT_BORDER[chantier.statut]} active:scale-[0.99] transition-all duration-150 cursor-pointer`}
-      style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.05)' }}
+      className={`bg-white rounded-2xl border-l-4 ${STATUT_BORDER[chantier.statut]} active:scale-[0.99] transition-all duration-200 cursor-pointer`}
+      style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}
     >
-      <div className="p-5">
+      <div className="p-6">
         {/* Nom + statut */}
-        <div className="flex items-start justify-between gap-3 mb-3">
+        <div className="flex items-start justify-between gap-3 mb-4">
           <div className="min-w-0">
-            <h3 className="font-semibold text-gray-900 truncate text-[15px]">{chantier.nom}</h3>
+            <h3 className="font-semibold text-gray-900 truncate text-base">{chantier.nom}</h3>
             <p className="text-sm text-gray-500 mt-0.5">{chantier.client_nom}</p>
           </div>
           <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
@@ -65,7 +66,7 @@ function ChantierCard({
         </div>
 
         {/* Barre de progression */}
-        <div className="mb-3">
+        <div className="mb-4">
           <div className="flex justify-between text-xs text-gray-400 mb-1.5">
             <span>Progression</span>
             <span className={`font-semibold ${pct === 100 ? 'text-green-600' : 'text-gray-600'}`}>{pct}%</span>
@@ -80,7 +81,7 @@ function ChantierCard({
 
         {/* Étape active */}
         {etapeActive && !isTermine && (
-          <div className="flex items-center gap-1.5 mb-3">
+          <div className="flex items-center gap-1.5 mb-4">
             <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${isBloque ? 'bg-red-400' : 'bg-orange-400 animate-pulse'}`} />
             <span className="text-xs text-gray-500 truncate">{etapeActive}</span>
           </div>
@@ -152,7 +153,7 @@ function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePus
 
   return (
     <div className="space-y-4">
-      <div className="bg-white rounded-2xl p-6 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+      <div className="bg-white rounded-2xl p-6 text-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
         <label className="relative inline-block cursor-pointer mb-4">
           <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="xl" />
           <div className="absolute bottom-0 right-0 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center border-2 border-white">
@@ -201,7 +202,7 @@ function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePus
         )}
       </div>
 
-      <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+      <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
         <button
           onClick={() => { setShowPwd(v => !v); setPwdMsg(null) }}
           className="w-full px-5 py-4 flex items-center justify-between text-left"
@@ -245,7 +246,7 @@ export default function TechnicienHome() {
   const { chantiers, loading } = useChantiers()
   const { can } = usePermissions()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'chantiers' | 'equipe' | 'profil'>('chantiers')
+  const [activeTab, setActiveTab] = useState<'chantiers' | 'planning' | 'equipe' | 'profil'>('chantiers')
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([])
 
   useEffect(() => {
@@ -324,6 +325,16 @@ export default function TechnicienHome() {
                 </div>
               )}
             </>
+          ) : activeTab === 'planning' ? (
+            <div className="mt-4">
+              <h1 className="text-white font-bold text-2xl">Planning</h1>
+              <p className="text-orange-100 text-sm mt-0.5">Semaine en cours</p>
+            </div>
+          ) : activeTab === 'equipe' ? (
+            <div className="mt-4">
+              <h1 className="text-white font-bold text-2xl">Mon équipe</h1>
+              <p className="text-orange-100 text-sm mt-0.5">{teamMembers.length} membre{teamMembers.length !== 1 ? 's' : ''}</p>
+            </div>
           ) : (
             <div className="mt-4">
               <h1 className="text-white font-bold text-2xl">Mon profil</h1>
@@ -334,7 +345,7 @@ export default function TechnicienHome() {
       </header>
 
       {/* ── Contenu ──────────────────────────────────────────────────────── */}
-      <main className="px-4 py-5 max-w-lg mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
+      <main className="px-4 py-6 max-w-lg mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
 
         {activeTab === 'chantiers' && (
           <>
@@ -354,7 +365,7 @@ export default function TechnicienHome() {
                 <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : chantiers.length === 0 ? (
-              <div className="bg-white rounded-2xl p-12 text-center mt-2" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              <div className="bg-white rounded-2xl p-12 text-center mt-2" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
                 <div className="text-5xl mb-4">📋</div>
                 <p className="font-semibold text-gray-700 mb-1">
                   {can('voir_tous_chantiers') ? 'Aucun chantier' : 'Aucun chantier assigné'}
@@ -364,7 +375,7 @@ export default function TechnicienHome() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-3 mt-2">
+              <div className="space-y-4 mt-2">
                 {chantiers.map(c => (
                   <ChantierCard
                     key={c.id}
@@ -387,9 +398,9 @@ export default function TechnicienHome() {
             <div className="space-y-4 pb-6">
               {/* Managers */}
               {managers.length > 0 && (
-                <section className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Responsable</p>
-                  <div className="space-y-3">
+                <section className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-4">Responsable</p>
+                  <div className="space-y-4">
                     {managers.map(m => (
                       <div key={m.id} className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
@@ -410,9 +421,9 @@ export default function TechnicienHome() {
 
               {/* Techniciens */}
               {techniciens.length > 0 && (
-                <section className="bg-white rounded-2xl p-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-3">Équipe terrain</p>
-                  <div className="space-y-3">
+                <section className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-4">Équipe terrain</p>
+                  <div className="space-y-4">
                     {techniciens.map(t => (
                       <div key={t.id} className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full flex items-center justify-center text-white font-bold flex-shrink-0"
@@ -441,6 +452,10 @@ export default function TechnicienHome() {
           )
         })()}
 
+        {activeTab === 'planning' && (
+          <PlanningTechTab profiles={teamMembers} />
+        )}
+
         {activeTab === 'profil' && (
           <div className="mt-2">
             <ProfilTab profile={profile} signOut={signOut} pushStatus={pushStatus} subscribePush={subscribePush} unsubscribePush={unsubscribePush} onAvatarChange={refreshProfile} />
@@ -460,6 +475,17 @@ export default function TechnicienHome() {
             </svg>
             <span className="text-[11px] font-semibold">Chantiers</span>
             {activeTab === 'chantiers' && <span className="w-1 h-1 rounded-full bg-orange-500 mt-0.5" />}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('planning')}
+            className={`flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors ${activeTab === 'planning' ? 'text-orange-500' : 'text-gray-400'}`}
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={activeTab === 'planning' ? 2.5 : 1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+            </svg>
+            <span className="text-[11px] font-semibold">Planning</span>
+            {activeTab === 'planning' && <span className="w-1 h-1 rounded-full bg-orange-500 mt-0.5" />}
           </button>
 
           <button

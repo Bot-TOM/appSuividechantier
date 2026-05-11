@@ -14,6 +14,8 @@ const ALL_KEYS: PermissionKey[] = [
   'supprimer_message_autres',
   'voir_rapports',
   'exporter_pdf',
+  'voir_planning_equipe',
+  'modifier_planning',
 ]
 
 /**

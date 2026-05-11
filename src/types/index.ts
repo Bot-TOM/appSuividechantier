@@ -22,6 +22,8 @@ export type PermissionKey =
   | 'supprimer_message_autres'
   | 'voir_rapports'
   | 'exporter_pdf'
+  | 'voir_planning_equipe'
+  | 'modifier_planning'
 
 export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   voir_tous_chantiers:      'Voir tous les chantiers',
@@ -33,6 +35,38 @@ export const PERMISSION_LABELS: Record<PermissionKey, string> = {
   supprimer_message_autres: 'Supprimer les messages des autres',
   voir_rapports:            'Voir les rapports & stats',
   exporter_pdf:             'Exporter en PDF',
+  voir_planning_equipe:     "Voir le planning de l'équipe",
+  modifier_planning:        'Modifier le planning',
+}
+
+// Planning
+export type PlanningType =
+  | 'chantier'
+  | 'grand_deplacement'
+  | 'depot'
+  | 'route'
+  | 'repos_conges'
+  | 'absent'
+  | 'libre'
+
+export interface PlanningEntry {
+  id: string
+  technicien_id: string
+  date: string
+  type: PlanningType
+  texte: string | null
+  created_at: string
+}
+
+// Feuille d'heures
+export interface TimeEntry {
+  id: string
+  technicien_id: string
+  date: string
+  arrivee: string | null
+  depart: string | null
+  pause: number | null
+  created_at: string
 }
 
 // Liste des postes disponibles
