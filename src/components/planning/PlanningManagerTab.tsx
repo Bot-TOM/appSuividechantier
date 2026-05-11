@@ -27,7 +27,7 @@ const TODAY = new Date().toISOString().split('T')[0]
 
 // ─── Composant principal ──────────────────────────────────────────────────────
 export default function PlanningManagerTab({ profiles }: { profiles: UserProfile[] }) {
-  const [view, setView]           = useState<'grille' | 'heures'>('grille')
+  const [view, setView]           = useState<'activite' | 'heures'>('activite')
   const [weekStart, setWeekStart] = useState(getMondayOfWeek())
 
   const { entries, loading, upsert, upsertBulk } = usePlanning(weekStart)
@@ -109,47 +109,69 @@ export default function PlanningManagerTab({ profiles }: { profiles: UserProfile
   return (
     <div className="space-y-5 pb-8">
 
-      {/* Sub-tabs */}
-      <div className="flex gap-2">
-        {(['grille', 'heures'] as const).map(v => (
+      {/* ── Toolbar : nav semaine + actions ──────────────────────────────── */}
+      <div className="flex items-center gap-3 flex-wrap">
+        {/* Navigation semaine */}
+        <div className="flex items-center gap-2 flex-1">
+          <button onClick={() => setWeekStart(prevMonday(weekStart))}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+            ‹
+          </button>
+          <span className="text-sm font-semibold text-gray-900 px-1">{fmtWeekRange(days)}</span>
+          <button onClick={() => setWeekStart(nextMonday(weekStart))}
+            className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+            ›
+          </button>
+        </div>
+
+        {/* Sélectionner (vue grille seulement) */}
+        {view === 'activite' && (
+          <button
+            onClick={() => { setSelectMode(s => !s); setSelected(new Set()) }}
+            className={`flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl border transition-all ${
+              selectMode ? 'bg-orange-500 text-white border-orange-500' : 'bg-white text-gray-600 border-gray-200 hover:border-gray-300'
+            }`}
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" />
+            </svg>
+            {selectMode ? `Sélection (${selected.size})` : 'Sélectionner'}
+          </button>
+        )}
+
+        {/* Export CSV (vue heures seulement) */}
+        {view === 'heures' && (
+          <button onClick={exportCSV}
+            className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-all"
+            style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.3)' }}>
+            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Exporter CSV
+          </button>
+        )}
+      </div>
+
+      {/* Toggle sub-vues */}
+      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+        {(['activite', 'heures'] as const).map(v => (
           <button key={v} onClick={() => setView(v)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${view === v ? 'text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'}`}
-            style={view === v ? { background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' } : undefined}>
-            {v === 'grille' ? 'Grille planning' : 'Heures équipe'}
+            className={`px-5 py-2 text-xs font-semibold rounded-lg transition-all ${view === v ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
+            {v === 'activite' ? 'Planning activité' : 'Heures équipe'}
           </button>
         ))}
       </div>
 
-      {/* Navigation semaine */}
-      <div className="flex items-center justify-between">
-        <button onClick={() => setWeekStart(prevMonday(weekStart))}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-          ←
-        </button>
-        <span className="text-sm font-semibold text-gray-900">{fmtWeekRange(days)}</span>
-        <button onClick={() => setWeekStart(nextMonday(weekStart))}
-          className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors">
-          →
-        </button>
-      </div>
-
-      {/* ── Vue Grille ─────────────────────────────────────────────────────── */}
-      {view === 'grille' && (
+      {/* ── Vue Planning activité ──────────────────────────────────────────── */}
+      {view === 'activite' && (
         <>
-          {/* Légende + sélection */}
-          <div className="flex items-start justify-between gap-4 flex-wrap">
-            <div className="flex flex-wrap gap-1.5">
-              {(Object.entries(PT) as [PlanningType, typeof PT[PlanningType]][]).map(([k, v]) => (
-                <span key={k} className={`text-xs font-semibold px-2 py-1 rounded-full ${v.bg} ${v.text}`}>{v.label}</span>
-              ))}
-            </div>
-            <button
-              onClick={() => { setSelectMode(s => !s); setSelected(new Set()) }}
-              className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-xl border transition-colors ${
-                selectMode ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-white border-gray-200 text-gray-500 hover:bg-gray-50'
-              }`}>
-              {selectMode ? 'Annuler' : 'Sélectionner'}
-            </button>
+          {/* Légende */}
+          <div className="flex flex-wrap gap-1.5">
+            {(Object.entries(PT) as [PlanningType, typeof PT[PlanningType]][]).map(([k, v]) => (
+              <span key={k} className={`text-xs font-semibold px-2.5 py-1 rounded-full ${v.bg} ${v.text}`}>{v.label}</span>
+            ))}
           </div>
 
           {loading ? (
@@ -158,74 +180,84 @@ export default function PlanningManagerTab({ profiles }: { profiles: UserProfile
             </div>
           ) : (
             <div className="bg-white rounded-2xl overflow-hidden overflow-x-auto no-scrollbar"
-              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
-              {/* En-tête */}
-              <div className="grid border-b border-gray-100 min-w-[700px]"
-                style={{ gridTemplateColumns: '160px repeat(7, 1fr)' }}>
-                <div className="px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide">Équipe</div>
-                {days.map(date => {
-                  const { short, num } = fmtDay(date)
-                  const isToday = date === TODAY
-                  return (
-                    <div key={date} className={`px-1 py-3 text-center ${isToday ? 'bg-orange-50' : ''}`}>
-                      <p className={`text-[10px] font-semibold uppercase tracking-wide ${isToday ? 'text-orange-500' : 'text-gray-400'}`}>{short}</p>
-                      <p className={`text-sm font-bold ${isToday ? 'text-orange-600' : 'text-gray-700'}`}>{num}</p>
-                    </div>
-                  )
-                })}
-              </div>
-
-              {/* Lignes par personne */}
-              <div className="divide-y divide-gray-50 min-w-[700px]">
-                {sorted.map(person => (
-                  <div key={person.id} className="grid" style={{ gridTemplateColumns: '160px repeat(7, 1fr)' }}>
-                    {/* Nom */}
-                    <div className="px-3 py-2 flex items-center gap-2 border-r border-gray-50">
-                      <Avatar name={person.full_name} avatarUrl={person.avatar_url} size="sm" />
-                      <div className="min-w-0">
-                        <p className="text-xs font-semibold text-gray-800 truncate">{person.full_name.split(' ')[0]}</p>
-                        {person.role === 'manager'
-                          ? <p className="text-[10px] text-orange-500 font-medium">Manager</p>
-                          : person.poste && <p className="text-[10px] text-gray-400 truncate">{person.poste}</p>}
-                      </div>
-                    </div>
-
-                    {/* Cellules jours */}
-                    {days.map(date => {
-                      const entry     = getEntry(person.id, date)
-                      const key       = `${person.id}|${date}`
-                      const isSelected = selected.has(key)
-                      const isToday   = date === TODAY
-                      const pt        = entry ? PT[entry.type] : null
-                      return (
-                        <div key={date}
-                          onClick={() => selectMode ? toggleCell(person.id, date) : openEdit(person.id, person.full_name, date)}
-                          className={`px-1 py-2 min-h-[60px] cursor-pointer transition-colors relative flex flex-col justify-center
-                            ${isToday ? 'bg-orange-50/40' : ''}
-                            ${isSelected ? 'bg-orange-100' : 'hover:bg-gray-50'}`}>
-                          {/* Checkbox select mode */}
-                          {selectMode && (
-                            <div className={`absolute top-1 right-1 w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all ${
-                              isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300 bg-white'}`}>
-                              {isSelected && <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
-                            </div>
-                          )}
-                          {pt && entry ? (
-                            <div className={`rounded-lg px-1.5 py-1 mx-0.5 ${pt.bg}`}>
-                              <p className={`text-[10px] font-semibold truncate leading-tight ${pt.text}`}>{pt.label}</p>
-                              {entry.texte && <p className="text-[10px] text-gray-500 truncate mt-0.5 leading-tight">{entry.texte}</p>}
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity h-full">
-                              <span className="text-gray-300 text-xl leading-none">+</span>
-                            </div>
-                          )}
+              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)', minWidth: '100%' }}>
+              <table className="w-full border-collapse" style={{ minWidth: `${140 + sorted.length * 130}px` }}>
+                {/* En-tête : JOUR + une colonne par personne */}
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left px-4 py-3 text-xs font-semibold text-gray-400 uppercase tracking-wide w-36 sticky left-0 bg-white z-10">
+                      JOUR
+                    </th>
+                    {sorted.map(person => (
+                      <th key={person.id} className="px-2 py-3 text-center" style={{ minWidth: 120 }}>
+                        <div className="flex flex-col items-center gap-1">
+                          <Avatar name={person.full_name} avatarUrl={person.avatar_url} size="sm" />
+                          <div>
+                            <p className="text-xs font-semibold text-gray-800 leading-tight">
+                              {person.full_name.split(' ').map((w, i) => i === 0 ? w.toUpperCase() : w[0]?.toUpperCase() + '.' ).join(' ')}
+                            </p>
+                            {person.role === 'manager'
+                              ? <p className="text-[10px] text-orange-500 font-medium">Manager</p>
+                              : person.poste && <p className="text-[10px] text-gray-400 truncate max-w-[100px]">{person.poste}</p>}
+                          </div>
                         </div>
-                      )
-                    })}
-                  </div>
-                ))}
-              </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+
+                {/* Corps : une ligne par jour */}
+                <tbody className="divide-y divide-gray-50">
+                  {days.map(date => {
+                    const { short, num } = fmtDay(date)
+                    const isToday   = date === TODAY
+                    const isWeekend = new Date(date + 'T00:00:00').getDay() >= 6
+                    return (
+                      <tr key={date} className={isToday ? 'bg-orange-50/40' : ''}>
+                        {/* Colonne JOUR */}
+                        <td className={`px-4 py-2 sticky left-0 z-10 border-r border-gray-100 ${isToday ? 'bg-orange-50' : 'bg-white'}`}>
+                          <p className={`text-xs font-bold ${isToday ? 'text-orange-600' : isWeekend ? 'text-gray-300' : 'text-gray-700'}`}>
+                            {short}. {num} {isToday && <span className="text-[10px] font-normal text-orange-400 ml-1">Aujourd'hui</span>}
+                          </p>
+                        </td>
+                        {/* Cellules par personne */}
+                        {sorted.map(person => {
+                          const entry      = getEntry(person.id, date)
+                          const key        = `${person.id}|${date}`
+                          const isSelected = selected.has(key)
+                          const pt         = entry ? PT[entry.type] : PT['libre']
+
+                          if (isWeekend) {
+                            return (
+                              <td key={person.id} className="px-2 py-2 text-center">
+                                <span className="text-gray-300 text-sm">—</span>
+                              </td>
+                            )
+                          }
+
+                          return (
+                            <td key={person.id}
+                              onClick={() => selectMode ? toggleCell(person.id, date) : openEdit(person.id, person.full_name, date)}
+                              className={`px-2 py-2 cursor-pointer transition-colors relative ${isSelected ? 'bg-orange-50' : 'hover:bg-gray-50'}`}>
+                              {/* Checkbox select mode */}
+                              {selectMode && (
+                                <div className={`absolute top-1 right-1 w-3.5 h-3.5 rounded-full border-2 flex items-center justify-center z-10 ${
+                                  isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300 bg-white'}`}>
+                                  {isSelected && <svg className="w-2 h-2 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
+                                </div>
+                              )}
+                              <div className={`rounded-xl px-2 py-2 min-h-[52px] flex flex-col justify-center border ${pt.bg} ${pt.border} ${entry?.type === 'libre' || !entry ? 'border-dashed' : ''}`}>
+                                <p className={`text-[11px] font-semibold leading-tight ${pt.text}`}>{pt.label}</p>
+                                {entry?.texte && <p className="text-[10px] text-gray-500 mt-0.5 leading-tight line-clamp-2">{entry.texte}</p>}
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
             </div>
           )}
 
