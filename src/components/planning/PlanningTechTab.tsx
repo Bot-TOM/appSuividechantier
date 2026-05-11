@@ -181,7 +181,7 @@ export default function PlanningTechTab() {
 
             if (isWeekend) {
               bg = 'bg-gray-50'; textColor = 'text-gray-300'; border = 'border-gray-100'; label = '—'
-            } else if (entry && entry.type !== 'libre') {
+            } else if (entry && entry.type !== 'libre' && PT[entry.type]) {
               const pt = PT[entry.type]
               bg = pt.bg; textColor = pt.text; border = pt.border
               label = pt.label; note = entry.texte
@@ -325,7 +325,7 @@ export default function PlanningTechTab() {
                       const entry = getEntry(person.id, date)
                       let bg: string, textColor: string, border: string, label: string
                       let note: string | null = null
-                      if (entry && entry.type !== 'libre') {
+                      if (entry && entry.type !== 'libre' && PT[entry.type]) {
                         const pt = PT[entry.type]
                         bg = pt.bg; textColor = pt.text; border = pt.border
                         label = pt.label; note = entry.texte
