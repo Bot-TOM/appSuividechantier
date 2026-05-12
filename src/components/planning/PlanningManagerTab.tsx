@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
 import type { UserProfile, PlanningType } from '@/types'
 import {
@@ -137,8 +138,50 @@ export default function PlanningManagerTab() {
     setBulkModal(false)
   }
 
-  function exportPDF() {
-    window.print()
+  function exportXLSX() {
+    const wsData: string[][] = []
+
+    // En-tête : JOUR + une colonne par personne
+    wsData.push(['Jour', ...sorted.map(p => p.full_name)])
+
+    // Lignes : une par jour
+    for (const date of days) {
+      const d          = new Date(date + 'T00:00:00')
+      const isWeekend  = d.getDay() >= 6
+      const isFerie    = feries.has(date)
+      const dayLabel   = fmtDayLabel(date)
+      const row: string[] = [dayLabel]
+
+      for (const person of sorted) {
+        if (isWeekend) {
+          row.push('')
+        } else {
+          const entry = getEntry(person.id, date)
+          if (entry && entry.type !== 'libre' && PT[entry.type]) {
+            const label = PT[entry.type].label
+            const note  = entry.texte ? ` – ${entry.texte}` : ''
+            row.push(label + note)
+          } else if (!entry && isFerie) {
+            row.push('Férié')
+          } else {
+            row.push('Libre')
+          }
+        }
+      }
+      wsData.push(row)
+    }
+
+    const ws = XLSX.utils.aoa_to_sheet(wsData)
+
+    // Largeur des colonnes
+    ws['!cols'] = [
+      { wch: 18 },
+      ...sorted.map(() => ({ wch: 22 })),
+    ]
+
+    const wb = XLSX.utils.book_new()
+    XLSX.utils.book_append_sheet(wb, ws, 'Planning')
+    XLSX.writeFile(wb, `planning-${weekStart}.xlsx`)
   }
 
   function exportCSV() {
@@ -224,13 +267,13 @@ export default function PlanningManagerTab() {
         {/* Exporter */}
         {view === 'activite' ? (
           <button
-            onClick={exportPDF}
+            onClick={exportXLSX}
             className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-all"
             style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.3)' }}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
             </svg>
-            Exporter PDF
+            Exporter Excel
           </button>
         ) : (
           <button
