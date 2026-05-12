@@ -85,6 +85,7 @@ export default function PlanningManagerTab() {
   const [selected, setSelected]     = useState<Set<string>>(new Set())
   const [bulkModal, setBulkModal]   = useState(false)
   const [bulkType, setBulkType]     = useState<PlanningType>('chantier')
+  const [bulkTexte, setBulkTexte]   = useState('')
 
   // Charger tous les profils
   useEffect(() => {
@@ -134,10 +135,11 @@ export default function PlanningManagerTab() {
       const [techId, date] = k.split('|')
       return { techId, date }
     })
-    await upsertBulk(cells, bulkType)
+    await upsertBulk(cells, bulkType, bulkTexte)
     setSelected(new Set())
     setSelectMode(false)
     setBulkModal(false)
+    setBulkTexte('')
   }
 
   function exportXLSX() {
@@ -657,9 +659,16 @@ export default function PlanningManagerTab() {
               ))}
             </div>
 
+            <input
+              value={bulkTexte}
+              onChange={e => setBulkTexte(e.target.value)}
+              placeholder="Note optionnelle (lieu, nom du chantier...)"
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
+            />
+
             <div className="flex gap-3">
               <button
-                onClick={() => setBulkModal(false)}
+                onClick={() => { setBulkModal(false); setBulkTexte('') }}
                 className="flex-1 py-3 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
                 Annuler
               </button>

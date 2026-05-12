@@ -105,12 +105,13 @@ export function usePlanning(weekStart: string) {
   const upsertBulk = useCallback(async (
     cells: { techId: string; date: string }[],
     type: PlanningType,
+    texte?: string,
   ) => {
     const rows = cells.map(c => ({
       technicien_id: c.techId,
       date:          c.date,
       type,
-      texte:         null,
+      texte:         texte || null,
     }))
     setEntries(prev => {
       const next = [...prev]
@@ -119,7 +120,7 @@ export function usePlanning(weekStart: string) {
           e => e.technicien_id === r.technicien_id && e.date === r.date,
         )
         if (idx >= 0) {
-          next[idx] = { ...next[idx], type: r.type, texte: null }
+          next[idx] = { ...next[idx], type: r.type, texte: r.texte }
         } else {
           next.push({
             ...r,
