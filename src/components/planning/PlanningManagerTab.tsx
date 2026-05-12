@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
-import type { UserProfile, PlanningType } from '@/types'
+import type { UserProfile, PlanningType, Chantier } from '@/types'
 import {
   usePlanning,
   getMondayOfWeek,
@@ -87,11 +87,19 @@ export default function PlanningManagerTab() {
   const [bulkType, setBulkType]     = useState<PlanningType>('chantier')
   const [bulkTexte, setBulkTexte]   = useState('')
 
-  // Charger tous les profils
+  const [chantiers, setChantiers] = useState<Chantier[]>([])
+
+  // Charger profils + chantiers
   useEffect(() => {
     supabase.from('profiles').select('*').then(({ data }) => {
       if (data) setProfiles(data as UserProfile[])
     })
+    supabase
+      .from('chantiers')
+      .select('id, nom, client_nom, statut')
+      .neq('statut', 'termine')
+      .order('nom')
+      .then(({ data }) => { if (data) setChantiers(data as Chantier[]) })
   }, [])
 
   const days   = getWeekDays(weekStart)
@@ -613,10 +621,32 @@ export default function PlanningManagerTab() {
               ))}
             </div>
 
+            {/* Sélecteur chantier si type = chantier */}
+            {editType === 'chantier' && chantiers.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Chantier</p>
+                <div className="max-h-36 overflow-y-auto space-y-1 rounded-xl border border-gray-200 p-1">
+                  {chantiers.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => setEditTexte(`${c.client_nom} · ${c.nom}`)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
+                        editTexte === `${c.client_nom} · ${c.nom}`
+                          ? 'bg-blue-50 text-blue-700 font-semibold'
+                          : 'hover:bg-gray-50 text-gray-700'
+                      }`}>
+                      <span className="font-medium">{c.client_nom}</span>
+                      <span className="text-gray-400"> · {c.nom}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <input
               value={editTexte}
               onChange={e => setEditTexte(e.target.value)}
-              placeholder="Note (lieu, nom du chantier...)"
+              placeholder={editType === 'chantier' ? 'Ou saisir manuellement...' : 'Note optionnelle (lieu, détail...)'}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
 
@@ -659,10 +689,32 @@ export default function PlanningManagerTab() {
               ))}
             </div>
 
+            {/* Sélecteur chantier si type = chantier */}
+            {bulkType === 'chantier' && chantiers.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Chantier</p>
+                <div className="max-h-36 overflow-y-auto space-y-1 rounded-xl border border-gray-200 p-1">
+                  {chantiers.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => setBulkTexte(`${c.client_nom} · ${c.nom}`)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
+                        bulkTexte === `${c.client_nom} · ${c.nom}`
+                          ? 'bg-blue-50 text-blue-700 font-semibold'
+                          : 'hover:bg-gray-50 text-gray-700'
+                      }`}>
+                      <span className="font-medium">{c.client_nom}</span>
+                      <span className="text-gray-400"> · {c.nom}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <input
               value={bulkTexte}
               onChange={e => setBulkTexte(e.target.value)}
-              placeholder="Note optionnelle (lieu, nom du chantier...)"
+              placeholder={bulkType === 'chantier' ? 'Ou saisir manuellement...' : 'Note optionnelle (lieu, détail...)'}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
 
