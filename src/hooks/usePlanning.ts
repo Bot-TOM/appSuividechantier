@@ -4,20 +4,26 @@ import type { PlanningEntry, PlanningType } from '@/types'
 
 // ─── Helpers dates ────────────────────────────────────────────────────────────
 
+/** Formate une Date en ISO local (évite le décalage UTC) */
+function localISO(d: Date): string {
+  return [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0'),
+  ].join('-')
+}
+
 export function getMondayOfWeek(d = new Date()): string {
   const date = new Date(d)
   const day  = date.getDay()
   const diff = day === 0 ? -6 : 1 - day
   date.setDate(date.getDate() + diff)
-  return date.toISOString().split('T')[0]
+  return localISO(date)
 }
 
 export function getWeekDays(weekStart: string): string[] {
-  return Array.from({ length: 7 }, (_, i) => {
-    const d = new Date(weekStart + 'T00:00:00')
-    d.setDate(d.getDate() + i)
-    return d.toISOString().split('T')[0]
-  })
+  const [y, m, d] = weekStart.split('-').map(Number)
+  return Array.from({ length: 7 }, (_, i) => localISO(new Date(y, m - 1, d + i)))
 }
 
 export function fmtDay(iso: string): { short: string; num: string } {
@@ -36,15 +42,13 @@ export function fmtWeekRange(days: string[]): string {
 }
 
 export function prevMonday(weekStart: string): string {
-  const d = new Date(weekStart + 'T00:00:00')
-  d.setDate(d.getDate() - 7)
-  return d.toISOString().split('T')[0]
+  const [y, m, d] = weekStart.split('-').map(Number)
+  return localISO(new Date(y, m - 1, d - 7))
 }
 
 export function nextMonday(weekStart: string): string {
-  const d = new Date(weekStart + 'T00:00:00')
-  d.setDate(d.getDate() + 7)
-  return d.toISOString().split('T')[0]
+  const [y, m, d] = weekStart.split('-').map(Number)
+  return localISO(new Date(y, m - 1, d + 7))
 }
 
 // ─── Hook planning ────────────────────────────────────────────────────────────

@@ -24,7 +24,10 @@ const PT: Record<PlanningType, { label: string; bg: string; text: string; border
   libre:             { label: 'Libre (trou)',        bg: 'bg-amber-50',   text: 'text-amber-500',  border: 'border-amber-200'  },
 }
 
-const TODAY = new Date().toISOString().split('T')[0]
+function localISO(d: Date): string {
+  return [d.getFullYear(), String(d.getMonth()+1).padStart(2,'0'), String(d.getDate()).padStart(2,'0')].join('-')
+}
+const TODAY = localISO(new Date())
 
 // ─── Jours fériés français (calcul automatique) ───────────────────────────────
 function easterSunday(year: number): Date {
@@ -40,8 +43,7 @@ function easterSunday(year: number): Date {
   return new Date(year, month - 1, day)
 }
 function addDaysISO(date: Date, n: number): string {
-  const d = new Date(date); d.setDate(d.getDate() + n)
-  return d.toISOString().split('T')[0]
+  return localISO(new Date(date.getFullYear(), date.getMonth(), date.getDate() + n))
 }
 function getFeries(year: number): Set<string> {
   const e = easterSunday(year)
