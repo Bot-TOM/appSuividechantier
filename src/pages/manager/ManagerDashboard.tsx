@@ -11,6 +11,7 @@ import Avatar from '@/components/Avatar'
 import { supabase } from '@/lib/supabase'
 import { Chantier, ChantierStatut, Anomalie } from '@/types'
 import PlanningManagerTab from '@/components/planning/PlanningManagerTab'
+import GestionEquipe from '@/pages/manager/GestionEquipe'
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
 type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning'
@@ -422,7 +423,7 @@ export default function ManagerDashboard() {
             ] as { key: Tab; label: string; badge?: number }[]).map(tab => (
               <button
                 key={tab.key}
-                onClick={() => tab.key === 'equipe' ? navigate('/manager/equipe') : setActiveTab(tab.key)}
+                onClick={() => setActiveTab(tab.key)}
                 className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
                   activeTab === tab.key
                     ? 'border-orange-500 text-orange-600 font-semibold'
@@ -897,6 +898,11 @@ export default function ManagerDashboard() {
         {/* ── Onglet Planning ───────────────────────────────────────────────── */}
         {activeTab === 'planning' && (
           <PlanningManagerTab />
+        )}
+
+        {/* ── Onglet Équipe ────────────────────────────────────────────────── */}
+        {activeTab === 'equipe' && (
+          <GestionEquipe embedded />
         )}
       </main>
     </div>

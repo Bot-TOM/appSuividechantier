@@ -121,13 +121,18 @@ export function usePlanning(weekStart: string) {
       if (idx >= 0) { const n = [...prev]; n[idx] = updated; return n }
       return [...prev, updated]
     })
-    await supabase
+    const { error } = await supabase
       .from('planning_entries')
       .upsert(
         { technicien_id: technicienId, date, type, label: label || null, chantier_id: chantier_id ?? null },
         { onConflict: 'technicien_id,date' },
       )
-  }, [])
+    if (error) {
+      console.error('[planning upsert]', error.message)
+      // Revert l'optimistic update si la DB a rejeté
+      refetch()
+    }
+  }, [refetch])
 
   // Upsert multiple cellules en même temps (sélection bulk)
   const upsertBulk = useCallback(async (
@@ -161,10 +166,14 @@ export function usePlanning(weekStart: string) {
       }
       return next
     })
-    await supabase
+    const { error } = await supabase
       .from('planning_entries')
       .upsert(rows, { onConflict: 'technicien_id,date' })
-  }, [])
+    if (error) {
+      console.error('[planning upsertBulk]', error.message)
+      refetch()
+    }
+  }, [refetch])
 
   return { entries, loading, upsert, upsertBulk, refetch }
 }

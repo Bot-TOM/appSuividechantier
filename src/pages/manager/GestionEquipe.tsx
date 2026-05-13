@@ -118,7 +118,7 @@ function PermissionsSection() {
   )
 }
 
-export default function GestionEquipe() {
+export default function GestionEquipe({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate()
   const { profile, session, signOut } = useAuth()
   const [techniciens, setTechniciens] = useState<UserProfile[]>([])
@@ -263,10 +263,10 @@ export default function GestionEquipe() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className={embedded ? undefined : 'min-h-screen bg-[#F8FAFC]'}>
 
-
-      {/* ── Header ──────────────────────────────────────────────────────────── */}
+      {/* ── Header (page standalone uniquement) ─────────────────────────── */}
+      {!embedded && (
       <header className="bg-white border-b border-gray-100 sticky top-0 z-20">
         <div className="max-w-4xl mx-auto px-6">
           <div className="flex items-center justify-between py-5">
@@ -304,8 +304,9 @@ export default function GestionEquipe() {
           </div>
         </div>
       </header>
+      )}
 
-      <main className="max-w-2xl md:max-w-5xl mx-auto px-6 py-8 space-y-6">
+      <main className={`max-w-2xl md:max-w-5xl mx-auto px-6 space-y-6 ${embedded ? 'py-0' : 'py-8'}`}>
 
         {success && (
           <div className="bg-green-50 border border-green-100 text-green-700 text-sm px-4 py-3 rounded-2xl flex items-center gap-2">
