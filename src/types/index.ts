@@ -1,5 +1,10 @@
 // Rôles utilisateurs
-export type UserRole = 'manager' | 'technicien'
+export type UserRole = 'manager' | 'technicien' | 'admin'
+
+/** Retourne true pour manager ET admin (accès identique aux interfaces manager) */
+export function isManagerRole(role?: string | null): boolean {
+  return role === 'manager' || role === 'admin'
+}
 
 export interface UserProfile {
   id: string

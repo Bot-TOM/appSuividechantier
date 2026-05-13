@@ -318,7 +318,7 @@ export default function ManagerDashboard() {
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">
                 <p className="text-sm font-semibold text-gray-900 leading-tight">{profile?.full_name}</p>
-                <p className="text-xs text-gray-400">Manager</p>
+                <p className="text-xs text-gray-400">{profile?.role === 'admin' ? 'Admin' : 'Manager'}</p>
               </div>
               <button onClick={() => setActiveTab('profil')} className="flex-shrink-0">
                 <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="md" />

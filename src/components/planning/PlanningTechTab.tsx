@@ -120,7 +120,7 @@ export default function PlanningTechTab() {
   }
 
   const sorted = [...allProfiles].sort((a, b) => {
-    if (a.role !== b.role) return a.role === 'manager' ? 1 : -1
+    if (a.role !== b.role) return (a.role === 'manager' || a.role === 'admin') ? 1 : -1
     return a.full_name.localeCompare(b.full_name)
   })
 

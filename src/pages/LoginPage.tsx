@@ -1,6 +1,7 @@
-import { useState, FormEvent } from 'react'
+﻿import { useState, FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { isManagerRole } from '@/types'
 
 export default function LoginPage() {
   const { user, profile, loading, signIn } = useAuth()
@@ -11,7 +12,7 @@ export default function LoginPage() {
   const [showPwd, setShowPwd]   = useState(false)
 
   if (!loading && user && profile) {
-    return <Navigate to={profile.role === 'manager' ? '/manager' : '/technicien'} replace />
+    return <Navigate to={isManagerRole(profile.role) ? '/manager' : '/technicien'} replace />
   }
 
   async function handleSubmit(e: FormEvent) {
@@ -38,7 +39,7 @@ export default function LoginPage() {
             ☀️
           </div>
           <h1 className="text-2xl font-bold text-gray-900 tracking-tight">PVPilot</h1>
-          <p className="text-gray-500 text-sm mt-1.5">Pilotage de chantiers photovoltaïques</p>
+          <p className="text-gray-500 text-sm mt-1.5">Gestion de chantiers photovoltaïques</p>
         </div>
 
         {/* Card formulaire */}
@@ -113,7 +114,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <p className="text-center text-xs text-gray-400 mt-8">
-          © 2025 PVPilot · Pilotage professionnel de chantiers PV
+          © 2025 PVPilot · Gestion professionnelle de chantiers PV
         </p>
       </div>
     </div>

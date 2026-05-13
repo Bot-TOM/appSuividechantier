@@ -404,7 +404,11 @@ export default function GestionEquipe({ embedded = false }: { embedded?: boolean
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <p className="font-semibold text-gray-900 text-sm">{tech.full_name}</p>
-                      {tech.role === 'manager' ? (
+                      {tech.role === 'admin' ? (
+                        <span className="text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 bg-purple-50 text-purple-600">
+                          Admin
+                        </span>
+                      ) : tech.role === 'manager' ? (
                         <span className="text-xs font-semibold px-2 py-1 rounded-full flex-shrink-0 bg-orange-50 text-orange-600">
                           Manager
                         </span>

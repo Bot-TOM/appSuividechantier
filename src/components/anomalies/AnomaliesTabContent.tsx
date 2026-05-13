@@ -3,7 +3,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAnomalies } from '@/hooks/useAnomalies'
 import GraviteBadge from '@/components/anomalies/GraviteBadge'
-import { AnomalieGravite, AnomalieStatut } from '@/types'
+import { AnomalieGravite, AnomalieStatut, isManagerRole } from '@/types'
 
 const TYPES_ANOMALIE = ['Électrique', 'Structure', 'Étanchéité', 'Matériel défectueux', 'Câblage', 'Autre']
 
@@ -25,7 +25,7 @@ export default function AnomaliesTabContent({ chantierId, canResolve = true }: {
   const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set())
   const [form, setForm] = useState({ type: TYPES_ANOMALIE[0], description: '', gravite: 'haute' as AnomalieGravite })
 
-  const isManager = profile?.role === 'manager'
+  const isManager = isManagerRole(profile?.role)
 
   function toggleSelect(id: string) {
     setSelectedIds(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n })

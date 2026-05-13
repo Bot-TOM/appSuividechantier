@@ -392,7 +392,7 @@ export default function TechnicienHome() {
 
         {/* ── Onglet Équipe ─────────────────────────────────────────────────── */}
         {activeTab === 'equipe' && (() => {
-          const managers     = teamMembers.filter(m => m.role === 'manager')
+          const managers     = teamMembers.filter(m => m.role === 'manager' || m.role === 'admin')
           const techniciens  = teamMembers.filter(m => m.role === 'technicien')
           return (
             <div className="space-y-4 pb-6">

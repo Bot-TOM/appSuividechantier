@@ -1,6 +1,7 @@
-import { useState, FormEvent } from 'react'
+﻿import { useState, FormEvent } from 'react'
 import { Link, Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
+import { isManagerRole } from '@/types'
 
 export default function SignupPage() {
   const { user, profile, loading, signUp } = useAuth()
@@ -17,7 +18,7 @@ export default function SignupPage() {
   const [showCode, setShowCode]   = useState(false)
 
   if (!loading && user && profile) {
-    return <Navigate to={profile.role === 'manager' ? '/manager' : '/technicien'} replace />
+    return <Navigate to={isManagerRole(profile.role) ? '/manager' : '/technicien'} replace />
   }
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {

@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useTechniciens } from '@/hooks/useTechniciens'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
+import { isManagerRole } from '@/types'
 
 const TYPES_INSTALLATION = ['Résidentiel', 'Professionnel', 'Industriel', 'Agricole']
 
@@ -24,7 +25,7 @@ export default function CreateChantier() {
   const { profile } = useAuth()
   const { can } = usePermissions()
   const { techniciens } = useTechniciens()
-  const backUrl = profile?.role === 'manager' ? '/manager' : '/technicien'
+  const backUrl = isManagerRole(profile?.role) ? '/manager' : '/technicien'
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [newEtapeNom, setNewEtapeNom] = useState('')

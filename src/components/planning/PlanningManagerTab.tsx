@@ -116,7 +116,7 @@ export default function PlanningManagerTab() {
 
   // Trier : techniciens d'abord (alpha), managers à la fin
   const sorted = [...profiles].sort((a, b) => {
-    if (a.role !== b.role) return a.role === 'manager' ? 1 : -1
+    if (a.role !== b.role) return (a.role === 'manager' || a.role === 'admin') ? 1 : -1
     return a.full_name.localeCompare(b.full_name)
   })
 
@@ -588,7 +588,9 @@ export default function PlanningManagerTab() {
                       <tr key={person.id}>
                         <td className="px-5 py-3">
                           <p className="font-semibold text-gray-800">{person.full_name.split(' ')[0]}</p>
-                          {person.role === 'manager'
+                          {person.role === 'admin'
+                            ? <p className="text-[10px] text-purple-500">Admin</p>
+                            : person.role === 'manager'
                             ? <p className="text-[10px] text-orange-500">Manager</p>
                             : person.poste && <p className="text-[10px] text-gray-400">{person.poste}</p>}
                         </td>

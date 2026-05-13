@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
-import { UserRole, type PermissionKey } from '@/types'
+import { UserRole, isManagerRole, type PermissionKey } from '@/types'
 import { useState, useEffect } from 'react'
 import { usePermissions } from '@/hooks/usePermissions'
 
@@ -16,7 +16,8 @@ export default function ProtectedRoute({ children, allowedRole, permissionKey }:
   const { can, loading: permsLoading } = usePermissions()
   const [slow, setSlow] = useState(false)
 
-  const roleMatch     = !allowedRole || profile?.role === allowedRole
+  // admin a accès à toutes les routes manager
+  const roleMatch     = !allowedRole || profile?.role === allowedRole || (allowedRole === 'manager' && profile?.role === 'admin')
   const needsPermCheck = !roleMatch && !!permissionKey
   const stillLoading   = loading || (needsPermCheck && permsLoading)
 
@@ -52,7 +53,7 @@ export default function ProtectedRoute({ children, allowedRole, permissionKey }:
     if (permissionKey && can(permissionKey)) {
       // Technicien avec permission élevée → accès autorisé
     } else {
-      return <Navigate to={profile?.role === 'manager' ? '/manager' : '/technicien'} replace />
+      return <Navigate to={isManagerRole(profile?.role) ? '/manager' : '/technicien'} replace />
     }
   }
 

@@ -10,7 +10,7 @@ import VoiceMessage from '@/components/chat/VoiceMessage'
 import type { ChatMessage } from '@/types'
 import { usePermissions } from '@/hooks/usePermissions'
 
-const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👎', '🔥', '🎉', '👀', '✅', '💯', '⚡']
+const EMOJIS = ['👍', '❤️', '😂', '😮', '😢', '👎']
 
 function formatTime(iso: string) {
   return new Date(iso).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })
@@ -29,6 +29,7 @@ function sameDay(a: string, b: string) {
   return new Date(a).toDateString() === new Date(b).toDateString()
 }
 
+// Surligne les @mentions dans le contenu d'un message
 function renderWithMentions(
   content: string,
   knownNames: string[],
@@ -63,13 +64,14 @@ interface Props {
 }
 
 export default function ChatTab({ chantierId, userId, isActive = true }: Props) {
-  const { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction, markAllRead, updateMessage } =
+  const { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction, markAllRead } =
     useMessages(chantierId, userId)
   const { enabled: notifEnabled, toggle: toggleNotif } = useChatNotif(userId)
   const { can } = usePermissions()
   const { techniciens } = useChantierTechniciens(chantierId)
   const { chantiers }   = useChantiers()
 
+  // Nom de l'utilisateur courant — doit être avant usePresence
   const myName = useMemo(
     () => messages.find(m => m.user_id === userId)?.profiles?.full_name ?? '',
     [messages, userId]
@@ -77,7 +79,6 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
 
   const { onlineUsers, typingNames, setTyping } = usePresence(chantierId, userId, myName)
 
-  // ── États ────────────────────────────────────────────────────────────────────
   const [text, setText]               = useState('')
   const [replyTo, setReplyTo]         = useState<ChatMessage | null>(null)
   const [activeMsg, setActiveMsg]     = useState<string | null>(null)
@@ -86,23 +87,18 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
   const [pdfPreview, setPdfPreview]   = useState<{ url: string; name: string } | null>(null)
   const [forwardMsg, setForwardMsg]   = useState<ChatMessage | null>(null)
   const [forwardDone, setForwardDone] = useState(false)
-  const [imageLightbox, setImageLightbox] = useState<string | null>(null)
-  const [showScrollBtn, setShowScrollBtn] = useState(false)
-  const [newMsgCount, setNewMsgCount]     = useState(0)
-  const [editingId, setEditingId]   = useState<string | null>(null)
-  const [editText, setEditText]     = useState('')
-  const [firstUnreadId, setFirstUnreadId] = useState<string | null | undefined>(undefined)
 
-  // ── Transfert ────────────────────────────────────────────────────────────────
   const handleForward = useCallback(async (targetChantierId: string) => {
     if (!forwardMsg) return
     const payload: Record<string, unknown> = {
       chantier_id: targetChantierId,
       user_id: userId,
-      content: forwardMsg.content ? `↪ Transféré : ${forwardMsg.content}` : null,
-      file_url:  forwardMsg.file_url,
-      file_name: forwardMsg.file_name,
-      file_type: forwardMsg.file_type,
+      content: forwardMsg.content
+        ? `↪ Transféré : ${forwardMsg.content}`
+        : null,
+      file_url:   forwardMsg.file_url,
+      file_name:  forwardMsg.file_name,
+      file_type:  forwardMsg.file_type,
     }
     await supabase.from('messages').insert(payload)
     setForwardMsg(null)
@@ -110,25 +106,33 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
     setTimeout(() => setForwardDone(false), 2500)
   }, [forwardMsg, userId])
 
-  // ── Mentions ─────────────────────────────────────────────────────────────────
+  // ── Mentions ────────────────────────────────────────────────────────────────
   const [mentionAnchor, setMentionAnchor]       = useState<number | null>(null)
   const [mentionHighlight, setMentionHighlight] = useState(0)
 
+  // Tous les noms connus (techniciens + auteurs des messages) pour le surlignage
+  const allNames = useMemo(() => {
+    const names = new Set<string>()
+    techniciens.forEach(t => names.add(t.full_name))
+    messages.forEach(m => { if (m.profiles?.full_name) names.add(m.profiles.full_name) })
+    return Array.from(names)
+  }, [techniciens, messages])
+
+  // Liste complète des participants : techniciens assignés + tous ceux qui ont écrit
+  // (couvre les managers qui ne sont pas dans chantier_techniciens)
   const participants = useMemo(() => {
     const map = new Map<string, { id: string; name: string; avatarUrl?: string | null; poste?: string | null }>()
     techniciens.forEach(t => map.set(t.id, { id: t.id, name: t.full_name, avatarUrl: t.avatar_url, poste: t.poste }))
     messages.forEach(m => {
       if (m.user_id && m.profiles?.full_name && !map.has(m.user_id)) {
-        const poste = m.profiles.poste ?? (m.profiles.role === 'manager' ? 'Manager' : null)
+        const poste = m.profiles.poste ?? (m.profiles.role === 'admin' ? 'Admin' : m.profiles.role === 'manager' ? 'Manager' : null)
         map.set(m.user_id, { id: m.user_id, name: m.profiles.full_name, avatarUrl: m.profiles.avatar_url, poste })
       }
     })
     return Array.from(map.values())
   }, [techniciens, messages])
 
-  // Tous les noms connus pour le surlignage des @mentions
-  const allNames = useMemo(() => participants.map(p => p.name), [participants])
-
+  // Query après le @ (text from anchor+1 to end, no newline)
   const mentionQuery = useMemo(() => {
     if (mentionAnchor === null) return null
     const afterAt = text.slice(mentionAnchor + 1)
@@ -136,19 +140,20 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
     return (stop >= 0 ? afterAt.slice(0, stop) : afterAt).toLowerCase()
   }, [mentionAnchor, text])
 
-  // Résultats filtrés (max 5, hors soi-même) — inclut managers et techniciens
+  // Résultats filtrés (max 5, hors soi-même)
   const mentionResults = useMemo(() => {
     if (mentionQuery === null) return []
-    return participants
-      .filter(p => p.id !== userId && p.name.toLowerCase().includes(mentionQuery))
+    return techniciens
+      .filter(t => t.id !== userId && t.full_name.toLowerCase().includes(mentionQuery))
       .slice(0, 5)
-  }, [mentionQuery, participants, userId])
+  }, [mentionQuery, techniciens, userId])
 
+  // Reset highlight quand les résultats changent
   useEffect(() => { setMentionHighlight(0) }, [mentionResults.length])
 
   const selectMention = useCallback((name: string) => {
     if (mentionAnchor === null) return
-    const cursor  = textareaRef.current?.selectionStart ?? text.length
+    const cursor = textareaRef.current?.selectionStart ?? text.length
     const before  = text.slice(0, mentionAnchor)
     const after   = text.slice(cursor)
     const newText = `${before}@${name} ${after}`
@@ -162,32 +167,32 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
     }, 0)
   }, [mentionAnchor, text])
 
-  // ── Refs ─────────────────────────────────────────────────────────────────────
-  const bottomRef          = useRef<HTMLDivElement>(null)
-  const msgsContainerRef   = useRef<HTMLDivElement>(null)
-  const fileRef            = useRef<HTMLInputElement>(null)
-  const textareaRef        = useRef<HTMLTextAreaElement>(null)
-  const editRef            = useRef<HTMLTextAreaElement>(null)
-  const prevLengthRef      = useRef(0)
-  const mediaRecorderRef   = useRef<MediaRecorder | null>(null)
-  const audioChunksRef     = useRef<Blob[]>([])
+  // ── Refs ────────────────────────────────────────────────────────────────────
+  const bottomRef        = useRef<HTMLDivElement>(null)
+  const msgsContainerRef = useRef<HTMLDivElement>(null)
+  const fileRef          = useRef<HTMLInputElement>(null)
+  const textareaRef      = useRef<HTMLTextAreaElement>(null)
+  const prevLengthRef    = useRef(0)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef   = useRef<Blob[]>([])
   const recordingTimerRef  = useRef<ReturnType<typeof setInterval> | null>(null)
   const pointerStartXRef   = useRef(0)
   const isCancelledRef     = useRef(false)
   const micBtnRef          = useRef<HTMLButtonElement>(null)
-  const hasSetUnreadRef    = useRef(false)
 
-  // ── Enregistrement vocal ─────────────────────────────────────────────────────
+  // ── État enregistrement vocal (press & hold) ─────────────────────────────────
   const [isRecording,      setIsRecording]      = useState(false)
   const [recordingSeconds, setRecordingSeconds] = useState(0)
-  const [cancelProgress,   setCancelProgress]   = useState(0)
-  const CANCEL_THRESHOLD = 80
+  const [cancelProgress,   setCancelProgress]   = useState(0) // 0→1 : glissement gauche
+
+  const CANCEL_THRESHOLD = 80 // pixels à glisser pour annuler
 
   const doStopRecorder = useCallback((cancelled: boolean) => {
     const recorder = mediaRecorderRef.current
     if (!recorder) return Promise.resolve()
     return new Promise<void>(resolve => {
-      if (cancelled) { recorder.onstop = null } else { recorder.onstop = () => resolve() }
+      if (cancelled) { recorder.onstop = null }
+      else { recorder.onstop = () => resolve() }
       recorder.stop()
       recorder.stream.getTracks().forEach(t => t.stop())
       if (cancelled) resolve()
@@ -215,21 +220,27 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
     const mimeType = recorder.mimeType || 'audio/webm'
     const ext      = mimeType.includes('mp4') ? 'mp4' : 'webm'
     const blob     = new Blob(audioChunksRef.current, { type: mimeType })
-    if (blob.size < 500) return
+    if (blob.size < 500) return // trop court
     const file = new File([blob], `voice_${Date.now()}.${ext}`, { type: mimeType })
     await sendFile(file, replyTo?.id)
     setReplyTo(null)
   }, [doStopRecorder, sendFile, replyTo])
 
+  // Listeners globaux pointer pendant l'enregistrement
   useEffect(() => {
     if (!isRecording) return
+
     const onMove = (e: PointerEvent) => {
       const dx = pointerStartXRef.current - e.clientX
       const progress = Math.min(1, Math.max(0, dx / CANCEL_THRESHOLD))
       setCancelProgress(progress)
       if (dx > CANCEL_THRESHOLD) cancelRecording()
     }
-    const onUp = () => { if (!isCancelledRef.current) stopAndSend() }
+
+    const onUp = () => {
+      if (!isCancelledRef.current) stopAndSend()
+    }
+
     window.addEventListener('pointermove', onMove)
     window.addEventListener('pointerup', onUp)
     return () => {
@@ -244,6 +255,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
     isCancelledRef.current = false
     pointerStartXRef.current = e.clientX
     micBtnRef.current?.setPointerCapture(e.pointerId)
+
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
       const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
@@ -262,91 +274,36 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
     }
   }, [isRecording])
 
-  // ── Scroll ───────────────────────────────────────────────────────────────────
   const scrollToBottom = useCallback((smooth = false) => {
     const el = msgsContainerRef.current
     if (!el) return
     el.scrollTo({ top: el.scrollHeight, behavior: smooth ? 'smooth' : 'instant' })
   }, [])
 
-  const handleScroll = useCallback(() => {
-    const el = msgsContainerRef.current
-    if (!el) return
-    const dist = el.scrollHeight - el.scrollTop - el.clientHeight
-    setShowScrollBtn(dist > 200)
-    if (dist < 50) setNewMsgCount(0)
-  }, [])
-
-  useEffect(() => {
-    const el = msgsContainerRef.current
-    if (!el) return
-    el.addEventListener('scroll', handleScroll, { passive: true })
-    return () => el.removeEventListener('scroll', handleScroll)
-  }, [handleScroll])
-
+  // Scroll to bottom quand l'onglet chat devient visible
   useEffect(() => {
     if (!isActive) return
     scrollToBottom(false)
   }, [isActive, scrollToBottom])
 
+  // Scroll to bottom quand les messages chargent pour la première fois
   useEffect(() => {
     if (messages.length === 0) return
     const isFirst = prevLengthRef.current === 0
-    const prevLen = prevLengthRef.current
     prevLengthRef.current = messages.length
     if (isFirst) {
-      // Scroll to first unread or bottom
-      if (firstUnreadId) {
-        setTimeout(() => {
-          document.getElementById(`msg-${firstUnreadId}`)?.scrollIntoView({ behavior: 'instant', block: 'center' })
-        }, 50)
-      } else {
-        scrollToBottom(false)
-      }
+      scrollToBottom(false)
       return
     }
-    // Nouveau message en temps réel
+    // Nouveau message temps réel : scroll smooth si déjà près du bas
     const el = msgsContainerRef.current
     if (!el) return
     const dist = el.scrollHeight - el.scrollTop - el.clientHeight
-    if (dist < 150) {
-      scrollToBottom(true)
-    } else {
-      // Compter les nouveaux messages si on est remonté
-      const added = messages.length - prevLen
-      if (added > 0) setNewMsgCount(c => c + added)
-    }
-  }, [messages.length, scrollToBottom, firstUnreadId])
+    if (dist < 150) scrollToBottom(true)
+  }, [messages.length, scrollToBottom])
 
   useEffect(() => { if (isActive) markAllRead() }, [isActive, markAllRead, messages.length])
 
-  // ── Détecter les messages non lus au premier chargement ──────────────────────
-  useEffect(() => {
-    if (hasSetUnreadRef.current || messages.length === 0) return
-    hasSetUnreadRef.current = true
-    const unread = messages.find(m =>
-      m.user_id !== userId &&
-      !(m.message_reads ?? []).some(r => r.user_id === userId)
-    )
-    setFirstUnreadId(unread?.id ?? null)
-  }, [messages, userId])
-
-  // Effacer le séparateur après 8 secondes
-  useEffect(() => {
-    if (!firstUnreadId) return
-    const t = setTimeout(() => setFirstUnreadId(null), 8000)
-    return () => clearTimeout(t)
-  }, [firstUnreadId])
-
-  // ── Auto-resize textarea ─────────────────────────────────────────────────────
-  useEffect(() => {
-    const el = textareaRef.current
-    if (!el) return
-    el.style.height = 'auto'
-    el.style.height = `${Math.min(el.scrollHeight, 120)}px`
-  }, [text])
-
-  // ── Envoi ─────────────────────────────────────────────────────────────────────
   const handleSend = useCallback(async () => {
     const trimmed = text.trim()
     if (!trimmed) return
@@ -360,49 +317,30 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
     const val    = e.target.value
     const cursor = e.target.selectionStart ?? val.length
     setText(val)
+
+    // Broadcaster "est en train d'écrire" dès qu'il y a du texte
     if (val.trim()) setTyping()
+
+    // Ouvrir mention quand @ est tapé
     if (val.length > text.length && val[cursor - 1] === '@') {
       setMentionAnchor(cursor - 1)
       return
     }
+    // Fermer si le @ a été supprimé
     if (mentionAnchor !== null && (val.length <= mentionAnchor || val[mentionAnchor] !== '@')) {
       setMentionAnchor(null)
     }
   }
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // Navigation dans le dropdown mentions
     if (mentionAnchor !== null && mentionResults.length > 0) {
       if (e.key === 'ArrowDown') { e.preventDefault(); setMentionHighlight(p => Math.min(p + 1, mentionResults.length - 1)); return }
       if (e.key === 'ArrowUp')   { e.preventDefault(); setMentionHighlight(p => Math.max(p - 1, 0)); return }
-      if (e.key === 'Enter')     { e.preventDefault(); selectMention(mentionResults[mentionHighlight].name); return }
+      if (e.key === 'Enter')     { e.preventDefault(); selectMention(mentionResults[mentionHighlight].full_name); return }
     }
     if (e.key === 'Escape') { setMentionAnchor(null); return }
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
-  }
-
-  // ── Édition ──────────────────────────────────────────────────────────────────
-  const startEdit = useCallback((msg: ChatMessage) => {
-    setEditingId(msg.id)
-    setEditText(msg.content ?? '')
-    setActiveMsg(null)
-    setEmojiFor(null)
-    setTimeout(() => {
-      editRef.current?.focus()
-      const len = (msg.content ?? '').length
-      editRef.current?.setSelectionRange(len, len)
-    }, 50)
-  }, [])
-
-  const submitEdit = useCallback(async () => {
-    if (!editingId || !editText.trim()) { setEditingId(null); return }
-    await updateMessage(editingId, editText.trim())
-    setEditingId(null)
-    setEditText('')
-  }, [editingId, editText, updateMessage])
-
-  const handleEditKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitEdit() }
-    if (e.key === 'Escape') { setEditingId(null); setEditText('') }
   }
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -426,15 +364,17 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
   return (
     <>
     <div
-      className="flex flex-col bg-gray-50 rounded-2xl overflow-hidden relative"
+      className="flex flex-col bg-gray-50 rounded-2xl overflow-hidden"
       style={{ height: 'calc(100dvh - 270px)', minHeight: 420 }}
       onClick={dismiss}
     >
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* ── Header : clochette + participants ────────────────────────── */}
       {notifEnabled !== null && (
-        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-white flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-white" onClick={e => e.stopPropagation()}>
+          {/* Bouton participants */}
           <button
             onClick={() => setShowParticipants(p => !p)}
+            title="Participants"
             className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
               showParticipants
                 ? 'bg-orange-50 border-orange-200 text-orange-600'
@@ -446,8 +386,11 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
             </svg>
             <span>{onlineUsers.size} en ligne</span>
           </button>
+
+          {/* Clochette notifications */}
           <button
             onClick={toggleNotif}
+            title={notifEnabled ? 'Désactiver les notifications du chat' : 'Activer les notifications du chat'}
             className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
               notifEnabled
                 ? 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100'
@@ -462,9 +405,9 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
         </div>
       )}
 
-      {/* ── Participants ────────────────────────────────────────────────── */}
+      {/* ── Panneau participants ───────────────────────────────────────── */}
       {showParticipants && (
-        <div className="bg-white border-b border-gray-100 px-4 py-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
+        <div className="bg-white border-b border-gray-100 px-4 py-3" onClick={e => e.stopPropagation()}>
           <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5">
             Participants ({participants.length})
           </p>
@@ -482,7 +425,9 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                         {isMe && <span className="text-[11px] text-gray-400 font-normal ml-1">(vous)</span>}
                       </span>
                       {p.poste && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{p.poste}</span>
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                          {p.poste}
+                        </span>
                       )}
                     </div>
                   </div>
@@ -496,7 +441,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
         </div>
       )}
 
-      {/* ── Liste messages ──────────────────────────────────────────────── */}
+      {/* ── Liste des messages ─────────────────────────────────────────── */}
       <div ref={msgsContainerRef} className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 py-12">
@@ -516,9 +461,8 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
           const showDateSep = !prev || !sameDay(prev.created_at, msg.created_at)
           const showAuthor  = !isOwn && (!prev || prev.user_id !== msg.user_id || showDateSep)
           const replyMsg    = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null
-          const isActivated = activeMsg === msg.id
+          const isActive    = activeMsg === msg.id
           const showEmoji   = emojiFor === msg.id
-          const isEditing   = editingId === msg.id
 
           const reactionGroups: Record<string, { count: number; mine: boolean }> = {}
           for (const r of msg.message_reactions ?? []) {
@@ -530,7 +474,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
           const readers = (msg.message_reads ?? []).filter(r => r.user_id !== userId)
 
           return (
-            <div key={msg.id} id={`msg-${msg.id}`}>
+            <div key={msg.id}>
               {showDateSep && (
                 <div className="flex items-center gap-3 py-3 px-2">
                   <div className="flex-1 h-px bg-gray-200" />
@@ -539,25 +483,9 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                 </div>
               )}
 
-              {/* ── Séparateur "Nouveaux messages" ────────────────── */}
-              {firstUnreadId && msg.id === firstUnreadId && (
-                <div className="flex items-center gap-3 py-2 px-2">
-                  <div className="flex-1 h-px bg-orange-300" />
-                  <span className="text-[11px] text-orange-500 font-semibold bg-orange-50 px-2.5 py-0.5 rounded-full whitespace-nowrap">
-                    Nouveaux messages
-                  </span>
-                  <div className="flex-1 h-px bg-orange-300" />
-                </div>
-              )}
-
               <div
                 className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-1 mb-0.5`}
-                onClick={e => {
-                  e.stopPropagation()
-                  if (isEditing) return
-                  setActiveMsg(p => p === msg.id ? null : msg.id)
-                  setEmojiFor(null)
-                }}
+                onClick={e => { e.stopPropagation(); setActiveMsg(p => p === msg.id ? null : msg.id); setEmojiFor(null) }}
               >
                 {!isOwn && (
                   <Avatar
@@ -576,9 +504,11 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                         {msg.profiles?.full_name ?? 'Inconnu'}
                       </span>
                       {(() => {
-                        const label = msg.profiles?.poste ?? (msg.profiles?.role === 'manager' ? 'Manager' : null)
+                        const label = msg.profiles?.poste ?? (msg.profiles?.role === 'admin' ? 'Admin' : msg.profiles?.role === 'manager' ? 'Manager' : null)
                         return label ? (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{label}</span>
+                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                            {label}
+                          </span>
                         ) : null
                       })()}
                     </div>
@@ -588,7 +518,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                     isOwn
                       ? 'bg-orange-500 text-white rounded-br-sm'
                       : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
-                  } ${isActivated && !isEditing ? 'ring-2 ring-orange-300 ring-offset-1' : ''}`}
+                  } ${isActive ? 'ring-2 ring-orange-300 ring-offset-1' : ''}`}
                     style={isOwn ? {} : { boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}
                   >
                     {replyMsg && (
@@ -608,23 +538,17 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                       </div>
                     )}
 
-                    {/* Image → lightbox au clic */}
                     {msg.file_type === 'image' && msg.file_url && (
-                      <button
-                        onClick={e => { e.stopPropagation(); setImageLightbox(msg.file_url!) }}
-                        className="block mb-1"
-                      >
-                        <img
-                          src={msg.file_url}
-                          alt={msg.file_name ?? 'image'}
-                          className="rounded-xl max-w-[200px] max-h-[200px] object-cover hover:opacity-95 transition-opacity"
-                        />
-                      </button>
+                      <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
+                        <img src={msg.file_url} alt={msg.file_name ?? 'image'}
+                          className="rounded-xl max-w-[200px] max-h-[200px] object-cover mb-1 block" />
+                      </a>
                     )}
 
                     {msg.file_type === 'document' && msg.file_url && (() => {
                       const isPdf = msg.file_name?.toLowerCase().endsWith('.pdf')
                       return isPdf ? (
+                        // PDF → aperçu inline via modale
                         <button
                           onClick={e => { e.stopPropagation(); setPdfPreview({ url: msg.file_url!, name: msg.file_name ?? 'Document' }) }}
                           className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 w-full text-left transition-opacity hover:opacity-80 ${
@@ -641,6 +565,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                           </svg>
                         </button>
                       ) : (
+                        // Autre document → ouverture directe
                         <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
                           className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 ${
                             isOwn ? 'bg-white/20 text-white' : 'bg-gray-50 text-gray-700 border border-gray-100'
@@ -654,47 +579,17 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                       )
                     })()}
 
-                    {/* Texte ou mode édition inline */}
-                    {isEditing ? (
-                      <div onClick={e => e.stopPropagation()}>
-                        <textarea
-                          ref={editRef}
-                          value={editText}
-                          onChange={e => setEditText(e.target.value)}
-                          onKeyDown={handleEditKeyDown}
-                          rows={2}
-                          className={`w-full text-sm resize-none rounded-lg px-2 py-1.5 focus:outline-none ${
-                            isOwn
-                              ? 'bg-white/15 text-white placeholder-white/60 border border-white/30'
-                              : 'bg-gray-50 text-gray-800 border border-gray-200'
-                          }`}
-                        />
-                        <div className="flex gap-1.5 mt-1.5 justify-end">
-                          <button
-                            onClick={() => { setEditingId(null); setEditText('') }}
-                            className={`text-[11px] px-2.5 py-1 rounded-lg font-medium ${isOwn ? 'bg-white/20 text-white hover:bg-white/30' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}
-                          >Annuler</button>
-                          <button
-                            onClick={submitEdit}
-                            className={`text-[11px] px-2.5 py-1 rounded-lg font-medium ${isOwn ? 'bg-white/30 text-white hover:bg-white/40' : 'bg-orange-100 text-orange-700 hover:bg-orange-200'}`}
-                          >Sauvegarder</button>
-                        </div>
-                      </div>
-                    ) : msg.content ? (
+                    {/* Texte avec mentions surlignées */}
+                    {msg.content && (
                       <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                         {renderWithMentions(msg.content, allNames, myName, isOwn)}
                       </p>
-                    ) : null}
+                    )}
 
-                    <div className={`flex items-center gap-1 mt-1 leading-none ${isOwn ? 'justify-end' : ''}`}>
-                      {msg.edited_at && (
-                        <span className={`text-[10px] ${isOwn ? 'text-white/50' : 'text-gray-400'}`}>(modifié)</span>
-                      )}
-                      <p className={`text-[10px] ${isOwn ? 'text-white/55' : 'text-gray-400'}`}>
-                        {formatTime(msg.created_at)}
-                        {isOwn && readers.length > 0 && <span className="ml-1 text-white/80">✓✓</span>}
-                      </p>
-                    </div>
+                    <p className={`text-[10px] mt-1 leading-none ${isOwn ? 'text-white/55 text-right' : 'text-gray-400'}`}>
+                      {formatTime(msg.created_at)}
+                      {isOwn && readers.length > 0 && <span className="ml-1 text-white/80">✓✓</span>}
+                    </p>
                   </div>
 
                   {Object.keys(reactionGroups).length > 0 && (
@@ -712,17 +607,18 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                     </div>
                   )}
 
-                  {isOwn && readers.length > 0 && !isEditing && (
+                  {isOwn && readers.length > 0 && (
                     <p className="text-[10px] text-gray-400 pr-1">
                       {(() => {
-                        const names = readers.map(r => r.profiles?.full_name?.split(' ')[0] ?? '?')
+                        const names = readers
+                          .map(r => r.profiles?.full_name?.split(' ')[0] ?? '?')
                         if (names.length <= 2) return `Vu par ${names.join(', ')}`
                         return `Vu par ${names.slice(0, 2).join(', ')} +${names.length - 2}`
                       })()}
                     </p>
                   )}
 
-                  {isActivated && !isEditing && (
+                  {isActive && (
                     <div className={`flex gap-1 ${isOwn ? 'justify-end' : 'justify-start'} flex-wrap`} onClick={e => e.stopPropagation()}>
                       <button onClick={() => setEmojiFor(p => p === msg.id ? null : msg.id)}
                         className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors">
@@ -736,12 +632,6 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                         className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors font-medium text-gray-600">
                         ↪ Transférer
                       </button>
-                      {isOwn && (
-                        <button onClick={() => startEdit(msg)}
-                          className="text-xs bg-blue-50 border border-blue-100 text-blue-600 rounded-full px-2.5 py-1 shadow-sm hover:bg-blue-100 transition-colors font-medium">
-                          ✏️ Modifier
-                        </button>
-                      )}
                       {(isOwn || can('supprimer_message_autres')) && (
                         <button onClick={() => { deleteMessage(msg.id); dismiss() }}
                           className="text-xs bg-red-50 border border-red-100 text-red-500 rounded-full px-2.5 py-1 shadow-sm hover:bg-red-100 transition-colors font-medium">
@@ -752,12 +642,11 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                   )}
 
                   {showEmoji && (
-                    <div className={`flex flex-wrap gap-1 bg-white border border-gray-100 rounded-2xl p-2 shadow-xl ${isOwn ? 'self-end' : 'self-start'}`}
-                      style={{ maxWidth: 192 }}
+                    <div className={`flex gap-1 bg-white border border-gray-100 rounded-2xl p-2 shadow-xl ${isOwn ? 'self-end' : 'self-start'}`}
                       onClick={e => e.stopPropagation()}>
                       {EMOJIS.map(e => (
                         <button key={e} onClick={() => { toggleReaction(msg.id, e); dismiss() }}
-                          className="text-xl hover:scale-125 transition-transform active:scale-90 leading-none w-8 h-8 flex items-center justify-center">
+                          className="text-xl hover:scale-125 transition-transform active:scale-90 leading-none">
                           {e}
                         </button>
                       ))}
@@ -768,29 +657,14 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
             </div>
           )
         })}
+
         <div ref={bottomRef} />
       </div>
 
-      {/* ── Bouton scroll bas ───────────────────────────────────────────── */}
-      {showScrollBtn && (
-        <button
-          onClick={(e) => { e.stopPropagation(); scrollToBottom(true); setNewMsgCount(0) }}
-          className="absolute bottom-20 right-3 z-10 flex items-center gap-1.5 bg-white shadow-lg rounded-full pl-3 pr-2 py-1.5 border border-gray-100 hover:bg-gray-50 transition-colors"
-        >
-          {newMsgCount > 0 && (
-            <span className="bg-orange-500 text-white text-[11px] font-bold rounded-full px-1.5 py-0.5 leading-none">
-              {newMsgCount}
-            </span>
-          )}
-          <svg className="w-4 h-4 text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
-          </svg>
-        </button>
-      )}
+      {/* ── Barre de saisie ───────────────────────────────────────────── */}
+      <div className="border-t border-gray-200 bg-white px-3 py-2.5 relative" onClick={e => e.stopPropagation()}>
 
-      {/* ── Barre de saisie ─────────────────────────────────────────────── */}
-      <div className="border-t border-gray-200 bg-white px-3 py-2.5 relative flex-shrink-0" onClick={e => e.stopPropagation()}>
-
+        {/* ── Indicateur "est en train d'écrire" ────────────────────── */}
         {typingNames.length > 0 && (
           <div className="absolute bottom-full left-3 mb-0.5 flex items-center gap-1.5 text-[11px] text-gray-400">
             <span>
@@ -806,23 +680,24 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
           </div>
         )}
 
-        {/* Dropdown mentions */}
+        {/* ── Dropdown mentions ──────────────────────────────────────── */}
         {mentionAnchor !== null && mentionResults.length > 0 && (
           <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden z-20">
-            {mentionResults.map((p, idx) => (
+            {mentionResults.map((tech, idx) => (
               <button
-                key={p.id}
-                onMouseDown={e => { e.preventDefault(); selectMention(p.name) }}
+                key={tech.id}
+                onMouseDown={e => { e.preventDefault(); selectMention(tech.full_name) }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
                   idx === mentionHighlight ? 'bg-orange-50' : 'hover:bg-gray-50'
                 }`}
               >
-                <Avatar name={p.name} avatarUrl={p.avatarUrl} size="sm" online={onlineUsers.has(p.id)} />
+                <Avatar name={tech.full_name} avatarUrl={tech.avatar_url} size="sm"
+                  online={onlineUsers.has(tech.id)} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{p.name}</p>
-                  {p.poste && <p className="text-[11px] text-gray-400">{p.poste}</p>}
+                  <p className="text-sm font-semibold text-gray-800 truncate">{tech.full_name}</p>
+                  <p className="text-[11px] text-gray-400">Technicien</p>
                 </div>
-                {onlineUsers.has(p.id) && (
+                {onlineUsers.has(tech.id) && (
                   <span className="text-[10px] text-green-500 font-medium flex-shrink-0">En ligne</span>
                 )}
               </button>
@@ -830,7 +705,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
           </div>
         )}
 
-        {/* Bandeau réponse */}
+        {/* Bandeau de réponse */}
         {replyTo && (
           <div className="flex items-center gap-2 mb-2 pl-3 border-l-2 border-orange-400 bg-orange-50 rounded-r-xl py-1.5 pr-2">
             <div className="flex-1 min-w-0">
@@ -859,8 +734,11 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
 
           {isRecording ? (
+            /* ── Barre enregistrement press & hold ── */
             <>
+              {/* Indicateur "glisser pour annuler" */}
               <div className="flex-1 flex items-center gap-2 px-3 overflow-hidden">
+                {/* Texte annuler qui glisse selon cancelProgress */}
                 <span
                   className="text-xs text-gray-400 flex items-center gap-1 transition-all duration-75 select-none"
                   style={{ opacity: 0.3 + cancelProgress * 0.7, transform: `translateX(${-cancelProgress * 12}px)` }}
@@ -870,13 +748,18 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                   </svg>
                   Annuler
                 </span>
+
                 <div className="flex-1 flex items-center justify-end gap-2">
+                  {/* Point rouge clignotant */}
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
+                  {/* Timer */}
                   <span className="text-sm font-semibold text-red-500 tabular-nums">
                     {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
                   </span>
                 </div>
               </div>
+
+              {/* Bouton micro maintenu — relâcher = envoyer */}
               <button
                 ref={micBtnRef}
                 onPointerDown={handleMicPointerDown}
@@ -889,6 +772,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
               </button>
             </>
           ) : (
+            /* ── Mode saisie texte normal ── */
             <>
               <textarea
                 ref={textareaRef}
@@ -896,22 +780,25 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}
                 placeholder="Message… (@ pour mentionner)"
-                className="flex-1 resize-none rounded-2xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-300 focus:ring-1 focus:ring-orange-100 bg-gray-50 overflow-y-auto"
-                style={{ lineHeight: '1.45', minHeight: '38px', maxHeight: '120px' }}
+                rows={1}
+                className="flex-1 resize-none rounded-2xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-300 focus:ring-1 focus:ring-orange-100 bg-gray-50 max-h-28 overflow-y-auto"
+                style={{ lineHeight: '1.45' }}
               />
 
               {text.trim() ? (
+                /* Bouton envoyer texte */
                 <button onClick={handleSend}
-                  className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 transition-colors self-end">
+                  className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 transition-colors">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5" />
                   </svg>
                 </button>
               ) : (
+                /* Bouton micro : maintenir appuyé pour enregistrer */
                 <button
                   ref={micBtnRef}
                   onPointerDown={handleMicPointerDown}
-                  className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-100 hover:text-orange-500 transition-colors select-none self-end"
+                  className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-100 hover:text-orange-500 transition-colors select-none"
                   style={{ touchAction: 'none' }}
                   title="Maintenir pour enregistrer"
                 >
@@ -926,14 +813,14 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
       </div>
     </div>
 
-    {/* ── Toast transfert ──────────────────────────────────────────────────── */}
+    {/* ── Toast confirmation transfert ─────────────────────────────────── */}
     {forwardDone && (
       <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-full shadow-xl">
         ↪ Message transféré
       </div>
     )}
 
-    {/* ── Modale transfert ─────────────────────────────────────────────────── */}
+    {/* ── Modale transfert vers chantier ───────────────────────────────── */}
     {forwardMsg && (
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4 pb-4 sm:pb-0" onClick={() => setForwardMsg(null)}>
         <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
@@ -943,10 +830,14 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
+          {/* Aperçu du message à transférer */}
           <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
             <p className="text-xs text-gray-400 mb-1">Message à transférer</p>
-            <p className="text-sm text-gray-700 truncate">{forwardMsg.content ?? forwardMsg.file_name ?? '📎 Fichier'}</p>
+            <p className="text-sm text-gray-700 truncate">
+              {forwardMsg.content ?? forwardMsg.file_name ?? '📎 Fichier'}
+            </p>
           </div>
+          {/* Liste des chantiers */}
           <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
             {chantiers.filter(c => c.id !== chantierId).map(c => (
               <button key={c.id} onClick={() => handleForward(c.id)}
@@ -970,15 +861,23 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
       </div>
     )}
 
-    {/* ── Modale aperçu PDF ─────────────────────────────────────────────────── */}
+    {/* ── Modale aperçu PDF ─────────────────────────────────────────────── */}
+
     {pdfPreview && (
-      <div className="fixed inset-0 z-50 flex flex-col bg-black/80" onClick={() => setPdfPreview(null)}>
+      <div
+        className="fixed inset-0 z-50 flex flex-col bg-black/80"
+        onClick={() => setPdfPreview(null)}
+      >
+        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-black/60 flex-shrink-0" onClick={e => e.stopPropagation()}>
           <span className="text-white text-sm font-medium truncate max-w-[70%]">{pdfPreview.name}</span>
           <div className="flex items-center gap-2">
-            <a href={`https://docs.google.com/viewer?url=${encodeURIComponent(pdfPreview.url)}`}
-              target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-              className="text-white/70 hover:text-white text-xs border border-white/20 px-3 py-1.5 rounded-full transition-colors">
+            <a
+              href={`https://docs.google.com/viewer?url=${encodeURIComponent(pdfPreview.url)}`}
+              target="_blank" rel="noreferrer"
+              onClick={e => e.stopPropagation()}
+              className="text-white/70 hover:text-white text-xs border border-white/20 px-3 py-1.5 rounded-full transition-colors"
+            >
               Ouvrir ↗
             </a>
             <button onClick={() => setPdfPreview(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
@@ -988,6 +887,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
             </button>
           </div>
         </div>
+        {/* Visionneuse */}
         <div className="flex-1 min-h-0" onClick={e => e.stopPropagation()}>
           <iframe
             src={`https://docs.google.com/viewer?url=${encodeURIComponent(pdfPreview.url)}&embedded=true`}
@@ -995,44 +895,6 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
             title={pdfPreview.name}
           />
         </div>
-      </div>
-    )}
-
-    {/* ── Lightbox image ───────────────────────────────────────────────────── */}
-    {imageLightbox && (
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center"
-        style={{ background: 'rgba(0,0,0,0.92)' }}
-        onClick={() => setImageLightbox(null)}
-      >
-        <button
-          onClick={() => setImageLightbox(null)}
-          className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white hover:bg-white/20 transition-colors z-10"
-        >
-          <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-          </svg>
-        </button>
-        <img
-          src={imageLightbox}
-          alt=""
-          className="max-w-full max-h-[85vh] object-contain rounded-xl"
-          style={{ padding: '20px' }}
-          onClick={e => e.stopPropagation()}
-        />
-        <a
-          href={imageLightbox}
-          download
-          target="_blank"
-          rel="noreferrer"
-          onClick={e => e.stopPropagation()}
-          className="absolute bottom-6 flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white text-sm px-4 py-2 rounded-full transition-colors border border-white/20"
-        >
-          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-          </svg>
-          Télécharger
-        </a>
       </div>
     )}
     </>
