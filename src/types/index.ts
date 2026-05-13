@@ -67,6 +67,7 @@ export interface TimeEntry {
   arrivee: string | null
   depart: string | null
   pause: number | null
+  chantier_id: string | null
   created_at: string
 }
 

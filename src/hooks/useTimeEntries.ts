@@ -30,6 +30,7 @@ function mapRow(r: any): TimeEntry {
     arrivee:       r.heure_arrivee ?? r.arrivee ?? null,
     depart:        r.heure_depart  ?? r.depart  ?? null,
     pause:         r.pause_minutes ?? r.pause   ?? null,
+    chantier_id:   r.chantier_id   ?? null,
     created_at:    r.created_at,
   }
 }
@@ -56,7 +57,7 @@ export function useMyTimeEntries(weekStart: string) {
 
   const upsert = useCallback(async (
     date:    string,
-    updates: { arrivee?: string | null; depart?: string | null; pause?: number | null },
+    updates: { arrivee?: string | null; depart?: string | null; pause?: number | null; chantier_id?: string | null },
   ) => {
     if (!profile?.id) return
     const existing = entries.find(e => e.date === date)
@@ -64,10 +65,11 @@ export function useMyTimeEntries(weekStart: string) {
       id:            existing?.id ?? `tmp-${Date.now()}`,
       technicien_id: profile.id,
       date,
-      arrivee:    updates.arrivee !== undefined ? updates.arrivee : (existing?.arrivee ?? null),
-      depart:     updates.depart  !== undefined ? updates.depart  : (existing?.depart  ?? null),
-      pause:      updates.pause   !== undefined ? updates.pause   : (existing?.pause   ?? null),
-      created_at: existing?.created_at ?? new Date().toISOString(),
+      arrivee:     updates.arrivee     !== undefined ? updates.arrivee     : (existing?.arrivee     ?? null),
+      depart:      updates.depart      !== undefined ? updates.depart      : (existing?.depart      ?? null),
+      pause:       updates.pause       !== undefined ? updates.pause       : (existing?.pause       ?? null),
+      chantier_id: updates.chantier_id !== undefined ? updates.chantier_id : (existing?.chantier_id ?? null),
+      created_at:  existing?.created_at ?? new Date().toISOString(),
     }
     // Optimistic update
     setEntries(prev => {
@@ -84,6 +86,7 @@ export function useMyTimeEntries(weekStart: string) {
           heure_arrivee: merged.arrivee,
           heure_depart:  merged.depart,
           pause_minutes: merged.pause ?? 0,
+          chantier_id:   merged.chantier_id,
         },
         { onConflict: 'technicien_id,date' },
       )

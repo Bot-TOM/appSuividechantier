@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
-import type { UserProfile, PlanningType } from '@/types'
+import type { UserProfile, PlanningType, Chantier } from '@/types'
 import {
   usePlanning,
   getMondayOfWeek,
@@ -81,6 +81,7 @@ export default function PlanningTechTab() {
   const [tab, setTab]           = useState<TabId>('activite')
   const [weekStart, setWeekStart] = useState(getMondayOfWeek())
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
+  const [myChantiers, setMyChantiers] = useState<Chantier[]>([])
 
   const { entries: planning }                 = usePlanning(weekStart)
   const { entries: timeEntries, upsert: upsertTime } = useMyTimeEntries(weekStart)
@@ -90,6 +91,20 @@ export default function PlanningTechTab() {
       if (data) setAllProfiles(data as UserProfile[])
     })
   }, [])
+
+  useEffect(() => {
+    if (!profile?.id) return
+    supabase
+      .from('chantier_techniciens')
+      .select('chantier_id, chantiers(id, nom, client_nom, statut)')
+      .eq('technicien_id', profile.id)
+      .then(({ data }) => {
+        if (!data) return
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const list = data.map((r: any) => r.chantiers).filter(Boolean) as Chantier[]
+        setMyChantiers(list.sort((a, b) => a.nom.localeCompare(b.nom)))
+      })
+  }, [profile?.id])
 
   const days   = getWeekDays(weekStart)
   const year   = new Date(weekStart + 'T00:00:00').getFullYear()
@@ -110,10 +125,11 @@ export default function PlanningTechTab() {
   })
 
   // État pour l'édition des heures (time input)
-  const [editingDate, setEditingDate] = useState<string | null>(null)
-  const [editArrivee, setEditArrivee] = useState('')
-  const [editDepart,  setEditDepart]  = useState('')
-  const [editPause,   setEditPause]   = useState('')
+  const [editingDate,    setEditingDate]    = useState<string | null>(null)
+  const [editArrivee,    setEditArrivee]    = useState('')
+  const [editDepart,     setEditDepart]     = useState('')
+  const [editPause,      setEditPause]      = useState('')
+  const [editChantierId, setEditChantierId] = useState<string | null>(null)
 
   function openTimeEdit(date: string) {
     const e = timeEntries.find(t => t.date === date)
@@ -121,14 +137,16 @@ export default function PlanningTechTab() {
     setEditArrivee(e?.arrivee ?? '')
     setEditDepart(e?.depart ?? '')
     setEditPause(e?.pause != null ? String(e.pause) : '')
+    setEditChantierId(e?.chantier_id ?? null)
   }
 
   async function saveTimeEdit() {
     if (!editingDate) return
     await upsertTime(editingDate, {
-      arrivee: editArrivee || null,
-      depart:  editDepart  || null,
-      pause:   editPause ? parseInt(editPause, 10) : null,
+      arrivee:     editArrivee || null,
+      depart:      editDepart  || null,
+      pause:       editPause ? parseInt(editPause, 10) : null,
+      chantier_id: editChantierId,
     })
     setEditingDate(null)
   }
@@ -270,18 +288,26 @@ export default function PlanningTechTab() {
                   {isToday && <p className="text-[10px] text-orange-400 font-medium">Aujourd'hui</p>}
                 </div>
                 {e?.arrivee ? (
-                  <div className="flex items-center gap-3 flex-1">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                  <div className="flex items-center gap-3 flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 text-xs text-gray-600 flex-shrink-0">
                       <span className="text-gray-400">▶</span>
                       <span className="font-medium">{e.arrivee}</span>
                     </div>
-                    <span className="text-gray-200">→</span>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-600">
+                    <span className="text-gray-200 flex-shrink-0">→</span>
+                    <div className="flex items-center gap-1.5 text-xs text-gray-600 flex-shrink-0">
                       <span className="font-medium">{e.depart ?? '—'}</span>
                       <span className="text-gray-400">◀</span>
                     </div>
-                    {e.pause ? <span className="text-xs text-gray-400">{e.pause}mn pause</span> : null}
-                    <div className="ml-auto">
+                    {e.pause ? <span className="text-xs text-gray-400 flex-shrink-0">{e.pause}mn</span> : null}
+                    {e.chantier_id && (() => {
+                      const c = myChantiers.find(ch => ch.id === e.chantier_id)
+                      return c ? (
+                        <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full truncate">
+                          {c.nom}
+                        </span>
+                      ) : null
+                    })()}
+                    <div className="ml-auto flex-shrink-0">
                       <span className={`text-sm font-bold ${dur !== '—' ? 'text-orange-500' : 'text-gray-300'}`}>
                         {dur}
                       </span>
@@ -448,6 +474,37 @@ export default function PlanningTechTab() {
                 <p className="text-2xl font-bold text-orange-500 mt-0.5">
                   {calcDuree(editArrivee, editDepart, editPause ? parseInt(editPause, 10) : null)}
                 </p>
+              </div>
+            )}
+
+            {/* Sélecteur chantier */}
+            {myChantiers.length > 0 && (
+              <div className="space-y-1.5">
+                <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
+                  Chantier <span className="normal-case font-normal">(optionnel)</span>
+                </p>
+                <div className="max-h-32 overflow-y-auto space-y-1 rounded-xl border border-gray-200 p-1">
+                  {editChantierId && (
+                    <button
+                      onClick={() => setEditChantierId(null)}
+                      className="w-full text-left px-3 py-2 rounded-lg text-xs text-gray-400 hover:bg-gray-50 transition-colors">
+                      ✕ Aucun chantier
+                    </button>
+                  )}
+                  {myChantiers.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => setEditChantierId(editChantierId === c.id ? null : c.id)}
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
+                        editChantierId === c.id
+                          ? 'bg-blue-50 text-blue-700 font-semibold'
+                          : 'hover:bg-gray-50 text-gray-700'
+                      }`}>
+                      <span className="font-medium">{c.nom}</span>
+                      {c.client_nom && <span className="text-gray-400"> · {c.client_nom}</span>}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 

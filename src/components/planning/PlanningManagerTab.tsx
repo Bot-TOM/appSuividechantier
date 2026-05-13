@@ -106,7 +106,6 @@ export default function PlanningManagerTab() {
     supabase
       .from('chantiers')
       .select('id, nom, client_nom, statut')
-      .neq('statut', 'termine')
       .order('nom')
       .then(({ data }) => { if (data) setChantiers(data as Chantier[]) })
   }, [])
@@ -631,6 +630,60 @@ export default function PlanningManagerTab() {
               </table>
             </div>
           )}
+
+          {/* ── Récapitulatif par chantier ─────────────────────────────────── */}
+          {!timeLoading && (() => {
+            // Regrouper les time_entries par chantier_id
+            type ChantierStat = { chantier_id: string; totalMins: number; techIds: Set<string> }
+            const map = new Map<string, ChantierStat>()
+            for (const e of timeEntries) {
+              if (!e.chantier_id || !e.arrivee || !e.depart) continue
+              const [ah, am] = e.arrivee.split(':').map(Number)
+              const [dh, dm] = e.depart.split(':').map(Number)
+              const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
+              if (mins <= 0) continue
+              const existing = map.get(e.chantier_id)
+              if (existing) {
+                existing.totalMins += mins
+                existing.techIds.add(e.technicien_id)
+              } else {
+                map.set(e.chantier_id, { chantier_id: e.chantier_id, totalMins: mins, techIds: new Set([e.technicien_id]) })
+              }
+            }
+            const stats = Array.from(map.values()).sort((a, b) => b.totalMins - a.totalMins)
+            if (stats.length === 0) return null
+            return (
+              <div className="mt-6 space-y-3">
+                <p className="text-sm font-semibold text-gray-700">Heures par chantier — semaine</p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {stats.map(s => {
+                    const chantier = chantiers.find(c => c.id === s.chantier_id)
+                    const h = Math.floor(s.totalMins / 60), m = s.totalMins % 60
+                    const dur = m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`
+                    return (
+                      <div
+                        key={s.chantier_id}
+                        className="bg-white rounded-2xl px-5 py-4 flex items-center justify-between gap-3"
+                        style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold text-gray-900 truncate">
+                            {chantier?.nom ?? 'Chantier inconnu'}
+                          </p>
+                          {chantier?.client_nom && (
+                            <p className="text-xs text-gray-400 truncate">{chantier.client_nom}</p>
+                          )}
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {s.techIds.size} technicien{s.techIds.size > 1 ? 's' : ''}
+                          </p>
+                        </div>
+                        <p className="text-2xl font-bold text-orange-500 flex-shrink-0">{dur}</p>
+                      </div>
+                    )
+                  })}
+                </div>
+              </div>
+            )
+          })()}
         </>
       )}
 
