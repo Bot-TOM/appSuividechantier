@@ -22,6 +22,7 @@ const PT: Record<PlanningType, { label: string; bg: string; text: string; border
   route:             { label: 'Route',              bg: 'bg-yellow-50',  text: 'text-yellow-600', border: 'border-yellow-200' },
   repos_conges:      { label: 'Repos / Congés',     bg: 'bg-violet-50',  text: 'text-violet-500', border: 'border-violet-200' },
   absent:            { label: 'Absent',             bg: 'bg-red-50',     text: 'text-red-500',    border: 'border-red-200'    },
+  ferie:             { label: 'Férié',              bg: 'bg-violet-50',  text: 'text-violet-500', border: 'border-violet-200' },
   libre:             { label: 'Libre',              bg: 'bg-amber-50',   text: 'text-amber-500',  border: 'border-amber-200'  },
 }
 
@@ -172,7 +173,7 @@ export default function PlanningTechTab() {
       {tab === 'activite' && (
         <div className="space-y-2">
           {days.map(date => {
-            const isWeekend = new Date(date + 'T00:00:00').getDay() >= 6
+            const isWeekend = [0, 6].includes(new Date(date + 'T00:00:00').getDay())
             const isToday   = date === TODAY
             const isFerie   = !isWeekend && feries.has(date)
             const entry     = getMyEntry(date)
@@ -186,7 +187,7 @@ export default function PlanningTechTab() {
             } else if (entry && entry.type !== 'libre' && PT[entry.type]) {
               const pt = PT[entry.type]
               bg = pt.bg; textColor = pt.text; border = pt.border
-              label = pt.label; note = entry.texte
+              label = pt.label; note = entry.label
             } else if (!entry && isFerie) {
               bg = 'bg-violet-50'; textColor = 'text-violet-500'; border = 'border-violet-200'; label = 'Férié'
             } else {
@@ -217,10 +218,27 @@ export default function PlanningTechTab() {
       )}
 
       {/* ═══════════════════ VUE MES HEURES ══════════════════════════════════ */}
-      {tab === 'heures' && (
+      {tab === 'heures' && (() => {
+        // Calcul du total semaine
+        let totalMins = 0
+        for (const date of days) {
+          const e = timeEntries.find(t => t.date === date)
+          if (e?.arrivee && e?.depart) {
+            const [ah, am] = e.arrivee.split(':').map(Number)
+            const [dh, dm] = e.depart.split(':').map(Number)
+            const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
+            if (mins > 0) totalMins += mins
+          }
+        }
+        const th = Math.floor(totalMins / 60), tm = totalMins % 60
+        const totalStr = totalMins > 0
+          ? (tm > 0 ? `${th}h${tm.toString().padStart(2, '0')}` : `${th}h`)
+          : '—'
+
+        return (
         <div className="space-y-2">
           {days.map(date => {
-            const isWeekend = new Date(date + 'T00:00:00').getDay() >= 6
+            const isWeekend = [0, 6].includes(new Date(date + 'T00:00:00').getDay())
             const isToday   = date === TODAY
             const e         = timeEntries.find(t => t.date === date)
             const dur       = calcDuree(e?.arrivee ?? null, e?.depart ?? null, e?.pause ?? null)
@@ -278,8 +296,19 @@ export default function PlanningTechTab() {
               </button>
             )
           })}
+
+          {/* Total semaine */}
+          <div
+            className="flex items-center justify-between bg-orange-50 rounded-2xl px-4 py-3 mt-1"
+            style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+            <p className="text-sm font-semibold text-orange-700">Total semaine</p>
+            <p className={`text-xl font-bold ${totalMins > 0 ? 'text-orange-500' : 'text-gray-300'}`}>
+              {totalStr}
+            </p>
+          </div>
         </div>
-      )}
+        )
+      })()}
 
       {/* ═══════════════════ VUE ÉQUIPE (lecture seule) ══════════════════════ */}
       {tab === 'equipe' && (
@@ -304,7 +333,7 @@ export default function PlanningTechTab() {
             </thead>
             <tbody>
               {days.map(date => {
-                const isWeekend = new Date(date + 'T00:00:00').getDay() >= 6
+                const isWeekend = [0, 6].includes(new Date(date + 'T00:00:00').getDay())
                 const isToday   = date === TODAY
                 const isFerie   = !isWeekend && feries.has(date)
                 const dayLabel  = fmtDayLabel(date)
@@ -330,7 +359,7 @@ export default function PlanningTechTab() {
                       if (entry && entry.type !== 'libre' && PT[entry.type]) {
                         const pt = PT[entry.type]
                         bg = pt.bg; textColor = pt.text; border = pt.border
-                        label = pt.label; note = entry.texte
+                        label = pt.label; note = entry.label
                       } else if (!entry && isFerie) {
                         bg = 'bg-violet-50'; textColor = 'text-violet-500'; border = 'border-violet-200'; label = 'Férié'
                       } else {

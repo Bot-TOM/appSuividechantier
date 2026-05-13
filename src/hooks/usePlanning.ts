@@ -70,14 +70,41 @@ export function usePlanning(weekStart: string) {
     setLoading(false)
   }, [weekStart, weekEnd])
 
-  useEffect(() => { refetch() }, [refetch])
+  useEffect(() => {
+    refetch()
+
+    // 1. Real-time Supabase
+    const channel = supabase
+      .channel(`planning_${weekStart}`)
+      .on('postgres_changes', {
+        event: '*', schema: 'public', table: 'planning_entries',
+      }, () => refetch())
+      .subscribe()
+
+    // 2. Polling toutes les 20s (filet de sécurité si le WebSocket se coupe)
+    const interval = setInterval(() => refetch(), 20_000)
+
+    // 3. Refetch dès que l'onglet/app repasse au premier plan
+    const onFocus = () => refetch()
+    window.addEventListener('focus', onFocus)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refetch()
+    })
+
+    return () => {
+      supabase.removeChannel(channel)
+      clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [refetch, weekStart])
 
   // Upsert une seule cellule
   const upsert = useCallback(async (
     technicienId: string,
     date: string,
     type: PlanningType,
-    texte: string,
+    label: string,
+    chantier_id?: string | null,
   ) => {
     // Optimistic update
     setEntries(prev => {
@@ -87,7 +114,8 @@ export function usePlanning(weekStart: string) {
         technicien_id: technicienId,
         date,
         type,
-        texte:      texte || null,
+        label:      label || null,
+        chantier_id: chantier_id ?? null,
         created_at: prev[idx]?.created_at ?? new Date().toISOString(),
       }
       if (idx >= 0) { const n = [...prev]; n[idx] = updated; return n }
@@ -96,7 +124,7 @@ export function usePlanning(weekStart: string) {
     await supabase
       .from('planning_entries')
       .upsert(
-        { technicien_id: technicienId, date, type, texte: texte || null },
+        { technicien_id: technicienId, date, type, label: label || null, chantier_id: chantier_id ?? null },
         { onConflict: 'technicien_id,date' },
       )
   }, [])
@@ -105,13 +133,15 @@ export function usePlanning(weekStart: string) {
   const upsertBulk = useCallback(async (
     cells: { techId: string; date: string }[],
     type: PlanningType,
-    texte?: string,
+    label?: string,
+    chantier_id?: string | null,
   ) => {
     const rows = cells.map(c => ({
       technicien_id: c.techId,
       date:          c.date,
       type,
-      texte:         texte || null,
+      label:         label || null,
+      chantier_id:   chantier_id ?? null,
     }))
     setEntries(prev => {
       const next = [...prev]
@@ -120,7 +150,7 @@ export function usePlanning(weekStart: string) {
           e => e.technicien_id === r.technicien_id && e.date === r.date,
         )
         if (idx >= 0) {
-          next[idx] = { ...next[idx], type: r.type, texte: r.texte }
+          next[idx] = { ...next[idx], type: r.type, label: r.label, chantier_id: r.chantier_id }
         } else {
           next.push({
             ...r,

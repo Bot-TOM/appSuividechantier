@@ -21,7 +21,8 @@ const PT: Record<PlanningType, { label: string; bg: string; text: string; border
   route:             { label: 'Route',              bg: 'bg-yellow-50',  text: 'text-yellow-600', border: 'border-yellow-200' },
   repos_conges:      { label: 'Repos / Congés',     bg: 'bg-violet-50',  text: 'text-violet-500', border: 'border-violet-200' },
   absent:            { label: 'Absent',             bg: 'bg-red-50',     text: 'text-red-500',    border: 'border-red-200'    },
-  libre:             { label: 'Libre (trou)',        bg: 'bg-amber-50',   text: 'text-amber-500',  border: 'border-amber-200'  },
+  ferie:             { label: 'Férié',              bg: 'bg-violet-50',  text: 'text-violet-500', border: 'border-violet-200' },
+  libre:             { label: 'Libre',              bg: 'bg-amber-50',   text: 'text-amber-500',  border: 'border-amber-200'  },
 }
 
 function localISO(d: Date): string {
@@ -77,17 +78,25 @@ export default function PlanningManagerTab() {
   const { entries, loading, upsert, upsertBulk } = usePlanning(weekStart)
   const { entries: timeEntries, loading: timeLoading } = useTeamTimeEntries(weekStart)
 
-  const [editCell, setEditCell]   = useState<{ techId: string; techName: string; date: string } | null>(null)
-  const [editType, setEditType]   = useState<PlanningType>('libre')
-  const [editTexte, setEditTexte] = useState('')
+  const [editCell, setEditCell]         = useState<{ techId: string; techName: string; date: string } | null>(null)
+  const [editType, setEditType]         = useState<PlanningType>('libre')
+  const [editTexte, setEditTexte]       = useState('')
+  const [editChantierId, setEditChantierId] = useState<string | null>(null)
 
   const [selectMode, setSelectMode] = useState(false)
   const [selected, setSelected]     = useState<Set<string>>(new Set())
   const [bulkModal, setBulkModal]   = useState(false)
   const [bulkType, setBulkType]     = useState<PlanningType>('chantier')
   const [bulkTexte, setBulkTexte]   = useState('')
+  const [bulkChantierId, setBulkChantierId] = useState<string | null>(null)
 
   const [chantiers, setChantiers] = useState<Chantier[]>([])
+
+  // Export modal
+  const [exportModal, setExportModal] = useState<'xlsx' | 'csv' | null>(null)
+  const [exportStart, setExportStart] = useState(weekStart)
+  const [exportEnd,   setExportEnd]   = useState(getWeekDays(weekStart)[6])
+  const [exportLoading, setExportLoading] = useState(false)
 
   // Charger profils + chantiers
   useEffect(() => {
@@ -120,12 +129,13 @@ export default function PlanningManagerTab() {
     const e = getEntry(techId, date)
     setEditCell({ techId, techName, date })
     setEditType(e?.type ?? 'libre')
-    setEditTexte(e?.texte ?? '')
+    setEditTexte(e?.label ?? '')
+    setEditChantierId(e?.chantier_id ?? null)
   }
 
   async function saveEdit() {
     if (!editCell) return
-    await upsert(editCell.techId, editCell.date, editType, editTexte)
+    await upsert(editCell.techId, editCell.date, editType, editTexte, editChantierId)
     setEditCell(null)
   }
 
@@ -143,93 +153,136 @@ export default function PlanningManagerTab() {
       const [techId, date] = k.split('|')
       return { techId, date }
     })
-    await upsertBulk(cells, bulkType, bulkTexte)
+    await upsertBulk(cells, bulkType, bulkTexte, bulkChantierId)
     setSelected(new Set())
     setSelectMode(false)
     setBulkModal(false)
     setBulkTexte('')
+    setBulkChantierId(null)
   }
 
-  function exportXLSX() {
-    const wsData: string[][] = []
+  // ─── Helpers export ──────────────────────────────────────────────────────────
+  function getDaysRange(start: string, end: string): string[] {
+    const [sy, sm, sd] = start.split('-').map(Number)
+    const [ey, em, ed] = end.split('-').map(Number)
+    const result: string[] = []
+    const cur = new Date(sy, sm - 1, sd)
+    const last = new Date(ey, em - 1, ed)
+    while (cur <= last) {
+      result.push(localISO(cur))
+      cur.setDate(cur.getDate() + 1)
+    }
+    return result
+  }
 
-    // En-tête : JOUR + une colonne par personne
-    wsData.push(['Jour', ...sorted.map(p => p.full_name)])
+  function getFeriesRange(start: string, end: string): Set<string> {
+    const y0 = new Date(start + 'T00:00:00').getFullYear()
+    const y1 = new Date(end   + 'T00:00:00').getFullYear()
+    const all = new Set<string>()
+    for (let y = y0; y <= y1; y++) getFeries(y).forEach(f => all.add(f))
+    return all
+  }
 
-    // Lignes : une par jour
-    for (const date of days) {
-      const d          = new Date(date + 'T00:00:00')
-      const isWeekend  = d.getDay() >= 6
-      const isFerie    = feries.has(date)
-      const dayLabel   = fmtDayLabel(date)
-      const row: string[] = [dayLabel]
+  async function doExport() {
+    setExportLoading(true)
+    const rangeDays  = getDaysRange(exportStart, exportEnd)
+    const rangeFeries = getFeriesRange(exportStart, exportEnd)
 
-      for (const person of sorted) {
-        if (isWeekend) {
-          row.push('')
-        } else {
-          const entry = getEntry(person.id, date)
-          if (entry && entry.type !== 'libre' && PT[entry.type]) {
-            const label = PT[entry.type].label
-            const note  = entry.texte ? ` – ${entry.texte}` : ''
-            row.push(label + note)
+    if (exportModal === 'xlsx') {
+      // Fetch planning entries for range
+      const { data } = await supabase
+        .from('planning_entries')
+        .select('*')
+        .gte('date', exportStart)
+        .lte('date', exportEnd)
+      const rangeEntries = data ?? []
+
+      const wsData: string[][] = [['Jour', ...sorted.map(p => p.full_name)]]
+      for (const date of rangeDays) {
+        const isWeekend = [0, 6].includes(new Date(date + 'T00:00:00').getDay())
+        const isFerie   = rangeFeries.has(date)
+        const row: string[] = [fmtDayLabel(date)]
+        for (const person of sorted) {
+          if (isWeekend) { row.push(''); continue }
+          const entry = rangeEntries.find(e => e.technicien_id === person.id && e.date === date)
+          if (entry && entry.type !== 'libre' && PT[entry.type as PlanningType]) {
+            const lbl  = PT[entry.type as PlanningType].label
+            const note = entry.label ? ` – ${entry.label}` : ''
+            row.push(lbl + note)
           } else if (!entry && isFerie) {
             row.push('Férié')
           } else {
             row.push('Libre')
           }
         }
+        wsData.push(row)
       }
-      wsData.push(row)
+      const ws = XLSX.utils.aoa_to_sheet(wsData)
+      ws['!cols'] = [{ wch: 18 }, ...sorted.map(() => ({ wch: 22 }))]
+      const wb = XLSX.utils.book_new()
+      XLSX.utils.book_append_sheet(wb, ws, 'Planning')
+      XLSX.writeFile(wb, `planning-${exportStart}_${exportEnd}.xlsx`)
+
+    } else {
+      // Fetch time entries for range
+      const { data } = await supabase
+        .from('time_entries')
+        .select('*')
+        .gte('date', exportStart)
+        .lte('date', exportEnd)
+      // Mapper les colonnes DB (heure_arrivee → arrivee, etc.)
+      type RawTime = { technicien_id: string; date: string; heure_arrivee?: string; arrivee?: string; heure_depart?: string; depart?: string; pause_minutes?: number; pause?: number }
+      const rangeTime = (data ?? [] as RawTime[]).map((r: RawTime) => ({
+        technicien_id: r.technicien_id,
+        date:          r.date,
+        arrivee:       r.heure_arrivee ?? r.arrivee ?? null,
+        depart:        r.heure_depart  ?? r.depart  ?? null,
+        pause:         r.pause_minutes ?? r.pause   ?? null,
+      }))
+
+      const bom = '﻿'
+      const header = [
+        'Nom',
+        ...rangeDays.map(d =>
+          new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', {
+            weekday: 'short', day: 'numeric', month: 'numeric',
+          }),
+        ),
+        'Total période',
+      ]
+      const rows = sorted.map(p => {
+        let totalMins = 0
+        const cols = rangeDays.map(date => {
+          const e = rangeTime.find(t => t.technicien_id === p.id && t.date === date)
+          if (!e?.arrivee || !e?.depart) return ''
+          const [ah, am] = e.arrivee.split(':').map(Number)
+          const [dh, dm] = e.depart.split(':').map(Number)
+          const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
+          if (mins > 0) totalMins += mins
+          return `${e.arrivee}-${e.depart}${e.pause ? ` (${e.pause}mn pause)` : ''}`
+        })
+        const h = Math.floor(totalMins / 60), m = totalMins % 60
+        return [
+          p.full_name, ...cols,
+          totalMins > 0 ? (m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`) : '—',
+        ]
+      })
+      const csv  = [header, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n')
+      const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' })
+      const url  = URL.createObjectURL(blob)
+      const a    = document.createElement('a')
+      a.href = url; a.download = `heures-${exportStart}_${exportEnd}.csv`; a.click()
+      URL.revokeObjectURL(url)
     }
 
-    const ws = XLSX.utils.aoa_to_sheet(wsData)
-
-    // Largeur des colonnes
-    ws['!cols'] = [
-      { wch: 18 },
-      ...sorted.map(() => ({ wch: 22 })),
-    ]
-
-    const wb = XLSX.utils.book_new()
-    XLSX.utils.book_append_sheet(wb, ws, 'Planning')
-    XLSX.writeFile(wb, `planning-${weekStart}.xlsx`)
+    setExportLoading(false)
+    setExportModal(null)
   }
 
-  function exportCSV() {
-    const bom = '﻿'
-    const header = [
-      'Nom',
-      ...days.map(d =>
-        new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', {
-          weekday: 'short', day: 'numeric', month: 'numeric',
-        }),
-      ),
-      'Total semaine',
-    ]
-    const rows = sorted.map(p => {
-      let totalMins = 0
-      const cols = days.map(date => {
-        const e = timeEntries.find(t => t.technicien_id === p.id && t.date === date)
-        if (!e?.arrivee || !e?.depart) return ''
-        const [ah, am] = e.arrivee.split(':').map(Number)
-        const [dh, dm] = e.depart.split(':').map(Number)
-        const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
-        if (mins > 0) totalMins += mins
-        return `${e.arrivee}-${e.depart}${e.pause ? ` (${e.pause}mn pause)` : ''}`
-      })
-      const h = Math.floor(totalMins / 60), m = totalMins % 60
-      return [
-        p.full_name, ...cols,
-        totalMins > 0 ? (m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`) : '—',
-      ]
-    })
-    const csv  = [header, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n')
-    const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' })
-    const url  = URL.createObjectURL(blob)
-    const a    = document.createElement('a')
-    a.href = url; a.download = `heures-${weekStart}.csv`; a.click()
-    URL.revokeObjectURL(url)
+  function openExportModal(type: 'xlsx' | 'csv') {
+    setExportStart(weekStart)
+    setExportEnd(getWeekDays(weekStart)[6])
+    setExportModal(type)
   }
 
   return (
@@ -279,7 +332,7 @@ export default function PlanningManagerTab() {
         {/* Exporter */}
         {view === 'activite' ? (
           <button
-            onClick={exportXLSX}
+            onClick={() => openExportModal('xlsx')}
             className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl text-white hover:opacity-90 transition-all"
             style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.3)' }}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -289,7 +342,7 @@ export default function PlanningManagerTab() {
           </button>
         ) : (
           <button
-            onClick={exportCSV}
+            onClick={() => openExportModal('csv')}
             className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
             style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -363,7 +416,7 @@ export default function PlanningManagerTab() {
                 <tbody>
                   {days.map(date => {
                     const dayLabel  = fmtDayLabel(date)
-                    const isWeekend = new Date(date + 'T00:00:00').getDay() >= 6
+                    const isWeekend = [0, 6].includes(new Date(date + 'T00:00:00').getDay())
                     const isToday   = date === TODAY
                     const isFerie   = !isWeekend && feries.has(date)
 
@@ -402,7 +455,7 @@ export default function PlanningManagerTab() {
                           if (entry && entry.type !== 'libre' && PT[entry.type]) {
                             const pt = PT[entry.type]
                             bg = pt.bg; textColor = pt.text; border = pt.border
-                            label = pt.label; note = entry.texte
+                            label = pt.label; note = entry.label
                           } else if (!entry && isFerie) {
                             bg = 'bg-violet-50'; textColor = 'text-violet-500'
                             border = 'border-violet-200'; label = 'Férié'
@@ -629,9 +682,9 @@ export default function PlanningManagerTab() {
                   {chantiers.map(c => (
                     <button
                       key={c.id}
-                      onClick={() => setEditTexte(`${c.client_nom} · ${c.nom}`)}
+                      onClick={() => { setEditTexte(c.nom); setEditChantierId(c.id) }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
-                        editTexte === `${c.client_nom} · ${c.nom}`
+                        editChantierId === c.id
                           ? 'bg-blue-50 text-blue-700 font-semibold'
                           : 'hover:bg-gray-50 text-gray-700'
                       }`}>
@@ -645,7 +698,7 @@ export default function PlanningManagerTab() {
 
             <input
               value={editTexte}
-              onChange={e => setEditTexte(e.target.value)}
+              onChange={e => { setEditTexte(e.target.value); setEditChantierId(null) }}
               placeholder={editType === 'chantier' ? 'Ou saisir manuellement...' : 'Note optionnelle (lieu, détail...)'}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
             />
@@ -656,6 +709,78 @@ export default function PlanningManagerTab() {
               style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 16px rgba(249,115,22,0.40)' }}>
               Enregistrer
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal : export plage de dates ────────────────────────────────── */}
+      {exportModal && (
+        <div
+          className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={e => e.target === e.currentTarget && setExportModal(null)}>
+          <div
+            className="bg-white rounded-t-3xl md:rounded-2xl w-full md:max-w-sm p-6 space-y-5"
+            style={{ boxShadow: '0 -8px 40px rgba(0,0,0,0.15)' }}>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-gray-900">
+                  {exportModal === 'xlsx' ? 'Exporter le planning' : 'Exporter les heures'}
+                </p>
+                <p className="text-sm text-gray-400">Choisissez la période</p>
+              </div>
+              <button
+                onClick={() => setExportModal(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors text-sm">
+                ✕
+              </button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">Du</label>
+                <input
+                  type="date"
+                  value={exportStart}
+                  onChange={e => setExportStart(e.target.value)}
+                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">Au</label>
+                <input
+                  type="date"
+                  value={exportEnd}
+                  min={exportStart}
+                  onChange={e => setExportEnd(e.target.value)}
+                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-orange-400"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setExportModal(null)}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
+                Annuler
+              </button>
+              <button
+                onClick={doExport}
+                disabled={exportLoading || !exportStart || !exportEnd || exportEnd < exportStart}
+                className="flex-1 flex items-center justify-center gap-2 text-white font-semibold py-3 rounded-xl text-sm transition-all disabled:opacity-50"
+                style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
+                {exportLoading ? (
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                    </svg>
+                    Télécharger
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}
@@ -697,9 +822,9 @@ export default function PlanningManagerTab() {
                   {chantiers.map(c => (
                     <button
                       key={c.id}
-                      onClick={() => setBulkTexte(`${c.client_nom} · ${c.nom}`)}
+                      onClick={() => { setBulkTexte(c.nom); setBulkChantierId(c.id) }}
                       className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
-                        bulkTexte === `${c.client_nom} · ${c.nom}`
+                        bulkChantierId === c.id
                           ? 'bg-blue-50 text-blue-700 font-semibold'
                           : 'hover:bg-gray-50 text-gray-700'
                       }`}>
@@ -713,7 +838,7 @@ export default function PlanningManagerTab() {
 
             <input
               value={bulkTexte}
-              onChange={e => setBulkTexte(e.target.value)}
+              onChange={e => { setBulkTexte(e.target.value); setBulkChantierId(null) }}
               placeholder={bulkType === 'chantier' ? 'Ou saisir manuellement...' : 'Note optionnelle (lieu, détail...)'}
               className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400"
             />

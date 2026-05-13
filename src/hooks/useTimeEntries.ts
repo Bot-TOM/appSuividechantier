@@ -20,6 +20,20 @@ export function calcDuree(
   return m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`
 }
 
+/** Mappe les colonnes DB vers les noms utilisés dans le code */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function mapRow(r: any): TimeEntry {
+  return {
+    id:            r.id,
+    technicien_id: r.technicien_id,
+    date:          r.date,
+    arrivee:       r.heure_arrivee ?? r.arrivee ?? null,
+    depart:        r.heure_depart  ?? r.depart  ?? null,
+    pause:         r.pause_minutes ?? r.pause   ?? null,
+    created_at:    r.created_at,
+  }
+}
+
 // Hook technicien — ses propres entrées + upsert
 export function useMyTimeEntries(weekStart: string) {
   const { profile } = useAuth()
@@ -37,7 +51,7 @@ export function useMyTimeEntries(weekStart: string) {
       .eq('technicien_id', profile.id)
       .gte('date', weekStart)
       .lte('date', weekEnd)
-      .then(({ data }) => { setEntries(data ?? []); setLoading(false) })
+      .then(({ data }) => { setEntries((data ?? []).map(mapRow)); setLoading(false) })
   }, [profile?.id, weekStart, weekEnd])
 
   const upsert = useCallback(async (
@@ -67,9 +81,9 @@ export function useMyTimeEntries(weekStart: string) {
         {
           technicien_id: profile.id,
           date,
-          arrivee: merged.arrivee,
-          depart:  merged.depart,
-          pause:   merged.pause ?? 0,
+          heure_arrivee: merged.arrivee,
+          heure_depart:  merged.depart,
+          pause_minutes: merged.pause ?? 0,
         },
         { onConflict: 'technicien_id,date' },
       )
@@ -92,7 +106,7 @@ export function useTeamTimeEntries(weekStart: string) {
       .select('*')
       .gte('date', weekStart)
       .lte('date', weekEnd)
-      .then(({ data }) => { setEntries(data ?? []); setLoading(false) })
+      .then(({ data }) => { setEntries((data ?? []).map(mapRow)); setLoading(false) })
   }, [weekStart, weekEnd])
 
   return { entries, loading }

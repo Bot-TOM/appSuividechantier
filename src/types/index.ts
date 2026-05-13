@@ -47,6 +47,7 @@ export type PlanningType =
   | 'route'
   | 'repos_conges'
   | 'absent'
+  | 'ferie'
   | 'libre'
 
 export interface PlanningEntry {
@@ -54,7 +55,8 @@ export interface PlanningEntry {
   technicien_id: string
   date: string
   type: PlanningType
-  texte: string | null
+  label: string | null
+  chantier_id: string | null
   created_at: string
 }
 
