@@ -651,10 +651,14 @@ export default function PlanningManagerTab() {
               }
             }
             const stats = Array.from(map.values()).sort((a, b) => b.totalMins - a.totalMins)
-            if (stats.length === 0) return null
             return (
               <div className="mt-6 space-y-3">
                 <p className="text-sm font-semibold text-gray-700">Heures par chantier — semaine</p>
+                {stats.length === 0 ? (
+                  <p className="text-sm text-gray-400 italic">
+                    Aucun chantier associé cette semaine. Les techniciens peuvent sélectionner un chantier lors de la saisie de leurs heures.
+                  </p>
+                ) : (
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                   {stats.map(s => {
                     const chantier = chantiers.find(c => c.id === s.chantier_id)
@@ -681,6 +685,7 @@ export default function PlanningManagerTab() {
                     )
                   })}
                 </div>
+                )}
               </div>
             )
           })()}
