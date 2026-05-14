@@ -70,49 +70,45 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null }
   }
 
-  async function signUp(fullName: string, email: string, password: string, managerCode: string, entrepriseNom?: string) {
-    // Flux B multi-entreprise : nom d'entreprise fourni → manager (pas de code requis)
-    let role: UserRole = 'technicien'
-    if (entrepriseNom?.trim()) {
-      role = 'manager'
-    } else if (managerCode) {
-      // Compatibilité rétroactive : code manager encore accepté
-      try {
-        const res = await fetch('/api/verify-manager-code', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ code: managerCode }),
-        })
-        if (res.ok) {
-          const data = await res.json() as { isManager: boolean }
-          if (data.isManager) role = 'manager'
-          else return { error: 'Code manager incorrect' }
-        } else {
-          return { error: 'Erreur lors de la vérification du code manager' }
-        }
-      } catch {
-        return { error: 'Impossible de vérifier le code manager' }
-      }
+  async function signUp(fullName: string, email: string, password: string, accessCode: string, entrepriseNom?: string) {
+    // 1. Vérifier le code d'accès en base (obligatoire)
+    if (!accessCode.trim()) {
+      return { error: 'Un code d\'accès PVPilot est requis pour créer un compte' }
     }
 
+    // Vérification préalable : le code existe-t-il et est-il disponible ?
+    const { data: codeCheck } = await supabase
+      .from('access_codes')
+      .select('id, status')
+      .eq('status', 'available')
+      .filter('code', 'ilike', accessCode.trim())
+      .maybeSingle()
+
+    if (!codeCheck) {
+      return { error: 'Code d\'accès invalide ou déjà utilisé' }
+    }
+
+    // 2. Créer le compte Supabase Auth
+    const role: UserRole = 'manager'
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, role, entreprise_nom: entrepriseNom ?? '' } },
+      options: { data: { full_name: fullName, role, entreprise_nom: entrepriseNom?.trim() ?? '' } },
     })
 
     if (error) return { error: error.message }
     if (!data.user) return { error: 'Erreur lors de la création du compte' }
 
-    // Upsert du profil pour garantir les bonnes valeurs (full_name + role)
-    const { error: errProfile } = await supabase.from('profiles').upsert({
-      id: data.user.id,
-      email,
-      full_name: fullName,
-      role,
+    // 3. Consommer le code atomiquement (SECURITY DEFINER — pas de race condition)
+    const { data: result } = await supabase.rpc('verify_and_use_code', {
+      p_code: accessCode.trim(),
+      p_user_id: data.user.id,
     })
 
-    if (errProfile) return { error: 'Compte créé mais erreur de profil — contactez le support' }
+    if (result !== 'ok') {
+      // Cas rare : code consommé entre la vérification et l'inscription
+      return { error: 'Code d\'accès invalide ou déjà utilisé' }
+    }
 
     return { error: null }
   }

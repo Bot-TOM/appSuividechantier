@@ -11,6 +11,7 @@ export default function SignupPage() {
     email: '',
     password: '',
     entreprise_nom: '',
+    access_code: '',
   })
   const [error, setError]           = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -38,8 +39,7 @@ export default function SignupPage() {
     }
 
     setSubmitting(true)
-    // Pas de code manager — le nom d'entreprise suffit pour créer un compte manager
-    const { error } = await signUp(form.full_name, form.email, form.password, '', form.entreprise_nom)
+    const { error } = await signUp(form.full_name, form.email, form.password, form.access_code, form.entreprise_nom)
     if (error) {
       setError(error)
       setSubmitting(false)
@@ -67,6 +67,16 @@ export default function SignupPage() {
           <p className="text-xs text-gray-400 mb-5">Vous serez automatiquement manager de votre espace</p>
 
           <form onSubmit={handleSubmit} className="space-y-4">
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Code d'accès PVPilot *</label>
+              <input name="access_code" value={form.access_code} onChange={handleChange} required
+                placeholder="Ex : PVP-AB12C"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent font-mono tracking-widest uppercase"
+                style={{ letterSpacing: '0.08em' }}
+                onInput={e => { (e.target as HTMLInputElement).value = (e.target as HTMLInputElement).value.toUpperCase() }} />
+              <p className="text-xs text-gray-400 mt-1.5">Fourni par PVPilot lors de votre souscription</p>
+            </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1.5">Nom de votre entreprise *</label>
