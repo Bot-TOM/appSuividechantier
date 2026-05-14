@@ -422,7 +422,7 @@ export default function ManagerDashboard() {
               { key: 'equipe',    label: 'Équipe' },
               profile?.role === 'admin' ? { key: 'entreprises', label: '🏢 Entreprises' } : null,
               { key: 'profil',    label: 'Profil' },
-            ] as { key: Tab; label: string; badge?: number }[]).map(tab => (
+            ].filter(Boolean) as { key: Tab; label: string; badge?: number }[]).map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
