@@ -119,8 +119,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Déconnexion forcée même en cas d'erreur réseau
     }
-    // Nettoyer manuellement les clés Supabase dans le localStorage
-    // (protection si signOut() n'a pas pu les effacer)
+    // Nettoyer manuellement la session Supabase (storageKey = 'PVPilot-auth')
+    // Protection si signOut() n'a pas pu l'effacer (erreur réseau, etc.)
+    localStorage.removeItem('PVPilot-auth')
+    // Aussi vider les clés génériques sb-* au cas où
     Object.keys(localStorage).forEach(key => {
       if (key.startsWith('sb-')) localStorage.removeItem(key)
     })
