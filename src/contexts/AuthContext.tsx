@@ -71,9 +71,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signUp(fullName: string, email: string, password: string, managerCode: string, entrepriseNom?: string) {
-    // Vérification du code manager côté serveur (ne jamais exposer le code dans le bundle JS)
+    // Flux B multi-entreprise : nom d'entreprise fourni → manager (pas de code requis)
     let role: UserRole = 'technicien'
-    if (managerCode) {
+    if (entrepriseNom?.trim()) {
+      role = 'manager'
+    } else if (managerCode) {
+      // Compatibilité rétroactive : code manager encore accepté
       try {
         const res = await fetch('/api/verify-manager-code', {
           method: 'POST',
@@ -116,6 +119,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   async function signOut() {
     await supabase.auth.signOut()
+    // Force la navigation même en contexte PWA avec service worker
+    window.location.href = '/login'
   }
 
   async function refreshProfile() {
