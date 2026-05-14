@@ -755,7 +755,7 @@ export default function ChantierDetail() {
           <div className="flex gap-0 -mb-3 overflow-x-auto no-scrollbar">
             {([
               { key: 'etapes',      label: 'Étapes' },
-              can('voir_rapports') ? { key: 'rapport', label: 'Rapport', badge: rapports.length || undefined } : null,
+              (isManager || can('voir_rapports')) ? { key: 'rapport', label: 'Rapport', badge: rapports.length || undefined } : null,
               { key: 'chat',        label: 'Chat',        badge: activeTab !== 'chat' && unreadChat > 0 ? unreadChat : undefined },
               { key: 'docs',        label: 'Docs',        badge: documents.length || undefined },
               { key: 'notes',       label: 'Notes',       badge: notes.length || undefined },
