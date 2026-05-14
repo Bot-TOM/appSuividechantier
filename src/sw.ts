@@ -1,4 +1,4 @@
-/// <reference lib="webworker" />
+﻿/// <reference lib="webworker" />
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
 import { NetworkFirst } from 'workbox-strategies'
@@ -55,11 +55,22 @@ self.addEventListener('push', (event) => {
     data: { url: data.url ?? '/' },
   }
 
-  event.waitUntil(self.registration.showNotification(title, options))
+  event.waitUntil(
+    self.registration.showNotification(title, options).then(() => {
+      // Badge API — incrémente le compteur sur l'icône PWA (Chrome/Android)
+      if ('setAppBadge' in self.registration) {
+        (self.registration as any).setAppBadge?.().catch?.(() => {})
+      }
+    })
+  )
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
+  // Efface le badge quand l'utilisateur interagit avec la notification
+  if ('clearAppBadge' in self.registration) {
+    (self.registration as any).clearAppBadge?.().catch?.(() => {})
+  }
   const url = (event.notification.data?.url as string) ?? '/'
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {

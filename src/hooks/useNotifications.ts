@@ -33,6 +33,16 @@ export function useNotifications() {
 
   const unreadCount = notifications.filter(n => !n.lu).length
 
+  // Badge PWA — met à jour l'icône de l'app avec le nombre de non-lus
+  useEffect(() => {
+    if (!('setAppBadge' in navigator)) return
+    if (unreadCount > 0) {
+      navigator.setAppBadge(unreadCount).catch(() => {})
+    } else {
+      navigator.clearAppBadge().catch(() => {})
+    }
+  }, [unreadCount])
+
   async function markAllRead() {
     const unread = notifications.filter(n => !n.lu).map(n => n.id)
     if (!unread.length) return
