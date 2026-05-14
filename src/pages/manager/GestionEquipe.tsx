@@ -165,7 +165,7 @@ export default function GestionEquipe({ embedded = false }: { embedded?: boolean
     const { data, error: errAuth } = await supabaseAuth.auth.signUp({
       email: form.email,
       password: form.password,
-      options: { data: { full_name: form.full_name, role: 'technicien', entreprise_id: profile?.entreprise_id ?? '' } },
+      options: { data: { full_name: form.full_name, role: 'technicien', entreprise_id: profile?.entreprise_id ?? null } },
     })
 
     if (errAuth || !data.user) {
