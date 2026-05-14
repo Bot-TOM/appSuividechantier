@@ -666,6 +666,9 @@ export default function PlanningManagerTab() {
                     const chantier = chantiers.find(c => c.id === s.chantier_id)
                     const h = Math.floor(s.totalMins / 60), m = s.totalMins % 60
                     const dur = m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`
+                    const techNames = Array.from(s.techIds)
+                      .map(id => profiles.find(p => p.id === id)?.full_name ?? null)
+                      .filter(Boolean) as string[]
                     return (
                       <div
                         key={s.chantier_id}
@@ -678,9 +681,15 @@ export default function PlanningManagerTab() {
                           {chantier?.client_nom && (
                             <p className="text-xs text-gray-400 truncate">{chantier.client_nom}</p>
                           )}
-                          <p className="text-xs text-gray-400 mt-0.5">
-                            {s.techIds.size} technicien{s.techIds.size > 1 ? 's' : ''}
-                          </p>
+                          {techNames.length > 0 ? (
+                            <p className="text-xs text-gray-400 mt-0.5 truncate">
+                              {techNames.join(', ')}
+                            </p>
+                          ) : (
+                            <p className="text-xs text-gray-400 mt-0.5">
+                              {s.techIds.size} technicien{s.techIds.size > 1 ? 's' : ''}
+                            </p>
+                          )}
                         </div>
                         <p className="text-2xl font-bold text-orange-500 flex-shrink-0">{dur}</p>
                       </div>
