@@ -29,7 +29,21 @@ export function usePushNotifications() {
     }
     navigator.serviceWorker.ready.then(async (reg) => {
       const sub = await reg.pushManager.getSubscription()
-      setStatus(sub ? 'subscribed' : 'unsubscribed')
+      if (sub) {
+        setStatus('subscribed')
+        // Renouvelle l'endpoint en base à chaque ouverture (évite les endpoints périmés)
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
+          const json = sub.toJSON()
+          const keys = json.keys as { p256dh: string; auth: string }
+          await supabase.from('push_subscriptions').upsert(
+            { user_id: user.id, endpoint: sub.endpoint, p256dh: keys.p256dh, auth: keys.auth },
+            { onConflict: 'endpoint' },
+          )
+        }
+      } else {
+        setStatus('unsubscribed')
+      }
     })
   }, [])
 
