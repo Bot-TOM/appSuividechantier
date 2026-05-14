@@ -87,6 +87,7 @@ export default function CreateChantier() {
         date_prevue: form.date_prevue,
         date_fin_prevue: form.date_fin_prevue || null,
         statut: 'en_attente',
+        entreprise_id: profile?.entreprise_id ?? null,
       })
       .select()
       .single()
