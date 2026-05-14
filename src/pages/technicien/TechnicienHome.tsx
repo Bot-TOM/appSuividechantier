@@ -517,7 +517,7 @@ export default function TechnicienHome() {
         </div>
       </nav>
 
-      <BugReportButton />
+      <BugReportButton hasBottomNav />
     </div>
   )
 }

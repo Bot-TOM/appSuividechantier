@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 
-export default function BugReportButton() {
+export default function BugReportButton({ hasBottomNav = false }: { hasBottomNav?: boolean }) {
   const { profile } = useAuth()
   const [open, setOpen]           = useState(false)
   const [description, setDescription] = useState('')
@@ -39,7 +39,8 @@ export default function BugReportButton() {
       <button
         onClick={() => setOpen(true)}
         title="Signaler un problème"
-        className="fixed bottom-24 right-4 z-40 w-10 h-10 rounded-full bg-white border border-gray-200 shadow-lg flex items-center justify-center text-gray-400 hover:text-orange-500 hover:border-orange-300 transition-all duration-200 sm:bottom-6 sm:right-6 sm:w-11 sm:h-11"
+        className="fixed right-4 z-40 w-10 h-10 rounded-full bg-white border border-gray-200 shadow-lg flex items-center justify-center text-gray-400 hover:text-orange-500 hover:border-orange-300 transition-all duration-200 sm:right-6 sm:w-11 sm:h-11"
+        style={{ bottom: hasBottomNav ? 'calc(env(safe-area-inset-bottom) + 72px)' : '1.5rem' }}
         style={{ boxShadow: '0 4px 16px rgba(0,0,0,0.10)' }}
       >
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.8}>
