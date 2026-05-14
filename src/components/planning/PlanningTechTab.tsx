@@ -83,7 +83,7 @@ export default function PlanningTechTab() {
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
   const [myChantiers, setMyChantiers] = useState<Chantier[]>([])
 
-  const { entries: planning }                 = usePlanning(weekStart)
+  const { entries: planning }                 = usePlanning(weekStart, getWeekDays(weekStart)[6])
   const { entries: timeEntries, upsert: upsertTime } = useMyTimeEntries(weekStart)
 
   useEffect(() => {

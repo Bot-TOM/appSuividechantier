@@ -9,6 +9,11 @@ import {
   fmtWeekRange,
   prevMonday,
   nextMonday,
+  getFirstOfMonth,
+  getMonthDays,
+  prevMonth,
+  nextMonth,
+  fmtMonth,
 } from '@/hooks/usePlanning'
 import { useTeamTimeEntries, calcDuree } from '@/hooks/useTimeEntries'
 import Avatar from '@/components/Avatar'
@@ -74,8 +79,17 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
   const [view, setView]         = useState<'activite' | 'heures'>('activite')
   const [weekStart, setWeekStart] = useState(getMondayOfWeek())
   const [profiles, setProfiles]  = useState<UserProfile[]>([])
+  const [displayMode, setDisplayMode] = useState<'semaine' | 'mois'>('semaine')
+  const [monthStart, setMonthStart] = useState(getFirstOfMonth())
 
-  const { entries, loading, upsert, upsertBulk } = usePlanning(weekStart)
+  const weekEnd = getWeekDays(weekStart)[6]
+  const monthDays = getMonthDays(monthStart)
+  const monthEnd = monthDays[monthDays.length - 1]
+  const planStart = displayMode === 'semaine' ? weekStart : monthStart
+  const planEnd   = displayMode === 'semaine' ? weekEnd   : monthEnd
+  const days = displayMode === 'semaine' ? getWeekDays(weekStart) : monthDays
+
+  const { entries, loading, upsert, upsertBulk } = usePlanning(planStart, planEnd)
   const { entries: timeEntries, loading: timeLoading } = useTeamTimeEntries(weekStart, entrepriseId)
 
   const [editCell, setEditCell]         = useState<{ techId: string; techName: string; date: string } | null>(null)
@@ -116,7 +130,6 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
     })
   }, [entrepriseId])
 
-  const days   = getWeekDays(weekStart)
   const year   = new Date(weekStart + 'T00:00:00').getFullYear()
   const feries = getFeries(year)
 
@@ -164,6 +177,19 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
     setBulkModal(false)
     setBulkTexte('')
     setBulkChantierId(null)
+  }
+
+  function handleSetDisplayMode(mode: 'semaine' | 'mois') {
+    if (mode === 'mois') {
+      // Aller au mois contenant la semaine affichée
+      setMonthStart(getFirstOfMonth(new Date(weekStart + 'T00:00:00')))
+    } else {
+      // Aller à la semaine contenant le 1er du mois affiché
+      setWeekStart(getMondayOfWeek(new Date(monthStart + 'T00:00:00')))
+    }
+    setDisplayMode(mode)
+    setSelectMode(false)
+    setSelected(new Set())
   }
 
   // ─── Helpers export ──────────────────────────────────────────────────────────
@@ -285,8 +311,8 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
   }
 
   function openExportModal(type: 'xlsx' | 'csv') {
-    setExportStart(weekStart)
-    setExportEnd(getWeekDays(weekStart)[6])
+    setExportStart(planStart)
+    setExportEnd(planEnd)
     setExportModal(type)
   }
 
@@ -296,27 +322,35 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
       {/* ── Toolbar ──────────────────────────────────────────────────────────── */}
       <div className="flex items-center gap-3 flex-wrap">
 
-        {/* Navigation semaine */}
+        {/* Navigation */}
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setWeekStart(prevMonday(weekStart))}
+            onClick={() => displayMode === 'semaine' ? setWeekStart(prevMonday(weekStart)) : setMonthStart(prevMonth(monthStart))}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
-            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
-            ‹
-          </button>
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>‹</button>
           <span className="text-sm font-semibold text-gray-900 px-1 min-w-[190px] text-center">
-            {fmtWeekRange(days)}
+            {displayMode === 'semaine' ? fmtWeekRange(getWeekDays(weekStart)) : fmtMonth(monthStart)}
           </span>
           <button
-            onClick={() => setWeekStart(nextMonday(weekStart))}
+            onClick={() => displayMode === 'semaine' ? setWeekStart(nextMonday(weekStart)) : setMonthStart(nextMonth(monthStart))}
             className="w-9 h-9 flex items-center justify-center rounded-xl bg-white border border-gray-200 text-gray-500 hover:bg-gray-50 transition-colors"
-            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
-            ›
-          </button>
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>›</button>
+        </div>
+
+        {/* Toggle Semaine / Mois */}
+        <div className="flex gap-0.5 p-0.5 bg-gray-100 rounded-lg">
+          {(['semaine', 'mois'] as const).map(m => (
+            <button key={m} onClick={() => handleSetDisplayMode(m)}
+              className={`px-3 py-1.5 text-xs font-semibold rounded-md transition-all ${
+                displayMode === m ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}>
+              {m === 'semaine' ? 'Semaine' : 'Mois'}
+            </button>
+          ))}
         </div>
 
         {/* Sélectionner (vue activité uniquement) */}
-        {view === 'activite' && (
+        {(view === 'activite' || displayMode === 'mois') && (
           <button
             onClick={() => { setSelectMode(s => !s); setSelected(new Set()) }}
             className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-xl border transition-all ${
@@ -359,21 +393,23 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
       </div>
 
       {/* ── Onglets Planning activité / Heures équipe ─────────────────────── */}
-      <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
-        {(['activite', 'heures'] as const).map(v => (
-          <button
-            key={v}
-            onClick={() => setView(v)}
-            className={`px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-              view === v ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
-            }`}>
-            {v === 'activite' ? 'Planning activité' : 'Heures équipe'}
-          </button>
-        ))}
-      </div>
+      {displayMode === 'semaine' && (
+        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+          {(['activite', 'heures'] as const).map(v => (
+            <button
+              key={v}
+              onClick={() => setView(v)}
+              className={`px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
+                view === v ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              }`}>
+              {v === 'activite' ? 'Planning activité' : 'Heures équipe'}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* ═══════════════════ VUE PLANNING ACTIVITÉ ═══════════════════════════ */}
-      {view === 'activite' && (
+      {view === 'activite' && displayMode === 'semaine' && (
         <>
           {/* Légende */}
           <div className="flex flex-wrap gap-2">
@@ -533,8 +569,193 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
         </>
       )}
 
+      {/* ═══════════════════ VUE PLANNING MOIS ══════════════════════════════ */}
+      {displayMode === 'mois' && (() => {
+        function fmtDayShort(iso: string) {
+          const d = new Date(iso + 'T00:00:00')
+          const day = d.toLocaleDateString('fr-FR', { weekday: 'short' })
+          return `${day.charAt(0).toUpperCase()}${day.slice(1, 3)} ${d.getDate()}`
+        }
+
+        return (
+          <>
+            {/* Légende */}
+            <div className="flex flex-wrap gap-2">
+              {(Object.entries(PT) as [PlanningType, typeof PT[PlanningType]][]).map(([k, v]) => (
+                <span key={k}
+                  className={`text-xs font-medium px-3 py-1 rounded-full border ${v.bg} ${v.text} ${v.border}`}>
+                  {v.label}
+                </span>
+              ))}
+            </div>
+
+            {loading ? (
+              <div className="flex justify-center py-12">
+                <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
+              <div
+                className="bg-white rounded-2xl overflow-hidden overflow-x-auto"
+                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+                <table
+                  className="w-full border-collapse"
+                  style={{ minWidth: `${180 + sorted.length * 120}px` }}>
+                  <thead>
+                    <tr className="border-b border-gray-100">
+                      <th className="text-left px-5 py-4 text-xs font-semibold text-gray-400 uppercase tracking-widest sticky left-0 bg-white z-10 w-40">
+                        JOUR
+                      </th>
+                      {sorted.map(person => (
+                        <th key={person.id} className="px-3 py-3 text-center" style={{ minWidth: 110 }}>
+                          <div className="flex flex-col items-center gap-1.5">
+                            <Avatar name={person.full_name} avatarUrl={person.avatar_url} size="sm" />
+                            <p className="text-xs font-semibold text-gray-700 leading-tight">
+                              {person.full_name.split(' ')[0]}
+                            </p>
+                          </div>
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {monthDays.map((date, dayIdx) => {
+                      const dayLabel  = fmtDayShort(date)
+                      const isWeekend = [0, 6].includes(new Date(date + 'T00:00:00').getDay())
+                      const isToday   = date === TODAY
+                      const yearOfDay = new Date(date + 'T00:00:00').getFullYear()
+                      const feriesOfDay = getFeries(yearOfDay)
+                      const isFerie   = !isWeekend && feriesOfDay.has(date)
+                      // Numéro de semaine ISO pour l'alternance
+                      const weekIdx = Math.floor(dayIdx / 7)
+                      const rowBg = isToday ? 'bg-orange-50/50' : weekIdx % 2 === 1 ? 'bg-gray-50/40' : ''
+
+                      return (
+                        <tr key={date} className={`border-b border-gray-50 last:border-0 ${rowBg}`}>
+                          <td className={`px-5 py-1.5 sticky left-0 z-10 border-r border-gray-100 ${isToday ? 'bg-orange-50/50' : weekIdx % 2 === 1 ? 'bg-gray-50/40' : 'bg-white'}`}>
+                            <p className={`text-xs font-semibold ${isToday ? 'text-orange-500' : isWeekend ? 'text-gray-300' : 'text-gray-600'}`}>
+                              {dayLabel}
+                            </p>
+                          </td>
+                          {sorted.map(person => {
+                            if (isWeekend) {
+                              return (
+                                <td key={person.id} className="px-2 py-1 text-center">
+                                  <span className="text-gray-200 text-xs">—</span>
+                                </td>
+                              )
+                            }
+
+                            const entry      = getEntry(person.id, date)
+                            const cellKey    = `${person.id}|${date}`
+                            const isSelected = selected.has(cellKey)
+
+                            let bg: string, textColor: string, border: string, label: string
+                            let note: string | null = null
+
+                            if (entry && entry.type !== 'libre' && PT[entry.type]) {
+                              const pt = PT[entry.type]
+                              bg = pt.bg; textColor = pt.text; border = pt.border
+                              label = pt.label; note = entry.label
+                            } else if (!entry && isFerie) {
+                              bg = 'bg-violet-50'; textColor = 'text-violet-500'
+                              border = 'border-violet-200'; label = 'Férié'
+                            } else {
+                              bg = PT.libre.bg; textColor = PT.libre.text
+                              border = PT.libre.border; label = 'Libre'
+                            }
+
+                            // En mode mois, les cellules "Libre" sont vides pour ne pas surcharger
+                            if (label === 'Libre') {
+                              return (
+                                <td
+                                  key={person.id}
+                                  onClick={() =>
+                                    selectMode
+                                      ? toggleCell(person.id, date)
+                                      : openEdit(person.id, person.full_name, date)
+                                  }
+                                  className={`px-2 py-1 cursor-pointer transition-colors relative ${
+                                    isSelected ? 'bg-orange-50' : 'hover:bg-gray-50/70'
+                                  }`}>
+                                  {selectMode && (
+                                    <div className={`absolute top-1 right-1 w-3 h-3 rounded-full border-2 flex items-center justify-center z-10 ${
+                                      isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300 bg-white'
+                                    }`}>
+                                      {isSelected && (
+                                        <svg className="w-1.5 h-1.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                      )}
+                                    </div>
+                                  )}
+                                  <div className="rounded-lg min-h-[36px]" />
+                                </td>
+                              )
+                            }
+
+                            return (
+                              <td
+                                key={person.id}
+                                onClick={() =>
+                                  selectMode
+                                    ? toggleCell(person.id, date)
+                                    : openEdit(person.id, person.full_name, date)
+                                }
+                                className={`px-2 py-1 cursor-pointer transition-colors relative ${
+                                  isSelected ? 'bg-orange-50' : 'hover:bg-gray-50/70'
+                                }`}>
+                                {selectMode && (
+                                  <div className={`absolute top-1 right-1 w-3 h-3 rounded-full border-2 flex items-center justify-center z-10 ${
+                                    isSelected ? 'bg-orange-500 border-orange-500' : 'border-gray-300 bg-white'
+                                  }`}>
+                                    {isSelected && (
+                                      <svg className="w-1.5 h-1.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    )}
+                                  </div>
+                                )}
+                                <div className={`rounded-lg px-2 py-1.5 min-h-[36px] flex flex-col justify-center border ${bg} ${border}`}>
+                                  <p className={`text-[10px] font-semibold leading-tight ${textColor}`}>{label}</p>
+                                  {note && (
+                                    <p className="text-[9px] text-gray-500 mt-0.5 leading-snug line-clamp-1">{note}</p>
+                                  )}
+                                </div>
+                              </td>
+                            )
+                          })}
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {/* Barre bulk mois */}
+            {selectMode && selected.size > 0 && (
+              <div
+                className="fixed bottom-0 left-0 right-0 z-30 bg-white border-t border-gray-100 px-6 py-4"
+                style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.10)', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
+                <div className="max-w-6xl mx-auto flex items-center justify-between gap-4">
+                  <p className="text-sm font-semibold text-gray-700">
+                    {selected.size} cellule{selected.size > 1 ? 's' : ''} sélectionnée{selected.size > 1 ? 's' : ''}
+                  </p>
+                  <button
+                    onClick={() => setBulkModal(true)}
+                    className="text-white text-sm font-semibold px-5 py-2.5 rounded-xl"
+                    style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 16px rgba(249,115,22,0.40)' }}>
+                    Affecter un type →
+                  </button>
+                </div>
+              </div>
+            )}
+          </>
+        )
+      })()}
+
       {/* ═══════════════════ VUE HEURES ÉQUIPE ═══════════════════════════════ */}
-      {view === 'heures' && (
+      {view === 'heures' && displayMode === 'semaine' && (
         <>
           {timeLoading ? (
             <div className="flex justify-center py-12">

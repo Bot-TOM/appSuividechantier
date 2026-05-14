@@ -51,31 +51,57 @@ export function nextMonday(weekStart: string): string {
   return localISO(new Date(y, m - 1, d + 7))
 }
 
+// ─── Helpers mois ─────────────────────────────────────────────────────────────
+
+export function getFirstOfMonth(d = new Date()): string {
+  return localISO(new Date(d.getFullYear(), d.getMonth(), 1))
+}
+
+export function getMonthDays(monthStart: string): string[] {
+  const [y, m] = monthStart.split('-').map(Number)
+  const count = new Date(y, m, 0).getDate()
+  return Array.from({ length: count }, (_, i) => localISO(new Date(y, m - 1, i + 1)))
+}
+
+export function prevMonth(monthStart: string): string {
+  const [y, m] = monthStart.split('-').map(Number)
+  return localISO(new Date(y, m - 2, 1))
+}
+
+export function nextMonth(monthStart: string): string {
+  const [y, m] = monthStart.split('-').map(Number)
+  return localISO(new Date(y, m, 1))
+}
+
+export function fmtMonth(monthStart: string): string {
+  const d = new Date(monthStart + 'T00:00:00')
+  const s = d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' })
+  return s.charAt(0).toUpperCase() + s.slice(1)
+}
+
 // ─── Hook planning ────────────────────────────────────────────────────────────
 
-export function usePlanning(weekStart: string) {
+export function usePlanning(startDate: string, endDate: string) {
   const [entries, setEntries] = useState<PlanningEntry[]>([])
   const [loading, setLoading] = useState(true)
-
-  const weekEnd = getWeekDays(weekStart)[6]
 
   const refetch = useCallback(async () => {
     setLoading(true)
     const { data } = await supabase
       .from('planning_entries')
       .select('*')
-      .gte('date', weekStart)
-      .lte('date', weekEnd)
+      .gte('date', startDate)
+      .lte('date', endDate)
     setEntries(data ?? [])
     setLoading(false)
-  }, [weekStart, weekEnd])
+  }, [startDate, endDate])
 
   useEffect(() => {
     refetch()
 
     // 1. Real-time Supabase
     const channel = supabase
-      .channel(`planning_${weekStart}`)
+      .channel(`planning_${startDate}_${endDate}`)
       .on('postgres_changes', {
         event: '*', schema: 'public', table: 'planning_entries',
       }, () => refetch())
@@ -96,7 +122,7 @@ export function usePlanning(weekStart: string) {
       clearInterval(interval)
       window.removeEventListener('focus', onFocus)
     }
-  }, [refetch, weekStart])
+  }, [refetch, startDate, endDate])
 
   // Upsert une seule cellule
   const upsert = useCallback(async (
