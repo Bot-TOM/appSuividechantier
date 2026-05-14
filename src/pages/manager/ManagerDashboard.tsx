@@ -239,7 +239,7 @@ export default function ManagerDashboard() {
     setLoadingStats(true)
     async function fetchTechStats() {
       const [profilesRes, assignmentsRes] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, avatar_url, poste').neq('role', 'manager'),
+        supabase.from('profiles').select('id, full_name, avatar_url, poste').eq('role', 'technicien'),
         supabase.from('chantier_techniciens').select('technicien_id, chantier_id'),
       ])
       const profiles    = profilesRes.data    ?? []
@@ -683,9 +683,9 @@ export default function ManagerDashboard() {
               </label>
               <h2 className="font-bold text-gray-900 text-lg">{profile?.full_name}</h2>
               <p className="text-gray-400 text-sm mt-1">{profile?.email}</p>
-              <div className="mt-3 inline-flex items-center gap-1.5 bg-orange-50 text-orange-600 text-xs font-semibold px-3 py-1.5 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
-                Manager
+              <div className={`mt-3 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${profile?.role === 'admin' ? 'bg-purple-50 text-purple-600' : 'bg-orange-50 text-orange-600'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${profile?.role === 'admin' ? 'bg-purple-500' : 'bg-orange-500'}`} />
+                {profile?.role === 'admin' ? 'Admin' : 'Manager'}
               </div>
             </div>
 
