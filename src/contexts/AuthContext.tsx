@@ -114,9 +114,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   async function signOut() {
-    await supabase.auth.signOut()
-    // Force la navigation même en contexte PWA avec service worker
-    window.location.href = '/login'
+    try {
+      await supabase.auth.signOut()
+    } catch {
+      // Déconnexion forcée même en cas d'erreur réseau
+    }
+    // Nettoyer manuellement les clés Supabase dans le localStorage
+    // (protection si signOut() n'a pas pu les effacer)
+    Object.keys(localStorage).forEach(key => {
+      if (key.startsWith('sb-')) localStorage.removeItem(key)
+    })
+    // Vider l'état local immédiatement
+    setUser(null)
+    setProfile(null)
+    setSession(null)
+    // Redirection forcée hors du cache PWA
+    window.location.replace('/login')
   }
 
   async function refreshProfile() {

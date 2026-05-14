@@ -38,7 +38,7 @@ export default function AdminBugReportsTab() {
 
   async function updateStatut(id: string, statut: BugReport['statut']) {
     setReports(prev => prev.map(r => r.id === id ? { ...r, statut } : r))
-    await supabase.from('bug_reports').update({ statut, updated_at: new Date().toISOString() }).eq('id', id)
+    await supabase.from('bug_reports').update({ statut }).eq('id', id)
   }
 
   const filtered = filter === 'tous' ? reports : reports.filter(r => r.statut === filter)
