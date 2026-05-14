@@ -12,9 +12,10 @@ import { supabase } from '@/lib/supabase'
 import { Chantier, ChantierStatut, Anomalie } from '@/types'
 import PlanningManagerTab from '@/components/planning/PlanningManagerTab'
 import GestionEquipe from '@/pages/manager/GestionEquipe'
+import AdminEntreprisesTab from '@/components/admin/AdminEntreprisesTab'
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
-type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning'
+type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises'
 
 type AnomalieWithRelations = Anomalie & {
   profiles?: { full_name?: string } | null
@@ -419,6 +420,7 @@ export default function ManagerDashboard() {
               { key: 'stats',     label: 'Stats' },
               { key: 'planning',  label: 'Planning' },
               { key: 'equipe',    label: 'Équipe' },
+              profile?.role === 'admin' ? { key: 'entreprises', label: '🏢 Entreprises' } : null,
               { key: 'profil',    label: 'Profil' },
             ] as { key: Tab; label: string; badge?: number }[]).map(tab => (
               <button
@@ -903,6 +905,11 @@ export default function ManagerDashboard() {
         {/* ── Onglet Équipe ────────────────────────────────────────────────── */}
         {activeTab === 'equipe' && (
           <GestionEquipe embedded />
+        )}
+
+        {/* ── Onglet Entreprises (admin seulement) ─────────────────────────── */}
+        {activeTab === 'entreprises' && profile?.role === 'admin' && (
+          <AdminEntreprisesTab />
         )}
       </main>
     </div>
