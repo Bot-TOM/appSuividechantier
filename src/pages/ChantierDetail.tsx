@@ -946,9 +946,12 @@ export default function ChantierDetail() {
                   const ext = doc.nom.split('.').pop()?.toLowerCase() ?? ''
                   const isPdf    = ext === 'pdf'
                   const isExcel  = ['xls','xlsx'].includes(ext)
+                  const isOffice = ['xls','xlsx','doc','docx','ppt','pptx'].includes(ext)
                   const iconColor = isPdf ? 'bg-red-50 text-red-400' : isExcel ? 'bg-green-50 text-green-500' : 'bg-gray-50 text-gray-400'
-                  // URL directe — Supabase sert avec Content-Type correct, le navigateur affiche nativement
-                  const openUrl = doc.url
+                  // PDFs : URL directe (navigateur natif) — Office : Google Docs Viewer (mobile ne peut pas ouvrir xlsx/docx nativement)
+                  const openUrl = isOffice
+                    ? `https://docs.google.com/viewer?url=${encodeURIComponent(doc.url)}`
+                    : doc.url
                   return (
                     <div key={doc.id} className="px-4 py-3 flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconColor}`}>
