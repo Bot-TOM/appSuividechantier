@@ -135,7 +135,9 @@ export default function ManagerDashboard() {
       setAvatarLoading(false)
     }
   }
-  const { chantiers, loading } = useChantiers()
+  const [selectedEntreprise, setSelectedEntreprise] = useState<{ id: string; nom: string } | null>(null)
+
+  const { chantiers, loading } = useChantiers(selectedEntreprise?.id)
   const { anomalies, updateStatut: updateAnomalieStatut, updateStatutBulk, deleteAnomalies } = useAnomalies()
   const navigate               = useNavigate()
 
@@ -443,6 +445,21 @@ export default function ManagerDashboard() {
           </div>
         </div>
       </header>
+
+      {/* ── Bannière filtre entreprise (admin seulement) ────────────────────── */}
+      {selectedEntreprise && profile?.role === 'admin' && (
+        <div className="bg-orange-500 text-white px-6 py-2.5 flex items-center justify-between">
+          <span className="text-sm font-medium">
+            Vue filtrée : <strong>{selectedEntreprise.nom}</strong>
+          </span>
+          <button
+            onClick={() => setSelectedEntreprise(null)}
+            className="text-white/80 hover:text-white text-sm underline underline-offset-2 transition-colors"
+          >
+            ✕ Voir tout
+          </button>
+        </div>
+      )}
 
       <main className="max-w-4xl md:max-w-6xl mx-auto px-6 py-8 space-y-6">
 
@@ -899,7 +916,7 @@ export default function ManagerDashboard() {
 
         {/* ── Onglet Planning ───────────────────────────────────────────────── */}
         {activeTab === 'planning' && (
-          <PlanningManagerTab />
+          <PlanningManagerTab entrepriseId={selectedEntreprise?.id} />
         )}
 
         {/* ── Onglet Équipe ────────────────────────────────────────────────── */}
@@ -909,7 +926,7 @@ export default function ManagerDashboard() {
 
         {/* ── Onglet Entreprises (admin seulement) ─────────────────────────── */}
         {activeTab === 'entreprises' && profile?.role === 'admin' && (
-          <AdminEntreprisesTab />
+          <AdminEntreprisesTab onFilter={e => { setSelectedEntreprise(e); setActiveTab('chantiers') }} />
         )}
       </main>
     </div>

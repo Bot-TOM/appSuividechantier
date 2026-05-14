@@ -19,7 +19,7 @@ interface AccessCode {
   used_at: string | null
 }
 
-export default function AdminEntreprisesTab() {
+export default function AdminEntreprisesTab({ onFilter }: { onFilter?: (e: { id: string; nom: string } | null) => void }) {
   const { profile } = useAuth()
   const [entreprises, setEntreprises] = useState<Entreprise[]>([])
   const [loading, setLoading]         = useState(true)
@@ -173,6 +173,16 @@ export default function AdminEntreprisesTab() {
                 <p className="text-xs text-gray-400 mt-0.5">
                   Créée le {new Date(ent.created_at).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })}
                 </p>
+              </div>
+              <div className="flex items-center gap-3 flex-shrink-0">
+                {onFilter && (
+                  <button
+                    onClick={() => onFilter({ id: ent.id, nom: ent.nom })}
+                    className="text-xs font-semibold px-3 py-1.5 rounded-lg text-orange-600 bg-orange-50 hover:bg-orange-100 transition-colors"
+                  >
+                    Vue →
+                  </button>
+                )}
               </div>
               <div className="flex gap-3 flex-shrink-0">
                 <div className="text-center">

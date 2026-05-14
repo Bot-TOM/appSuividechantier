@@ -70,7 +70,7 @@ function fmtDayLabel(iso: string): string {
 }
 
 // ─── Composant principal ──────────────────────────────────────────────────────
-export default function PlanningManagerTab() {
+export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: string }) {
   const [view, setView]         = useState<'activite' | 'heures'>('activite')
   const [weekStart, setWeekStart] = useState(getMondayOfWeek())
   const [profiles, setProfiles]  = useState<UserProfile[]>([])
@@ -98,17 +98,18 @@ export default function PlanningManagerTab() {
   const [exportEnd,   setExportEnd]   = useState(getWeekDays(weekStart)[6])
   const [exportLoading, setExportLoading] = useState(false)
 
-  // Charger profils + chantiers
+  // Charger profils + chantiers (filtrés par entreprise si sélecteur admin actif)
   useEffect(() => {
-    supabase.from('profiles').select('*').then(({ data }) => {
+    let profilesQuery = supabase.from('profiles').select('*')
+    if (entrepriseId) profilesQuery = profilesQuery.eq('entreprise_id', entrepriseId)
+    profilesQuery.then(({ data }) => {
       if (data) setProfiles(data as UserProfile[])
     })
-    supabase
-      .from('chantiers')
-      .select('id, nom, client_nom, statut')
-      .order('nom')
-      .then(({ data }) => { if (data) setChantiers(data as Chantier[]) })
-  }, [])
+
+    let chantiersQuery = supabase.from('chantiers').select('id, nom, client_nom, statut').order('nom')
+    if (entrepriseId) chantiersQuery = chantiersQuery.eq('entreprise_id', entrepriseId)
+    chantiersQuery.then(({ data }) => { if (data) setChantiers(data as Chantier[]) })
+  }, [entrepriseId])
 
   const days   = getWeekDays(weekStart)
   const year   = new Date(weekStart + 'T00:00:00').getFullYear()

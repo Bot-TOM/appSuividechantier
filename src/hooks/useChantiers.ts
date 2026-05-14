@@ -4,7 +4,7 @@ import { Chantier } from '@/types'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from './usePermissions'
 
-export function useChantiers() {
+export function useChantiers(entrepriseId?: string) {
   const { profile } = useAuth()
   const { can } = usePermissions()
   const [chantiers, setChantiers] = useState<Chantier[]>([])
@@ -13,6 +13,9 @@ export function useChantiers() {
   const fetchChantiers = useCallback(async () => {
     setLoading(true)
     let query = supabase.from('chantiers').select('*').order('created_at', { ascending: false })
+
+    // Filtre admin par entreprise (sélecteur d'entreprise)
+    if (entrepriseId) query = query.eq('entreprise_id', entrepriseId)
 
     if (profile?.role === 'technicien' && !can('voir_tous_chantiers')) {
       // Récupère uniquement les chantiers assignés à ce technicien
@@ -28,7 +31,7 @@ export function useChantiers() {
     const { data } = await query
     setChantiers(data ?? [])
     setLoading(false)
-  }, [profile, can])
+  }, [profile, can, entrepriseId])
 
   useEffect(() => {
     if (profile) fetchChantiers()
