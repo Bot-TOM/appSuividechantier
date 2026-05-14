@@ -13,9 +13,11 @@ import { Chantier, ChantierStatut, Anomalie } from '@/types'
 import PlanningManagerTab from '@/components/planning/PlanningManagerTab'
 import GestionEquipe from '@/pages/manager/GestionEquipe'
 import AdminEntreprisesTab from '@/components/admin/AdminEntreprisesTab'
+import AdminBugReportsTab from '@/components/admin/AdminBugReportsTab'
+import BugReportButton from '@/components/BugReportButton'
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
-type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises'
+type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs'
 
 type AnomalieWithRelations = Anomalie & {
   profiles?: { full_name?: string } | null
@@ -138,7 +140,7 @@ export default function ManagerDashboard() {
   const [selectedEntreprise, setSelectedEntreprise] = useState<{ id: string; nom: string } | null>(null)
 
   const { chantiers, loading } = useChantiers(selectedEntreprise?.id)
-  const { anomalies, updateStatut: updateAnomalieStatut, updateStatutBulk, deleteAnomalies } = useAnomalies()
+  const { anomalies, updateStatut: updateAnomalieStatut, updateStatutBulk, deleteAnomalies } = useAnomalies(undefined, selectedEntreprise?.id)
   const navigate               = useNavigate()
 
   const [activeTab, setActiveTab]       = useState<Tab>('chantiers')
@@ -241,8 +243,11 @@ export default function ManagerDashboard() {
     if (activeTab !== 'stats') return
     setLoadingStats(true)
     async function fetchTechStats() {
+      let profilesQuery = supabase.from('profiles').select('id, full_name, avatar_url, poste').eq('role', 'technicien')
+      if (selectedEntreprise?.id) profilesQuery = profilesQuery.eq('entreprise_id', selectedEntreprise.id)
+
       const [profilesRes, assignmentsRes] = await Promise.all([
-        supabase.from('profiles').select('id, full_name, avatar_url, poste').eq('role', 'technicien'),
+        profilesQuery,
         supabase.from('chantier_techniciens').select('technicien_id, chantier_id'),
       ])
       const profiles    = profilesRes.data    ?? []
@@ -274,7 +279,7 @@ export default function ManagerDashboard() {
       setLoadingStats(false)
     }
     fetchTechStats()
-  }, [activeTab]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [activeTab, selectedEntreprise?.id]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const chantiersFiltres = useMemo(() => {
     let result = [...chantiers]
@@ -423,6 +428,7 @@ export default function ManagerDashboard() {
               { key: 'planning',  label: 'Planning' },
               { key: 'equipe',    label: 'Équipe' },
               profile?.role === 'admin' ? { key: 'entreprises', label: '🏢 Entreprises' } : null,
+              profile?.role === 'admin' ? { key: 'bugs', label: '🐛 Bugs' } : null,
               { key: 'profil',    label: 'Profil' },
             ].filter(Boolean) as { key: Tab; label: string; badge?: number }[]).map(tab => (
               <button
@@ -921,14 +927,21 @@ export default function ManagerDashboard() {
 
         {/* ── Onglet Équipe ────────────────────────────────────────────────── */}
         {activeTab === 'equipe' && (
-          <GestionEquipe embedded />
+          <GestionEquipe embedded entrepriseId={selectedEntreprise?.id} />
         )}
 
         {/* ── Onglet Entreprises (admin seulement) ─────────────────────────── */}
         {activeTab === 'entreprises' && profile?.role === 'admin' && (
           <AdminEntreprisesTab onFilter={e => { setSelectedEntreprise(e); setActiveTab('chantiers') }} />
         )}
+
+        {/* ── Onglet Bugs (admin seulement) ────────────────────────────────── */}
+        {activeTab === 'bugs' && profile?.role === 'admin' && (
+          <AdminBugReportsTab />
+        )}
       </main>
+
+      <BugReportButton />
     </div>
   )
 }

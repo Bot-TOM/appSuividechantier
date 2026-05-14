@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { Chantier, ChantierStatut, UserProfile } from '@/types'
 import { usePermissions } from '@/hooks/usePermissions'
 import PlanningTechTab from '@/components/planning/PlanningTechTab'
+import BugReportButton from '@/components/BugReportButton'
 
 const STATUT_LABEL: Record<ChantierStatut, string> = {
   planifie:   'Planifié',
@@ -250,10 +251,14 @@ export default function TechnicienHome() {
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([])
 
   useEffect(() => {
-    supabase.from('profiles').select('*').order('role').then(({ data }) => {
-      if (data) setTeamMembers(data)
-    })
-  }, [])
+    if (!profile?.entreprise_id) return
+    supabase.from('profiles').select('*')
+      .eq('entreprise_id', profile.entreprise_id)
+      .order('role')
+      .then(({ data }) => {
+        if (data) setTeamMembers(data)
+      })
+  }, [profile?.entreprise_id])
   const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
 
   const progression = useEtapesProgression(chantiers.map(c => c.id))
@@ -511,6 +516,8 @@ export default function TechnicienHome() {
           </button>
         </div>
       </nav>
+
+      <BugReportButton />
     </div>
   )
 }

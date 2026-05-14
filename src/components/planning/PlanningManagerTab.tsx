@@ -76,7 +76,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
   const [profiles, setProfiles]  = useState<UserProfile[]>([])
 
   const { entries, loading, upsert, upsertBulk } = usePlanning(weekStart)
-  const { entries: timeEntries, loading: timeLoading } = useTeamTimeEntries(weekStart)
+  const { entries: timeEntries, loading: timeLoading } = useTeamTimeEntries(weekStart, entrepriseId)
 
   const [editCell, setEditCell]         = useState<{ techId: string; techName: string; date: string } | null>(null)
   const [editType, setEditType]         = useState<PlanningType>('libre')
@@ -91,6 +91,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
   const [bulkChantierId, setBulkChantierId] = useState<string | null>(null)
 
   const [chantiers, setChantiers] = useState<Chantier[]>([])
+  const [chantiersLoaded, setChantiersLoaded] = useState(false)
 
   // Export modal
   const [exportModal, setExportModal] = useState<'xlsx' | 'csv' | null>(null)
@@ -100,6 +101,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
 
   // Charger profils + chantiers (filtrés par entreprise si sélecteur admin actif)
   useEffect(() => {
+    setChantiersLoaded(false)
     let profilesQuery = supabase.from('profiles').select('*')
     if (entrepriseId) profilesQuery = profilesQuery.eq('entreprise_id', entrepriseId)
     profilesQuery.then(({ data }) => {
@@ -108,7 +110,10 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
 
     let chantiersQuery = supabase.from('chantiers').select('id, nom, client_nom, statut').order('nom')
     if (entrepriseId) chantiersQuery = chantiersQuery.eq('entreprise_id', entrepriseId)
-    chantiersQuery.then(({ data }) => { if (data) setChantiers(data as Chantier[]) })
+    chantiersQuery.then(({ data }) => {
+      if (data) setChantiers(data as Chantier[])
+      setChantiersLoaded(true)
+    })
   }, [entrepriseId])
 
   const days   = getWeekDays(weekStart)
@@ -635,7 +640,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
           )}
 
           {/* ── Récapitulatif par chantier ─────────────────────────────────── */}
-          {!timeLoading && (() => {
+          {!timeLoading && chantiersLoaded && (() => {
             // Regrouper les time_entries par chantier_id
             type ChantierStat = { chantier_id: string; totalMins: number; techIds: Set<string> }
             const map = new Map<string, ChantierStat>()
@@ -653,7 +658,10 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                 map.set(e.chantier_id, { chantier_id: e.chantier_id, totalMins: mins, techIds: new Set([e.technicien_id]) })
               }
             }
-            const stats = Array.from(map.values()).sort((a, b) => b.totalMins - a.totalMins)
+            // Ne garder que les chantiers qu'on connaît (filtre multi-entreprise)
+            const stats = Array.from(map.values())
+              .filter(s => chantiers.some(c => c.id === s.chantier_id))
+              .sort((a, b) => b.totalMins - a.totalMins)
             return (
               <div className="mt-6 space-y-3">
                 <p className="text-sm font-semibold text-gray-700">Heures par chantier — semaine</p>

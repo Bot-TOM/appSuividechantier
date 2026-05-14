@@ -118,7 +118,7 @@ function PermissionsSection() {
   )
 }
 
-export default function GestionEquipe({ embedded = false }: { embedded?: boolean }) {
+export default function GestionEquipe({ embedded = false, entrepriseId }: { embedded?: boolean; entrepriseId?: string }) {
   const navigate = useNavigate()
   const { profile, session, signOut } = useAuth()
   const [techniciens, setTechniciens] = useState<UserProfile[]>([])
@@ -140,17 +140,22 @@ export default function GestionEquipe({ embedded = false }: { embedded?: boolean
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
 
   async function fetchEquipe() {
-    const { data } = await supabase
+    let query = supabase
       .from('profiles')
       .select('*')
       .neq('id', profile?.id ?? '')
       .order('role')
       .order('full_name')
+
+    // Filtre par entreprise (vue admin)
+    if (entrepriseId) query = query.eq('entreprise_id', entrepriseId)
+
+    const { data } = await query
     setTechniciens(data ?? [])
     setLoading(false)
   }
 
-  useEffect(() => { if (profile?.id) fetchEquipe() }, [profile?.id])
+  useEffect(() => { if (profile?.id) fetchEquipe() }, [profile?.id, entrepriseId])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))

@@ -87,10 +87,13 @@ export default function PlanningTechTab() {
   const { entries: timeEntries, upsert: upsertTime } = useMyTimeEntries(weekStart)
 
   useEffect(() => {
-    supabase.from('profiles').select('*').then(({ data }) => {
-      if (data) setAllProfiles(data as UserProfile[])
-    })
-  }, [])
+    if (!profile?.entreprise_id) return
+    supabase.from('profiles').select('*')
+      .eq('entreprise_id', profile.entreprise_id)
+      .then(({ data }) => {
+        if (data) setAllProfiles(data as UserProfile[])
+      })
+  }, [profile?.entreprise_id])
 
   useEffect(() => {
     if (!profile?.id) return

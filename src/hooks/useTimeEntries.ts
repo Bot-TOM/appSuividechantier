@@ -96,7 +96,7 @@ export function useMyTimeEntries(weekStart: string) {
 }
 
 // Hook manager — toutes les entrées de l'équipe (lecture seule)
-export function useTeamTimeEntries(weekStart: string) {
+export function useTeamTimeEntries(weekStart: string, entrepriseId?: string) {
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -104,13 +104,38 @@ export function useTeamTimeEntries(weekStart: string) {
 
   useEffect(() => {
     setLoading(true)
-    supabase
-      .from('time_entries')
-      .select('*')
-      .gte('date', weekStart)
-      .lte('date', weekEnd)
-      .then(({ data }) => { setEntries((data ?? []).map(mapRow)); setLoading(false) })
-  }, [weekStart, weekEnd])
+    const run = async () => {
+      // Si on filtre par entreprise, on récupère d'abord les IDs des techs de cette entreprise
+      if (entrepriseId) {
+        const { data: techProfiles } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('entreprise_id', entrepriseId)
+        const techIds = (techProfiles ?? []).map((p: { id: string }) => p.id)
+        if (techIds.length === 0) {
+          setEntries([])
+          setLoading(false)
+          return
+        }
+        const { data } = await supabase
+          .from('time_entries')
+          .select('*')
+          .gte('date', weekStart)
+          .lte('date', weekEnd)
+          .in('technicien_id', techIds)
+        setEntries((data ?? []).map(mapRow))
+      } else {
+        const { data } = await supabase
+          .from('time_entries')
+          .select('*')
+          .gte('date', weekStart)
+          .lte('date', weekEnd)
+        setEntries((data ?? []).map(mapRow))
+      }
+      setLoading(false)
+    }
+    run()
+  }, [weekStart, weekEnd, entrepriseId])
 
   return { entries, loading }
 }

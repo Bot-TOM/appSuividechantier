@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { Anomalie } from '@/types'
 
-export function useAnomalies(chantierId?: string) {
+export function useAnomalies(chantierId?: string, entrepriseId?: string) {
   const [anomalies, setAnomalies] = useState<Anomalie[]>([])
   const [loading, setLoading]     = useState(true)
 
@@ -14,10 +14,21 @@ export function useAnomalies(chantierId?: string) {
 
     if (chantierId) query = query.eq('chantier_id', chantierId)
 
+    // Filtre par entreprise : on récupère d'abord les IDs des chantiers de cette entreprise
+    if (entrepriseId && !chantierId) {
+      const { data: ents } = await supabase
+        .from('chantiers')
+        .select('id')
+        .eq('entreprise_id', entrepriseId)
+      const ids = (ents ?? []).map((c: { id: string }) => c.id)
+      if (ids.length === 0) { setAnomalies([]); setLoading(false); return }
+      query = query.in('chantier_id', ids)
+    }
+
     const { data } = await query
     setAnomalies(data ?? [])
     setLoading(false)
-  }, [chantierId])
+  }, [chantierId, entrepriseId])
 
   useEffect(() => { fetch() }, [fetch])
 
