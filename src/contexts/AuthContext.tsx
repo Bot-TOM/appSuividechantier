@@ -9,7 +9,7 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
-  signUp: (fullName: string, email: string, password: string, managerCode: string) => Promise<{ error: string | null }>
+  signUp: (fullName: string, email: string, password: string, managerCode: string, entrepriseNom?: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -70,7 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null }
   }
 
-  async function signUp(fullName: string, email: string, password: string, managerCode: string) {
+  async function signUp(fullName: string, email: string, password: string, managerCode: string, entrepriseNom?: string) {
     // Vérification du code manager côté serveur (ne jamais exposer le code dans le bundle JS)
     let role: UserRole = 'technicien'
     if (managerCode) {
@@ -95,7 +95,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { full_name: fullName, role } },
+      options: { data: { full_name: fullName, role, entreprise_nom: entrepriseNom ?? '' } },
     })
 
     if (error) return { error: error.message }

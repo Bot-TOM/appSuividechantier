@@ -11,6 +11,7 @@ export default function SignupPage() {
     email: '',
     password: '',
     managerCode: '',
+    entreprise_nom: '',
   })
   const [error, setError]         = useState('')
   const [submitting, setSubmitting] = useState(false)
@@ -35,7 +36,7 @@ export default function SignupPage() {
     }
 
     setSubmitting(true)
-    const { error } = await signUp(form.full_name, form.email, form.password, form.managerCode)
+    const { error } = await signUp(form.full_name, form.email, form.password, form.managerCode, form.entreprise_nom)
     if (error) {
       setError(error)
       setSubmitting(false)
@@ -102,6 +103,18 @@ export default function SignupPage() {
               </div>
               <p className="text-xs text-gray-400 mt-1.5">Fourni par votre responsable</p>
             </div>
+
+            {form.managerCode && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Nom de votre entreprise
+                </label>
+                <input name="entreprise_nom" value={form.entreprise_nom} onChange={handleChange}
+                  placeholder="Ex : Soleil du Sud PV"
+                  className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent" />
+                <p className="text-xs text-gray-400 mt-1.5">Sera créée automatiquement à l'inscription</p>
+              </div>
+            )}
 
             {error && (
               <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl flex items-center gap-2">

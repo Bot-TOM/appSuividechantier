@@ -165,7 +165,7 @@ export default function GestionEquipe({ embedded = false }: { embedded?: boolean
     const { data, error: errAuth } = await supabaseAuth.auth.signUp({
       email: form.email,
       password: form.password,
-      options: { data: { full_name: form.full_name, role: 'technicien' } },
+      options: { data: { full_name: form.full_name, role: 'technicien', entreprise_id: profile?.entreprise_id ?? '' } },
     })
 
     if (errAuth || !data.user) {
@@ -180,6 +180,7 @@ export default function GestionEquipe({ embedded = false }: { embedded?: boolean
       full_name: form.full_name,
       role: 'technicien',
       poste: form.poste || 'Technicien',
+      entreprise_id: profile?.entreprise_id,
     })
 
     setSuccess(`Compte créé pour ${form.full_name}`)
