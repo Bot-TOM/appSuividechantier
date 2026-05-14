@@ -28,6 +28,7 @@ export function useDocuments(chantierId: string) {
   useEffect(() => { fetchDocs() }, [fetchDocs])
 
   async function uploadDocument(file: File, userId: string): Promise<{ error: string | null }> {
+    if (file.size === 0) return { error: 'Le fichier semble vide ou corrompu, impossible de l\'importer' }
     const safeName = file.name.replace(/[^a-zA-Z0-9.\-_]/g, '_')
     const path     = `${chantierId}/${Date.now()}_${safeName}`
     const ext      = file.name.split('.').pop()?.toLowerCase() ?? ''
