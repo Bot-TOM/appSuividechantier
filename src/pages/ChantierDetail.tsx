@@ -947,8 +947,11 @@ export default function ChantierDetail() {
                   const isPdf    = ext === 'pdf'
                   const isExcel  = ['xls','xlsx'].includes(ext)
                   const iconColor = isPdf ? 'bg-red-50 text-red-400' : isExcel ? 'bg-green-50 text-green-500' : 'bg-gray-50 text-gray-400'
-                  // URL directe pour tous les types — PDF s'ouvre dans le viewer natif, Office se télécharge et s'ouvre avec l'app du téléphone
-                  const openUrl = doc.url
+                  // PDFs → Google Docs Viewer (prévisualisation universelle mobile/desktop)
+                  // Autres → URL directe (téléchargement + ouverture avec l'app du téléphone)
+                  const openUrl = isPdf
+                    ? `https://docs.google.com/viewer?url=${encodeURIComponent(doc.url)}`
+                    : doc.url
                   return (
                     <div key={doc.id} className="px-4 py-3 flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconColor}`}>
@@ -965,9 +968,8 @@ export default function ChantierDetail() {
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0">
                         <a href={openUrl} target="_blank" rel="noreferrer"
-                          {...(!isPdf ? { download: doc.nom } : {})}
                           className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-colors"
-                          title={isPdf ? 'Ouvrir' : 'Télécharger'}
+                          title="Ouvrir"
                         >
                           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                             <path strokeLinecap="round" strokeLinejoin="round" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
