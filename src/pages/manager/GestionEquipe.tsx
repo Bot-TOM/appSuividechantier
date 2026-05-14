@@ -13,6 +13,7 @@ interface EditModal {
   email: string
   password: string
   poste: string
+  role: string
 }
 
 // Badge couleur selon le poste
@@ -197,7 +198,7 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
 
   // ── Édition ────────────────────────────────────────────────────────────────
   function openEdit(tech: UserProfile) {
-    setEditModal({ user: tech, full_name: tech.full_name, email: tech.email, password: '', poste: tech.poste ?? 'Technicien' })
+    setEditModal({ user: tech, full_name: tech.full_name, email: tech.email, password: '', poste: tech.poste ?? 'Technicien', role: tech.role ?? 'technicien' })
     setEditError('')
   }
 
@@ -207,10 +208,11 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
     setEditError('')
     setEditSubmitting(true)
 
-    // Mise à jour du poste directement dans profiles (pas besoin de l'API auth)
+    // Mise à jour du poste et du rôle directement dans profiles
     const posteChanged = editModal.poste !== (editModal.user.poste ?? 'Technicien')
-    if (posteChanged) {
-      await supabase.from('profiles').update({ poste: editModal.poste }).eq('id', editModal.user.id)
+    const roleChanged  = editModal.role  !== (editModal.user.role  ?? 'technicien')
+    if (posteChanged || roleChanged) {
+      await supabase.from('profiles').update({ poste: editModal.poste, role: editModal.role }).eq('id', editModal.user.id)
     }
 
     // Mise à jour des champs auth (nom, email, mdp) via l'API admin
@@ -483,6 +485,17 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
                   ))}
                 </select>
               </div>
+              {profile?.role === 'admin' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">Rôle</label>
+                  <select value={editModal.role}
+                    onChange={e => setEditModal(m => m ? { ...m, role: e.target.value } : m)}
+                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm bg-white">
+                    <option value="technicien">Technicien</option>
+                    <option value="manager">Manager</option>
+                  </select>
+                </div>
+              )}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Email</label>
                 <input type="email" value={editModal.email}

@@ -7,7 +7,7 @@ const corsHeaders = {
 }
 
 webpush.setVapidDetails(
-  'mailto:admin@solartrack.app',
+  'mailto:contact@mypvpilot.fr',
   Deno.env.get('VAPID_PUBLIC_KEY')!,
   Deno.env.get('VAPID_PRIVATE_KEY')!,
 )
@@ -61,6 +61,32 @@ Deno.serve(async (req) => {
     ]
     recipientIds = [...new Set(allIds)].filter(id => id !== record.user_id)
 
+  } else if (table === 'anomalies') {
+    const graviteEmoji = record.gravite === 'haute' ? '🔴' : record.gravite === 'moyenne' ? '🟡' : '🟢'
+    title = `${graviteEmoji} Nouvelle anomalie`
+    body = `${record.type ?? 'Anomalie'} — ${record.description?.slice(0, 60) ?? ''}`
+    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+    recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
+
+  } else if (table === 'chantiers' && record.statut === 'bloque') {
+    title = '🚨 Chantier bloqué'
+    body = `${record.nom} est passé en statut Bloqué — action requise`
+    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+    recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
+
+  } else if (table === 'chantiers' && record.statut === 'termine') {
+    title = '✅ Chantier terminé'
+    body = `${record.nom} vient d'être marqué comme terminé`
+    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+    recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
+
+  } else if (table === 'bug_reports') {
+    const sevEmoji = record.severite === 'bloquant' ? '🔴' : '🟡'
+    title = `${sevEmoji} Nouveau signalement`
+    body = record.description?.slice(0, 80) ?? 'Un utilisateur a signalé un problème'
+    const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin')
+    recipientIds = admins?.map((a: { id: string }) => a.id) ?? []
+
   } else {
     return new Response(JSON.stringify({ ignored: true, table }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
@@ -95,7 +121,8 @@ Deno.serve(async (req) => {
     })
   }
 
-  const chantierId = record?.chantier_id ?? ''
+  // Pour la table chantiers, l'id du chantier est record.id directement
+  const chantierId = table === 'chantiers' ? (record?.id ?? '') : (record?.chantier_id ?? '')
   const url = chantierId
     ? (chatOnly ? `/chantier/${chantierId}?tab=chat` : `/chantier/${chantierId}`)
     : '/'
