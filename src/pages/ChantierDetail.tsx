@@ -947,11 +947,8 @@ export default function ChantierDetail() {
                   const isPdf    = ext === 'pdf'
                   const isExcel  = ['xls','xlsx'].includes(ext)
                   const iconColor = isPdf ? 'bg-red-50 text-red-400' : isExcel ? 'bg-green-50 text-green-500' : 'bg-gray-50 text-gray-400'
-                  // PDFs → Google Docs Viewer (prévisualisation universelle mobile/desktop)
-                  // Autres → URL directe (téléchargement + ouverture avec l'app du téléphone)
-                  const openUrl = isPdf
-                    ? `https://docs.google.com/viewer?url=${encodeURIComponent(doc.url)}`
-                    : doc.url
+                  // URL directe pour tout — viewer natif du navigateur pour PDF, téléchargement pour le reste
+                  const openUrl = doc.url
                   return (
                     <div key={doc.id} className="px-4 py-3 flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconColor}`}>
