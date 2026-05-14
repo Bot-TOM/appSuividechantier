@@ -947,11 +947,8 @@ export default function ChantierDetail() {
                   const isPdf    = ext === 'pdf'
                   const isExcel  = ['xls','xlsx'].includes(ext)
                   const iconColor = isPdf ? 'bg-red-50 text-red-400' : isExcel ? 'bg-green-50 text-green-500' : 'bg-gray-50 text-gray-400'
-                  // PDFs : Google Docs Viewer pour ouverture directe sur tous les appareils (évite le téléchargement sur Android)
-                  // Excel/autres : URL directe
-                  const openUrl = isPdf
-                    ? `https://docs.google.com/viewer?url=${encodeURIComponent(doc.url)}`
-                    : doc.url
+                  // URL directe — Supabase sert avec Content-Type correct, le navigateur affiche nativement
+                  const openUrl = doc.url
                   return (
                     <div key={doc.id} className="px-4 py-3 flex items-center gap-3">
                       <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconColor}`}>

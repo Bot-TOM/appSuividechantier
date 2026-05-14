@@ -873,7 +873,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
           <span className="text-white text-sm font-medium truncate max-w-[70%]">{pdfPreview.name}</span>
           <div className="flex items-center gap-2">
             <a
-              href={`https://docs.google.com/viewer?url=${encodeURIComponent(pdfPreview.url)}`}
+              href={pdfPreview.url}
               target="_blank" rel="noreferrer"
               onClick={e => e.stopPropagation()}
               className="text-white/70 hover:text-white text-xs border border-white/20 px-3 py-1.5 rounded-full transition-colors"
@@ -890,7 +890,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
         {/* Visionneuse */}
         <div className="flex-1 min-h-0" onClick={e => e.stopPropagation()}>
           <iframe
-            src={`https://docs.google.com/viewer?url=${encodeURIComponent(pdfPreview.url)}&embedded=true`}
+            src={pdfPreview.url}
             className="w-full h-full border-0"
             title={pdfPreview.name}
           />
