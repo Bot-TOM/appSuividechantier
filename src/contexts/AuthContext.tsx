@@ -119,18 +119,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Déconnexion forcée même en cas d'erreur réseau
     }
-    // Nettoyer manuellement la session Supabase (storageKey = 'PVPilot-auth')
-    // Protection si signOut() n'a pas pu l'effacer (erreur réseau, etc.)
-    localStorage.removeItem('PVPilot-auth')
-    // Aussi vider les clés génériques sb-* au cas où
-    Object.keys(localStorage).forEach(key => {
-      if (key.startsWith('sb-')) localStorage.removeItem(key)
-    })
-    // Vider l'état local immédiatement
-    setUser(null)
-    setProfile(null)
-    setSession(null)
-    // Redirection forcée hors du cache PWA
+    // Vider tout le stockage local pour garantir la déconnexion
+    // (Supabase peut stocker la session sous plusieurs clés selon la version)
+    localStorage.clear()
+    sessionStorage.clear()
+    // Redirection forcée — remplace l'historique pour empêcher le retour arrière
     window.location.replace('/login')
   }
 
