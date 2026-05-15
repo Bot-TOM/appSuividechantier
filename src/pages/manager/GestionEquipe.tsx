@@ -141,17 +141,18 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
   const [deleteSubmitting, setDeleteSubmitting] = useState(false)
 
   async function fetchEquipe() {
-    let query = supabase
+    // Toujours filtrer par entreprise — jamais retourner des profils d'autres entreprises
+    const targetEntrepriseId = entrepriseId ?? profile?.entreprise_id
+    if (!targetEntrepriseId) return
+
+    const { data } = await supabase
       .from('profiles')
       .select('*')
       .neq('id', profile?.id ?? '')
+      .eq('entreprise_id', targetEntrepriseId)
       .order('role')
       .order('full_name')
 
-    // Filtre par entreprise (vue admin)
-    if (entrepriseId) query = query.eq('entreprise_id', entrepriseId)
-
-    const { data } = await query
     setTechniciens(data ?? [])
     setLoading(false)
   }
@@ -208,11 +209,16 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
     setEditError('')
     setEditSubmitting(true)
 
-    // Mise à jour du poste et du rôle directement dans profiles
+    // Mise à jour du poste (et du rôle uniquement pour les admins)
     const posteChanged = editModal.poste !== (editModal.user.poste ?? 'Technicien')
     const roleChanged  = editModal.role  !== (editModal.user.role  ?? 'technicien')
     if (posteChanged || roleChanged) {
-      await supabase.from('profiles').update({ poste: editModal.poste, role: editModal.role }).eq('id', editModal.user.id)
+      const updatePayload: Record<string, string> = { poste: editModal.poste }
+      // Le rôle ne peut être modifié que par un admin — la RLS côté serveur l'enforcer aussi
+      if (roleChanged && profile?.role === 'admin') {
+        updatePayload.role = editModal.role
+      }
+      await supabase.from('profiles').update(updatePayload).eq('id', editModal.user.id)
     }
 
     // Mise à jour des champs auth (nom, email, mdp) via l'API admin

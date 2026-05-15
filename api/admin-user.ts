@@ -44,14 +44,24 @@ export default async function handler(req: Request) {
     return new Response(JSON.stringify({ error: 'userId manquant' }), { status: 400 })
   }
 
-  // 3b. Vérifier que la cible est bien un technicien (pas un manager ou admin)
+  // 3b. Vérifier que la cible est bien un technicien de la même entreprise
   const targetRes = await fetch(
-    `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=role`,
+    `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=role,entreprise_id`,
     { headers: { apikey: anonKey, Authorization: `Bearer ${serviceKey}` } }
   )
-  const targets = await targetRes.json() as { role: string }[]
+  const targets = await targetRes.json() as { role: string; entreprise_id: string }[]
   if (!targets?.[0] || targets[0].role !== 'technicien') {
     return new Response(JSON.stringify({ error: 'Cible non autorisée' }), { status: 403 })
+  }
+
+  // 3c. Vérifier que la cible appartient à la même entreprise que l'appelant
+  const callerRes = await fetch(
+    `${supabaseUrl}/rest/v1/profiles?id=eq.${auth.userId}&select=entreprise_id`,
+    { headers: { apikey: anonKey, Authorization: `Bearer ${serviceKey}` } }
+  )
+  const callers = await callerRes.json() as { entreprise_id: string }[]
+  if (!callers?.[0] || callers[0].entreprise_id !== targets[0].entreprise_id) {
+    return new Response(JSON.stringify({ error: 'Accès refusé — entreprise différente' }), { status: 403 })
   }
 
   // 4. Suppression

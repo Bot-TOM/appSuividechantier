@@ -15,6 +15,20 @@ webpush.setVapidDetails(
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
+  // Vérification du secret webhook — protège contre les appels externes non autorisés
+  // Configurez WEBHOOK_SECRET dans les variables d'environnement de la fonction Supabase
+  // et ajoutez le même header dans la configuration du webhook Database → HTTP
+  const webhookSecret = Deno.env.get('WEBHOOK_SECRET')
+  if (webhookSecret) {
+    const providedSecret = req.headers.get('x-webhook-secret')
+    if (providedSecret !== webhookSecret) {
+      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
+        status: 401,
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      })
+    }
+  }
+
   const payload = await req.json()
   const { table, record } = payload
   console.log('[send-push] table:', table, 'record.id:', record?.id, 'chantier_id:', record?.chantier_id)
