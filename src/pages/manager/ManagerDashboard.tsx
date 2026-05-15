@@ -1,5 +1,6 @@
-import { useState, useMemo, useCallback, useEffect, useRef } from 'react'
+import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { Layers, RefreshCw, AlertTriangle, CheckCircle2, Sun, LogOut, Bell, Calendar, Zap, MoreHorizontal } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantiers } from '@/hooks/useChantiers'
 import { useAnomalies } from '@/hooks/useAnomalies'
@@ -44,20 +45,21 @@ const STATUT_LABEL: Record<ChantierStatut, string> = {
   bloque:     'Bloqué',
 }
 
-const STATUT_DOT: Record<ChantierStatut, string> = {
+
+const STATUT_TOP: Record<ChantierStatut, string> = {
   planifie:   'bg-purple-400',
-  en_attente: 'bg-gray-400',
-  en_cours:   'bg-blue-500',
-  termine:    'bg-green-500',
-  bloque:     'bg-red-500',
+  en_attente: 'bg-slate-300',
+  en_cours:   'bg-blue-400',
+  termine:    'bg-emerald-400',
+  bloque:     'bg-red-400',
 }
 
-const STATUT_BORDER: Record<ChantierStatut, string> = {
-  planifie:   'border-l-purple-400',
-  en_attente: 'border-l-gray-300',
-  en_cours:   'border-l-blue-500',
-  termine:    'border-l-green-500',
-  bloque:     'border-l-red-500',
+const STATUT_BADGE: Record<ChantierStatut, string> = {
+  planifie:   'text-purple-700 bg-purple-50 ring-purple-600/20',
+  en_attente: 'text-slate-700 bg-slate-100 ring-slate-600/20',
+  en_cours:   'text-blue-700 bg-blue-50 ring-blue-600/20',
+  termine:    'text-emerald-700 bg-emerald-50 ring-emerald-600/20',
+  bloque:     'text-red-700 bg-red-50 ring-red-600/20',
 }
 
 // ─── Carte chantier ──────────────────────────────────────────────────────────
@@ -65,44 +67,55 @@ function ChantierCard({ chantier, pct, onClick }: { chantier: Chantier; pct: num
   return (
     <div
       onClick={onClick}
-      className={`bg-white rounded-2xl border-l-4 ${STATUT_BORDER[chantier.statut]} cursor-pointer transition-all duration-200 hover:-translate-y-0.5`}
-      style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}
-      onMouseEnter={e => (e.currentTarget.style.boxShadow = '0 8px 24px rgba(0,0,0,0.10), 0 2px 4px rgba(0,0,0,0.06)')}
-      onMouseLeave={e => (e.currentTarget.style.boxShadow = '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)')}
+      className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group flex flex-col justify-between relative overflow-hidden cursor-pointer"
     >
-      <div className="p-6">
-        <div className="flex items-start justify-between gap-3 mb-4">
-          <div className="min-w-0">
-            <h3 className="font-semibold text-gray-900 truncate text-base">{chantier.nom}</h3>
-            <p className="text-sm text-gray-500 mt-0.5">{chantier.client_nom}</p>
+      {/* Barre colorée en haut selon le statut */}
+      <div className={`absolute top-0 left-0 w-full h-1 ${STATUT_TOP[chantier.statut]}`} />
+
+      <div className="p-6 pt-7">
+        <div className="flex justify-between items-start mb-4">
+          <div className="min-w-0 flex-1">
+            <h3 className="font-bold text-lg text-slate-900 group-hover:text-orange-600 transition-colors truncate">{chantier.nom}</h3>
+            <p className="text-sm text-slate-500 mt-0.5 truncate">{chantier.client_nom}</p>
           </div>
-          <div className="flex items-center gap-1.5 flex-shrink-0 mt-0.5">
-            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${STATUT_DOT[chantier.statut]}`} />
-            <span className="text-xs font-medium text-gray-600">{STATUT_LABEL[chantier.statut]}</span>
-          </div>
+          <button onClick={e => e.stopPropagation()} className="text-slate-300 hover:text-slate-500 transition-colors ml-2 flex-shrink-0">
+            <MoreHorizontal className="w-5 h-5" />
+          </button>
         </div>
 
-        <div className="mb-4">
-          <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-            <span>Progression</span>
-            <span className={`font-semibold ${pct === 100 ? 'text-green-600' : 'text-gray-600'}`}>{pct}%</span>
+        <div className="mb-5">
+          <div className="flex justify-between items-end mb-2">
+            <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">Progression</span>
+            <span className="text-sm font-bold text-slate-700">{pct}%</span>
           </div>
-          <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
             <div
-              className={`h-full rounded-full transition-all duration-500 ${pct === 100 ? 'bg-green-500' : 'bg-orange-500'}`}
+              className={`h-1.5 rounded-full transition-all duration-500 ${pct === 100 ? 'bg-emerald-500' : 'bg-orange-500'}`}
               style={{ width: `${pct}%` }}
             />
           </div>
         </div>
+      </div>
 
-        <div className="flex items-center gap-4 text-xs text-gray-400">
-          <span>📅 {new Date(chantier.date_prevue).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}</span>
-          {chantier.puissance_kwc != null
-            ? <span>⚡ {chantier.puissance_kwc} kWc</span>
-            : <span>☀️ {chantier.nb_panneaux} pan.</span>
-          }
-          <span>{chantier.type_installation}</span>
+      <div className="flex items-center justify-between px-6 pb-5 pt-2 border-t border-slate-50">
+        <div className="flex items-center gap-3 text-xs font-medium text-slate-500">
+          <div className="flex items-center gap-1">
+            <Calendar className="w-3.5 h-3.5 text-slate-400" />
+            {new Date(chantier.date_prevue).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+          </div>
+          {chantier.puissance_kwc != null && (
+            <div className="flex items-center gap-1">
+              <Zap className="w-3.5 h-3.5 text-orange-400" />
+              {chantier.puissance_kwc} kWc
+            </div>
+          )}
         </div>
+        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-xs font-semibold ring-1 ring-inset ${STATUT_BADGE[chantier.statut]}`}>
+          {chantier.statut === 'termine'  && <CheckCircle2 className="w-3 h-3" />}
+          {chantier.statut === 'en_cours' && <RefreshCw className="w-3 h-3" />}
+          {chantier.statut === 'bloque'   && <AlertTriangle className="w-3 h-3" />}
+          {STATUT_LABEL[chantier.statut]}
+        </span>
       </div>
     </div>
   )
@@ -312,40 +325,38 @@ export default function ManagerDashboard() {
     <div className="min-h-screen bg-[#F8FAFC]">
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
-      <header className="bg-white border-b border-gray-100 sticky top-0 z-20">
-        <div className="max-w-4xl md:max-w-6xl mx-auto px-6">
-
+      <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {/* Ligne principale */}
-          <div className="flex items-center justify-between py-5">
-            <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-xl flex items-center justify-center text-lg"
-                style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
-                ☀️
+          <div className="flex justify-between items-center h-16">
+            {/* Logo */}
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
+                <Sun className="text-white w-5 h-5" />
               </div>
-              <span className="font-bold text-gray-900 text-lg tracking-tight">PVPilot</span>
+              <span className="font-bold text-xl tracking-tight text-slate-900">PVPilot</span>
             </div>
 
-            <div className="flex items-center gap-3">
+            {/* Actions droite */}
+            <div className="flex items-center gap-4">
               <div className="text-right hidden sm:block">
-                <p className="text-sm font-semibold text-gray-900 leading-tight">{profile?.full_name}</p>
-                <p className="text-xs text-gray-400">{profile?.role === 'admin' ? 'Admin' : 'Manager'}</p>
+                <div className="text-sm font-semibold text-slate-900">{profile?.full_name}</div>
+                <div className="text-xs text-slate-500 font-medium capitalize">{profile?.role}</div>
               </div>
               <button onClick={() => setActiveTab('profil')} className="flex-shrink-0">
                 <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="md" />
               </button>
-              {/* Cloche — centre de notifications */}
+              <div className="h-6 w-px bg-slate-200" />
+
+              {/* Cloche notifications */}
               <div className="relative" ref={notifPanelRef}>
                 <button
                   onClick={() => { setShowNotifPanel(o => !o); if (!showNotifPanel) markAllRead() }}
-                  className="relative w-9 h-9 rounded-full flex items-center justify-center transition-colors text-gray-400 hover:text-orange-500 hover:bg-orange-50"
+                  className="relative p-2 text-slate-400 hover:text-slate-600 transition-colors rounded-full hover:bg-slate-50"
                 >
-                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-5 h-5">
-                    <path d="M5.25 9a6.75 6.75 0 0113.5 0v.75c0 2.123.8 4.057 2.118 5.52a.75.75 0 01-.297 1.206c-1.544.57-3.16.99-4.831 1.243a3.75 3.75 0 11-7.48 0 24.585 24.585 0 01-4.831-1.244.75.75 0 01-.298-1.205A8.217 8.217 0 005.25 9.75V9z" />
-                  </svg>
+                  <Bell className="w-5 h-5" />
                   {unreadCount > 0 && (
-                    <span className="absolute -top-0.5 -right-0.5 min-w-[18px] h-[18px] px-1 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
-                      {unreadCount > 99 ? '99+' : unreadCount}
-                    </span>
+                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-orange-500 rounded-full ring-2 ring-white" />
                   )}
                 </button>
 
@@ -411,46 +422,43 @@ export default function ManagerDashboard() {
                   </div>
                 )}
               </div>
-              <button
-                onClick={signOut}
-                title="Se déconnecter"
-                className="text-gray-300 hover:text-red-400 transition-colors text-lg leading-none ml-1"
-              >
-                ↩
+
+              <button onClick={signOut} className="p-2 text-slate-400 hover:text-red-500 transition-colors rounded-full hover:bg-slate-50">
+                <LogOut className="w-5 h-5" />
               </button>
             </div>
           </div>
 
-          {/* Onglets navigation */}
-          <div className="flex gap-0 -mb-px overflow-x-auto no-scrollbar">
+          {/* Onglets navigation — style underline */}
+          <nav className="flex gap-0 overflow-x-auto no-scrollbar -mb-px">
             {([
               { key: 'chantiers', label: 'Chantiers' },
               { key: 'anomalies', label: 'Anomalies', badge: anomaliesOuvertes.length || undefined },
               { key: 'stats',     label: 'Stats' },
               { key: 'planning',  label: 'Planning' },
               { key: 'equipe',    label: 'Équipe' },
-              profile?.role === 'admin' ? { key: 'entreprises', label: '🏢 Entreprises' } : null,
-              profile?.role === 'admin' ? { key: 'bugs', label: '🐛 Bugs' } : null,
+              profile?.role === 'admin' ? { key: 'entreprises', label: 'Entreprises' } : null,
+              profile?.role === 'admin' ? { key: 'bugs', label: 'Bugs' } : null,
               { key: 'profil',    label: 'Profil' },
             ].filter(Boolean) as { key: Tab; label: string; badge?: number }[]).map(tab => (
               <button
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
-                className={`px-5 py-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-1.5 ${
+                className={`flex items-center whitespace-nowrap py-4 px-4 border-b-2 font-medium text-sm transition-colors ${
                   activeTab === tab.key
-                    ? 'border-orange-500 text-orange-600 font-semibold'
-                    : 'border-transparent text-gray-500 hover:text-gray-800'
+                    ? 'border-orange-500 text-orange-600'
+                    : 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300'
                 }`}
               >
                 {tab.label}
                 {tab.badge ? (
-                  <span className="bg-red-500 text-white text-[10px] font-bold px-1.5 py-0.5 rounded-full leading-none">
-                    {tab.badge}
-                  </span>
+                  <span className={`ml-2 py-0.5 px-2 rounded-full text-xs ${
+                    activeTab === tab.key ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-500'
+                  }`}>{tab.badge}</span>
                 ) : null}
               </button>
             ))}
-          </div>
+          </nav>
         </div>
       </header>
 
@@ -469,7 +477,7 @@ export default function ManagerDashboard() {
         </div>
       )}
 
-      <main className="max-w-4xl md:max-w-6xl mx-auto px-6 py-8 space-y-6">
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
 
         {/* ── Onglet Anomalies ──────────────────────────────────────────────── */}
         {activeTab === 'anomalies' && (
@@ -570,7 +578,7 @@ export default function ManagerDashboard() {
                 <p className="text-xs text-gray-400 text-center mb-3 font-medium">
                   {anomalieSelectedIds.size} anomalie{anomalieSelectedIds.size > 1 ? 's' : ''} sélectionnée{anomalieSelectedIds.size > 1 ? 's' : ''}
                 </p>
-                <div className="flex gap-2 max-w-4xl md:max-w-6xl mx-auto">
+                <div className="flex gap-2 max-w-7xl mx-auto">
                   <button onClick={() => handleAnomalieBulkStatut('en_cours')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors">En cours</button>
                   <button onClick={() => handleAnomalieBulkStatut('resolu')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 transition-colors">Résoudre</button>
                   <button onClick={() => handleAnomalieBulkStatut('ouvert')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 transition-colors">Rouvrir</button>
@@ -811,29 +819,27 @@ export default function ManagerDashboard() {
         {activeTab === 'chantiers' && (<>
 
         {/* ── KPIs ──────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {[
-            { label: 'Total',    value: stats.total,    dot: 'bg-gray-400',  filter: 'tous'       },
-            { label: 'En cours', value: stats.en_cours, dot: 'bg-blue-500',  filter: 'en_cours'   },
-            { label: 'Bloqués',  value: stats.bloques,  dot: 'bg-red-500',   filter: 'bloque'     },
-            { label: 'Terminés', value: stats.termines, dot: 'bg-green-500', filter: 'termine'    },
-          ].map(kpi => (
-            <button
-              key={kpi.label}
-              onClick={() => setFilterStatut(kpi.filter as FilterStatut)}
-              className={`bg-white rounded-2xl p-5 text-left transition-all duration-200 ${
-                filterStatut === kpi.filter
-                  ? 'ring-2 ring-orange-400 ring-offset-2'
-                  : 'hover:-translate-y-0.5'
-              }`}
-              style={{ boxShadow: filterStatut === kpi.filter ? undefined : '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}
-            >
-              <div className="flex items-center gap-1.5 mb-3">
-                <span className={`w-2 h-2 rounded-full ${kpi.dot}`} />
-                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">{kpi.label}</span>
+            { label: 'Total Chantiers', value: stats.total,    sub: 'Sur la période',        border: 'border-l-slate-800',   icon: <Layers className="w-5 h-5 text-slate-700" />,      iconBg: 'bg-slate-100'   },
+            { label: 'En cours',        value: stats.en_cours, sub: 'Actuellement sur site',  border: 'border-l-blue-500',    icon: <RefreshCw className="w-5 h-5 text-blue-600" />,    iconBg: 'bg-blue-50'     },
+            { label: 'Bloqués',         value: stats.bloques,  sub: 'Nécessitent une action', border: 'border-l-red-500',     icon: <AlertTriangle className="w-5 h-5 text-red-600" />, iconBg: 'bg-red-50'      },
+            { label: 'Terminés',        value: stats.termines, sub: 'Ce mois-ci',             border: 'border-l-emerald-500', icon: <CheckCircle2 className="w-5 h-5 text-emerald-600" />, iconBg: 'bg-emerald-50' },
+          ].map((kpi, i) => (
+            <div key={i} className={`bg-white rounded-2xl p-6 shadow-sm border border-slate-100 border-l-4 ${kpi.border} hover:shadow-md hover:-translate-y-0.5 transition-all cursor-default relative overflow-hidden group`}>
+              {/* Filigrane icône en fond */}
+              <div className="absolute -right-3 -bottom-3 opacity-[0.04] group-hover:scale-110 group-hover:-rotate-12 transition-all duration-500 pointer-events-none">
+                {React.cloneElement(kpi.icon as React.ReactElement, { className: 'w-28 h-28' })}
               </div>
-              <div className="text-4xl font-bold text-gray-900">{kpi.value}</div>
-            </button>
+              <div className="flex justify-between items-start mb-5 relative z-10">
+                <div className={`p-2.5 rounded-xl ${kpi.iconBg}`}>{kpi.icon}</div>
+              </div>
+              <div className="relative z-10">
+                <p className="text-4xl font-black text-slate-800 tracking-tight">{kpi.value}</p>
+                <h3 className="text-sm font-bold text-slate-700 mt-1">{kpi.label}</h3>
+                <p className="text-xs text-slate-400 font-medium mt-0.5">{kpi.sub}</p>
+              </div>
+            </div>
           ))}
         </div>
 
@@ -906,12 +912,11 @@ export default function ManagerDashboard() {
             <button
               key={f.value}
               onClick={() => setFilterStatut(f.value)}
-              className={`flex-shrink-0 text-sm px-4 py-2 rounded-xl font-medium transition-all duration-150 ${
+              className={`flex-shrink-0 transition-all ${
                 filterStatut === f.value
-                  ? 'text-white'
-                  : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+                  ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20 px-4 py-2 rounded-full text-sm font-medium'
+                  : 'bg-white text-slate-600 border border-slate-200 hover:border-orange-500 hover:text-orange-500 px-4 py-2 rounded-full text-sm font-medium'
               }`}
-              style={filterStatut === f.value ? { background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' } : undefined}
             >
               {f.label}
             </button>
