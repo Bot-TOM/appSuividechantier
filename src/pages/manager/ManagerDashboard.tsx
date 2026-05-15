@@ -194,7 +194,7 @@ export default function ManagerDashboard() {
   const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
   const { prefs: notifPrefs, toggle: toggleNotifPref } = useNotifPreferences(pushStatus === 'subscribed')
   const { notifications, unreadCount, markAllRead, markRead, clearAll } = useNotifications()
-  const { unreadCount: chatUnread } = useGlobalMessages(profile?.id ?? '')
+  const { unreadCount: chatUnread } = useGlobalMessages(profile?.id ?? '', profile?.entreprise_id ?? '')
   const [showNotifPanel, setShowNotifPanel] = useState(false)
   const notifPanelRef = useRef<HTMLDivElement>(null)
 
@@ -1259,7 +1259,7 @@ export default function ManagerDashboard() {
 
         {/* ── Onglet Chat général ───────────────────────────────────────────── */}
         {activeTab === 'chat' && profile?.id && (
-          <GlobalChatTab userId={profile.id} isActive={activeTab === 'chat'} />
+          <GlobalChatTab userId={profile.id} entrepriseId={profile.entreprise_id ?? ''} isActive={activeTab === 'chat'} />
         )}
       </main>
 

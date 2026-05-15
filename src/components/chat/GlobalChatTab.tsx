@@ -29,12 +29,13 @@ type Member = { id: string; name: string; avatarUrl?: string | null; poste?: str
 
 interface Props {
   userId: string
+  entrepriseId: string
   isActive?: boolean
 }
 
-export default function GlobalChatTab({ userId, isActive = true }: Props) {
+export default function GlobalChatTab({ userId, entrepriseId, isActive = true }: Props) {
   const { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction, markAllRead } =
-    useGlobalMessages(userId)
+    useGlobalMessages(userId, entrepriseId)
 
   // Nom courant de l'utilisateur
   const myName = useMemo(
@@ -52,11 +53,13 @@ export default function GlobalChatTab({ userId, isActive = true }: Props) {
   const [showMembers, setShowMembers] = useState(false)
   const [members, setMembers]     = useState<Member[]>([])
 
-  // Charge tous les membres de l'équipe
+  // Charge les membres de la même entreprise uniquement
   useEffect(() => {
+    if (!entrepriseId) return
     supabase
       .from('profiles')
       .select('id, full_name, avatar_url, poste, role')
+      .eq('entreprise_id', entrepriseId)
       .then(({ data }) => {
         setMembers((data ?? []).map(p => ({
           id: p.id,
@@ -66,7 +69,7 @@ export default function GlobalChatTab({ userId, isActive = true }: Props) {
           role: p.role,
         })))
       })
-  }, [])
+  }, [entrepriseId])
 
   // Noms connus pour les mentions
   const allNames = useMemo(() => members.map(m => m.name), [members])

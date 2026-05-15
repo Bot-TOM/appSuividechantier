@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 export interface GlobalMessage {
   id: string
   user_id: string
+  entreprise_id: string | null
   content: string | null
   file_url: string | null
   file_name: string | null
@@ -19,16 +20,18 @@ export interface GlobalMessage {
   global_message_reactions?: { id: string; emoji: string; user_id: string }[]
 }
 
-export function useGlobalMessages(userId: string) {
+export function useGlobalMessages(userId: string, entrepriseId: string) {
   const [messages, setMessages]   = useState<GlobalMessage[]>([])
   const [loading, setLoading]     = useState(true)
   const [uploading, setUploading] = useState(false)
   const msgsRef = useRef<GlobalMessage[]>([])
 
   const fetchMessages = useCallback(async () => {
+    if (!entrepriseId) return          // pas d'entreprise connue → rien à charger
     const { data, error } = await supabase
       .from('global_messages')
       .select('*, profiles!global_messages_user_id_fkey(full_name, avatar_url, poste, role), global_message_reactions(*)')
+      .eq('entreprise_id', entrepriseId)
       .order('created_at', { ascending: true })
       .limit(200)
     if (error) console.error('[global-chat] fetchMessages:', error)
@@ -37,48 +40,64 @@ export function useGlobalMessages(userId: string) {
       setMessages(data as GlobalMessage[])
     }
     setLoading(false)
-  }, [])
+  }, [entrepriseId])
 
   useEffect(() => { fetchMessages() }, [fetchMessages])
 
   useEffect(() => {
+    if (!entrepriseId) return
+    // Canal isolé par entreprise pour le realtime
+    const channelName = `global-chat-${entrepriseId}`
     const channel = supabase
-      .channel('global-chat')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'global_messages' }, fetchMessages)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'global_message_reactions' }, fetchMessages)
+      .channel(channelName)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'global_messages',
+        filter: `entreprise_id=eq.${entrepriseId}`,
+      }, fetchMessages)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'global_message_reactions',
+      }, fetchMessages)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
-  }, [fetchMessages])
+  }, [fetchMessages, entrepriseId])
 
   const sendMessage = useCallback(async (content: string, replyToId?: string) => {
+    if (!entrepriseId) return
     const { error } = await supabase.from('global_messages').insert({
-      user_id: userId,
+      user_id:       userId,
+      entreprise_id: entrepriseId,
       content,
-      reply_to_id: replyToId ?? null,
+      reply_to_id:   replyToId ?? null,
     })
     if (error) console.error('[global-chat] sendMessage:', error)
-  }, [userId])
+  }, [userId, entrepriseId])
 
   const sendFile = useCallback(async (file: File, replyToId?: string) => {
+    if (!entrepriseId) return
     setUploading(true)
     try {
       const ext  = file.name.split('.').pop() ?? 'bin'
-      const path = `global/${userId}/${Date.now()}.${ext}`
+      const path = `global/${entrepriseId}/${userId}/${Date.now()}.${ext}`
       const { data: upload, error } = await supabase.storage.from('chat-files').upload(path, file)
       if (error) throw error
       const { data: { publicUrl } } = supabase.storage.from('chat-files').getPublicUrl(upload.path)
       const { error: insertErr } = await supabase.from('global_messages').insert({
-        user_id:    userId,
-        file_url:   publicUrl,
-        file_name:  file.name,
-        file_type:  file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'audio' : 'document',
-        reply_to_id: replyToId ?? null,
+        user_id:       userId,
+        entreprise_id: entrepriseId,
+        file_url:      publicUrl,
+        file_name:     file.name,
+        file_type:     file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'audio' : 'document',
+        reply_to_id:   replyToId ?? null,
       })
       if (insertErr) console.error('[global-chat] sendFile insert:', insertErr)
     } finally {
       setUploading(false)
     }
-  }, [userId])
+  }, [userId, entrepriseId])
 
   const deleteMessage = useCallback(async (id: string) => {
     await supabase.from('global_messages').delete().eq('id', id)
@@ -100,14 +119,16 @@ export function useGlobalMessages(userId: string) {
   }, [userId])
 
   // Compteur non-lus : messages depuis la dernière visite
-  // Stocké dans localStorage sous forme de timestamp
+  // Clé localStorage scoped par entreprise pour éviter les croisements
+  const storageKey = `global-chat-last-seen-${entrepriseId}`
+
   const getLastSeen = useCallback(() => {
-    return localStorage.getItem('global-chat-last-seen') ?? '1970-01-01'
-  }, [])
+    return localStorage.getItem(storageKey) ?? '1970-01-01'
+  }, [storageKey])
 
   const markAllRead = useCallback(() => {
-    localStorage.setItem('global-chat-last-seen', new Date().toISOString())
-  }, [])
+    localStorage.setItem(storageKey, new Date().toISOString())
+  }, [storageKey])
 
   const unreadCount = messages.filter(
     m => m.user_id !== userId && m.created_at > getLastSeen()

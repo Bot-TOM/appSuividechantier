@@ -250,7 +250,7 @@ export default function TechnicienHome() {
   const { can } = usePermissions()
   const navigate = useNavigate()
   const [activeTab, setActiveTab] = useState<'chantiers' | 'planning' | 'equipe' | 'chat' | 'profil'>('chantiers')
-  const { unreadCount: chatUnread } = useGlobalMessages(profile?.id ?? '')
+  const { unreadCount: chatUnread } = useGlobalMessages(profile?.id ?? '', profile?.entreprise_id ?? '')
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([])
 
   useEffect(() => {
@@ -470,7 +470,7 @@ export default function TechnicienHome() {
         )}
 
         {activeTab === 'chat' && profile?.id && (
-          <GlobalChatTab userId={profile.id} isActive={activeTab === 'chat'} />
+          <GlobalChatTab userId={profile.id} entrepriseId={profile?.entreprise_id ?? ''} isActive={activeTab === 'chat'} />
         )}
 
         {activeTab === 'profil' && (
