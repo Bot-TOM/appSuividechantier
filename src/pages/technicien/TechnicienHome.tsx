@@ -10,6 +10,8 @@ import { Chantier, ChantierStatut, UserProfile } from '@/types'
 import { usePermissions } from '@/hooks/usePermissions'
 import PlanningTechTab from '@/components/planning/PlanningTechTab'
 import BugReportButton from '@/components/BugReportButton'
+import GlobalChatTab from '@/components/chat/GlobalChatTab'
+import { useGlobalMessages } from '@/hooks/useGlobalMessages'
 
 const STATUT_LABEL: Record<ChantierStatut, string> = {
   planifie:   'Planifié',
@@ -247,7 +249,8 @@ export default function TechnicienHome() {
   const { chantiers, loading } = useChantiers()
   const { can } = usePermissions()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'chantiers' | 'planning' | 'equipe' | 'profil'>('chantiers')
+  const [activeTab, setActiveTab] = useState<'chantiers' | 'planning' | 'equipe' | 'chat' | 'profil'>('chantiers')
+  const { unreadCount: chatUnread } = useGlobalMessages(profile?.id ?? '')
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([])
 
   useEffect(() => {
@@ -339,6 +342,11 @@ export default function TechnicienHome() {
             <div className="mt-4">
               <h1 className="text-white font-bold text-2xl">Mon équipe</h1>
               <p className="text-orange-100 text-sm mt-0.5">{teamMembers.length} membre{teamMembers.length !== 1 ? 's' : ''}</p>
+            </div>
+          ) : activeTab === 'chat' ? (
+            <div className="mt-4">
+              <h1 className="text-white font-bold text-2xl">Chat équipe</h1>
+              <p className="text-orange-100 text-sm mt-0.5">Messages de l'équipe</p>
             </div>
           ) : (
             <div className="mt-4">
@@ -461,6 +469,10 @@ export default function TechnicienHome() {
           <PlanningTechTab />
         )}
 
+        {activeTab === 'chat' && profile?.id && (
+          <GlobalChatTab userId={profile.id} isActive={activeTab === 'chat'} />
+        )}
+
         {activeTab === 'profil' && (
           <div className="mt-2">
             <ProfilTab profile={profile} signOut={signOut} pushStatus={pushStatus} subscribePush={subscribePush} unsubscribePush={unsubscribePush} onAvatarChange={refreshProfile} />
@@ -502,6 +514,24 @@ export default function TechnicienHome() {
             </svg>
             <span className="text-[11px] font-semibold">Équipe</span>
             {activeTab === 'equipe' && <span className="w-1 h-1 rounded-full bg-orange-500 mt-0.5" />}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('chat')}
+            className={`flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors relative ${activeTab === 'chat' ? 'text-orange-500' : 'text-gray-400'}`}
+          >
+            <div className="relative">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={activeTab === 'chat' ? 2.5 : 1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              {chatUnread > 0 && activeTab !== 'chat' && (
+                <span className="absolute -top-1.5 -right-1.5 min-w-[16px] h-4 px-1 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+                  {chatUnread > 9 ? '9+' : chatUnread}
+                </span>
+              )}
+            </div>
+            <span className="text-[11px] font-semibold">Chat</span>
+            {activeTab === 'chat' && <span className="w-1 h-1 rounded-full bg-orange-500 mt-0.5" />}
           </button>
 
           <button
