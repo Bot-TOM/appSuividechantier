@@ -708,15 +708,15 @@ export default function ManagerDashboard() {
 
         {/* ── Onglet Profil ─────────────────────────────────────────────────── */}
         {activeTab === 'profil' && (
-          <div className="max-w-4xl pb-8">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="max-w-4xl pb-8 space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6">
 
               {/* ── Colonne gauche ──────────────────────────────────────── */}
               <div className="md:col-span-1 space-y-4">
 
                 {/* Carte avatar */}
-                <div className="bg-white rounded-2xl border border-slate-100 p-8 flex flex-col items-center text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                  <div className="relative mb-5">
+                <div className="bg-white rounded-2xl border border-slate-100 p-6 sm:p-8 flex flex-col items-center text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                  <div className="relative mb-4 sm:mb-5">
                     <label className="cursor-pointer block">
                       <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="xl" />
                       <div className="absolute bottom-0 right-0 p-1.5 bg-orange-500 hover:bg-orange-600 rounded-full flex items-center justify-center border-2 border-white transition-colors shadow-sm">
@@ -728,9 +728,9 @@ export default function ManagerDashboard() {
                       <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={avatarLoading} />
                     </label>
                   </div>
-                  <h2 className="text-xl font-semibold text-slate-800 tracking-tight">{profile?.full_name}</h2>
-                  <p className="text-sm font-medium text-slate-500 mt-1">{profile?.email}</p>
-                  <div className={`mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${
+                  <h2 className="text-lg sm:text-xl font-semibold text-slate-800 tracking-tight">{profile?.full_name}</h2>
+                  <p className="text-sm font-medium text-slate-500 mt-1 break-all">{profile?.email}</p>
+                  <div className={`mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${
                     profile?.role === 'admin'
                       ? 'bg-purple-50 text-purple-700 border-purple-100'
                       : 'bg-orange-50 text-orange-700 border-orange-100'
@@ -754,10 +754,10 @@ export default function ManagerDashboard() {
                   </button>
                 </div>
 
-                {/* Déconnexion */}
+                {/* Déconnexion — visible uniquement sur desktop dans la colonne gauche */}
                 <button
                   onClick={signOut}
-                  className="w-full bg-red-50 text-red-600 font-semibold py-4 rounded-2xl hover:bg-red-100 transition-colors text-sm border border-red-100"
+                  className="hidden md:block w-full bg-red-50 text-red-600 font-semibold py-4 rounded-2xl hover:bg-red-100 transition-colors text-sm border border-red-100"
                 >
                   Se déconnecter
                 </button>
@@ -766,35 +766,35 @@ export default function ManagerDashboard() {
               {/* ── Colonne droite — Préférences notifications ───────────── */}
               <div className="md:col-span-2">
                 <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                  <div className="px-8 py-6 border-b border-slate-100">
-                    <h2 className="text-lg font-semibold text-slate-800">Préférences de notifications</h2>
-                    <p className="text-sm text-slate-500 font-medium mt-1">
+                  <div className="px-5 py-4 sm:px-8 sm:py-6 border-b border-slate-100">
+                    <h2 className="text-base sm:text-lg font-semibold text-slate-800">Préférences de notifications</h2>
+                    <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
                       {pushStatus === 'subscribed'
                         ? 'Gérez ce que vous souhaitez recevoir sur cet appareil.'
                         : 'Activez les notifications push (bouton cloche) pour gérer vos préférences.'}
                     </p>
                   </div>
 
-                  <div className="p-2">
+                  <div className="p-1.5 sm:p-2">
                     {([
-                      { key: 'anomalie_notif_enabled',     label: 'Anomalies',        desc: 'Nouvelle anomalie signalée',              icon: <AlertCircle className="w-5 h-5 text-rose-500" />,    iconBg: 'bg-rose-50'    },
-                      { key: 'rapport_notif_enabled',      label: 'Rapports terrain',  desc: "Message d'un technicien",                 icon: <FileText className="w-5 h-5 text-blue-500" />,       iconBg: 'bg-blue-50'    },
-                      { key: 'chantier_notif_enabled',     label: 'Chantiers',         desc: 'Bloqué ou terminé',                       icon: <AlertTriangle className="w-5 h-5 text-amber-500" />, iconBg: 'bg-amber-50'   },
-                      { key: 'autocontrole_notif_enabled', label: 'Auto-contrôles',    desc: 'Rapport soumis par un technicien',         icon: <CheckSquare className="w-5 h-5 text-emerald-500" />, iconBg: 'bg-emerald-50' },
-                      { key: 'chat_notif_enabled',         label: 'Messages chat',     desc: 'Nouveau message dans un chantier ou chat', icon: <MessageCircle className="w-5 h-5 text-indigo-500" />, iconBg: 'bg-indigo-50' },
+                      { key: 'anomalie_notif_enabled',     label: 'Anomalies',        desc: 'Nouvelle anomalie signalée',              icon: <AlertCircle className="w-5 h-5 text-rose-500" />,     iconBg: 'bg-rose-50'    },
+                      { key: 'rapport_notif_enabled',      label: 'Rapports terrain',  desc: "Message d'un technicien",                 icon: <FileText className="w-5 h-5 text-blue-500" />,        iconBg: 'bg-blue-50'    },
+                      { key: 'chantier_notif_enabled',     label: 'Chantiers',         desc: 'Bloqué ou terminé',                       icon: <AlertTriangle className="w-5 h-5 text-amber-500" />,  iconBg: 'bg-amber-50'   },
+                      { key: 'autocontrole_notif_enabled', label: 'Auto-contrôles',    desc: 'Rapport soumis par un technicien',         icon: <CheckSquare className="w-5 h-5 text-emerald-500" />,  iconBg: 'bg-emerald-50' },
+                      { key: 'chat_notif_enabled',         label: 'Messages chat',     desc: 'Nouveau message dans un chantier ou chat', icon: <MessageCircle className="w-5 h-5 text-indigo-500" />, iconBg: 'bg-indigo-50'  },
                     ] as const).map(({ key, label, desc, icon, iconBg }) => (
-                      <div key={key} className="flex items-center justify-between p-5 hover:bg-slate-50 rounded-xl transition-colors">
-                        <div className="flex items-start gap-4">
-                          <div className={`p-2.5 ${iconBg} rounded-xl mt-0.5 flex-shrink-0`}>{icon}</div>
-                          <div>
+                      <div key={key} className="flex items-center justify-between px-4 py-3.5 sm:p-5 hover:bg-slate-50 rounded-xl transition-colors">
+                        <div className="flex items-start gap-3 sm:gap-4 min-w-0">
+                          <div className={`p-2 sm:p-2.5 ${iconBg} rounded-xl mt-0.5 flex-shrink-0`}>{icon}</div>
+                          <div className="min-w-0">
                             <p className="text-sm font-semibold text-slate-800">{label}</p>
-                            <p className="text-xs font-medium text-slate-500 mt-0.5">{desc}</p>
+                            <p className="text-xs font-medium text-slate-500 mt-0.5 leading-snug">{desc}</p>
                           </div>
                         </div>
                         <button
                           onClick={() => pushStatus === 'subscribed' && toggleNotifPref(key)}
                           disabled={pushStatus !== 'subscribed'}
-                          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
+                          className={`relative inline-flex h-6 w-11 shrink-0 ml-3 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
                             pushStatus !== 'subscribed' ? 'bg-slate-200 cursor-not-allowed opacity-50' :
                             notifPrefs[key] ? 'bg-orange-500 cursor-pointer' : 'bg-slate-200 cursor-pointer'
                           }`}
@@ -810,6 +810,14 @@ export default function ManagerDashboard() {
               </div>
 
             </div>
+
+            {/* Déconnexion — visible uniquement sur mobile, en bas de tout */}
+            <button
+              onClick={signOut}
+              className="md:hidden w-full bg-red-50 text-red-600 font-semibold py-4 rounded-2xl hover:bg-red-100 transition-colors text-sm border border-red-100"
+            >
+              Se déconnecter
+            </button>
           </div>
         )}
 
