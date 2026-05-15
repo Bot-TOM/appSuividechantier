@@ -6,34 +6,58 @@ import Logo from '@/components/Logo'
 
 const FEATURES = [
   {
+    icon: '📅',
+    title: 'Planning équipe & feuille d\'heures',
+    desc: 'Grille semaine par technicien, types d\'activité (Chantier, Dépôt, Route, Congés…), saisie arrivée/départ/pause et export Excel.',
+  },
+  {
     icon: '📋',
     title: 'Suivi des étapes en temps réel',
-    desc: 'Chaque étape validée depuis le terrain avec photo. Le manager voit l\'avancement instantanément.',
+    desc: 'Chaque étape validée depuis le terrain avec photos. Auto-contrôle par catégorie avec signature. Le manager voit l\'avancement instantanément.',
   },
   {
     icon: '💬',
-    title: 'Chat d\'équipe intégré',
-    desc: 'Messages texte, photos, messages vocaux. Tout reste attaché au chantier, rien ne se perd.',
+    title: 'Chat intégré chantier & équipe',
+    desc: 'Messagerie par chantier avec mentions @, réactions, statut en ligne. Chat global pour toute l\'équipe, isolé par entreprise.',
   },
   {
     icon: '📄',
     title: 'Rapport PDF automatique',
-    desc: 'Généré en un clic depuis les données terrain. Signé, daté, prêt à envoyer au client.',
+    desc: 'Généré en 1 clic depuis les données terrain. Personnalisable par section, photos pleine largeur, prêt à envoyer au client.',
   },
   {
     icon: '⚠️',
     title: 'Gestion des anomalies',
-    desc: 'Déclarez et suivez les problèmes avec photo et niveau de gravité. Résolution tracée.',
+    desc: 'Signalez et suivez les problèmes avec photo et niveau de gravité. Résolution tracée, vue globale pour le manager.',
   },
   {
     icon: '🔔',
-    title: 'Notifications push',
-    desc: 'Restez informé en temps réel des blocages, validations et nouveaux rapports.',
+    title: 'Notifications push intelligentes',
+    desc: 'Anomalies, rapports terrain, statuts chantier, messages — chaque utilisateur choisit ce qu\'il reçoit sur son appareil.',
+  },
+]
+
+const HIGHLIGHTS = [
+  {
+    badge: 'IA',
+    badgeColor: 'bg-purple-100 text-purple-700',
+    title: 'Import matériel par Excel ou photo',
+    desc: 'Prenez en photo votre liste de matériel ou importez un fichier Excel — l\'IA extrait automatiquement les noms et quantités pour pré-remplir la checklist.',
+    icon: '🤖',
   },
   {
-    icon: '📊',
-    title: 'Tableau de bord manager',
-    desc: 'Vue globale de tous vos chantiers : avancement, alertes, anomalies ouvertes.',
+    badge: 'Multi-entreprise',
+    badgeColor: 'bg-blue-100 text-blue-700',
+    title: 'Isolation totale des données',
+    desc: 'Chaque entreprise a ses propres données, équipes et chantiers parfaitement isolés. Prêt pour une utilisation SaaS multi-tenant.',
+    icon: '🏢',
+  },
+  {
+    badge: 'Terrain',
+    badgeColor: 'bg-green-100 text-green-700',
+    title: 'Auto-contrôle qualité',
+    desc: 'Formulaire d\'auto-contrôle par catégorie (électrique, mécanique, sécurité…) avec signature numérique intégrée au rapport PDF.',
+    icon: '✅',
   },
 ]
 
@@ -41,17 +65,17 @@ const STEPS = [
   {
     num: '1',
     title: 'Le manager prépare le chantier',
-    desc: 'Création du chantier, assignation de l\'équipe, ajout des documents et de la checklist matériel.',
+    desc: 'Création du chantier, assignation de l\'équipe, planning de la semaine, ajout des documents et checklist matériel (import Excel ou photo).',
   },
   {
     num: '2',
     title: 'Les techniciens suivent depuis le terrain',
-    desc: 'Application mobile, saisie en moins de 30 secondes par étape, photos, chat, signalement d\'anomalies.',
+    desc: 'Application mobile, validation des étapes avec photos, chat, signalement d\'anomalies, saisie des heures — le tout en moins de 30 secondes par action.',
   },
   {
     num: '3',
     title: 'Le rapport se génère automatiquement',
-    desc: 'Toutes les données collectées sur le terrain alimentent un rapport PDF professionnel en un clic.',
+    desc: 'Toutes les données terrain alimentent un rapport PDF professionnel en 1 clic. Personnalisable, prêt à envoyer au client.',
   },
 ]
 
@@ -82,11 +106,12 @@ const PRICING = [
     features: [
       'Chantiers illimités',
       '10 utilisateurs',
-      'Toutes les fonctionnalités',
+      'Planning équipe + feuille d\'heures',
       'Export Excel & PDF avancé',
       'Notifications push',
       'Gestion des anomalies',
       'Auto-contrôle terrain',
+      'Import matériel IA',
     ],
     cta: 'Essayer 14 jours gratuits',
     ctaStyle: 'text-white',
@@ -103,6 +128,7 @@ const PRICING = [
       'Utilisateurs illimités',
       'Chantiers illimités',
       'Tout ce qu\'inclut Pro',
+      'Multi-entreprise isolé',
       'Support prioritaire',
       'Onboarding personnalisé',
       'Facturation annuelle disponible',
@@ -124,15 +150,19 @@ const FAQS = [
   },
   {
     q: 'Mes données sont-elles sécurisées ?',
-    a: 'Oui. Les données sont hébergées sur infrastructure européenne (Supabase), chiffrées en transit et au repos. Chaque entreprise a ses propres données isolées.',
+    a: 'Oui. Les données sont hébergées sur infrastructure européenne (Supabase), chiffrées en transit et au repos. Chaque entreprise a ses propres données isolées — aucune fuite entre clients.',
   },
   {
-    q: 'Puis-je importer mon équipe et mes chantiers existants ?',
-    a: 'Oui. Vous pouvez créer vos techniciens directement depuis l\'interface manager. L\'import de chantiers via Excel est disponible sur le plan Pro.',
+    q: 'Comment fonctionne l\'import matériel par IA ?',
+    a: 'Prenez en photo votre bon de livraison ou importez un fichier Excel — l\'IA (Claude d\'Anthropic) extrait automatiquement les articles et quantités pour pré-remplir la checklist. Vous validez avant d\'enregistrer.',
+  },
+  {
+    q: 'Puis-je gérer plusieurs entreprises ?',
+    a: 'Oui, sur le plan Business. Chaque entreprise dispose de ses propres données, équipes et chantiers parfaitement isolés. L\'administrateur peut accéder à toutes les entreprises depuis une interface dédiée.',
   },
 ]
 
-// ── Composant Mockup téléphone avec vraie capture ────────────────────────────
+// ── Composant Phone Mockup ────────────────────────────────────────────────────
 
 function PhoneMockup() {
   return (
@@ -140,7 +170,11 @@ function PhoneMockup() {
       <div className="rounded-[2.5rem] bg-gray-900 p-2 shadow-2xl"
         style={{ boxShadow: '0 30px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.08)' }}>
         <div className="rounded-[2rem] overflow-hidden bg-white" style={{ height: 520 }}>
-          <img src="/Dashboard.png" alt="Dashboard PVPilot" className="w-full h-full object-cover object-top" />
+          <img
+            src="/screen-dashboard.png"
+            alt="Dashboard PVPilot"
+            className="w-full h-full object-cover object-top"
+          />
         </div>
       </div>
       {/* Notification flottante */}
@@ -181,7 +215,7 @@ export default function LandingPage() {
 
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Fonctionnalités</a>
-            <a href="#how" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Comment ça marche</a>
+            <a href="#apercu" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Aperçu</a>
             <a href="#pricing" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">Tarifs</a>
             <a href="#faq" className="text-sm text-gray-500 hover:text-gray-900 transition-colors">FAQ</a>
           </div>
@@ -203,7 +237,6 @@ export default function LandingPage() {
       <section className="relative overflow-hidden pt-16 pb-24 md:pt-24 md:pb-32"
         style={{ background: 'linear-gradient(160deg, #FFF7ED 0%, #FFFFFF 50%)' }}>
 
-        {/* Cercles décoratifs */}
         <div className="absolute top-0 right-0 w-[600px] h-[600px] rounded-full opacity-10 pointer-events-none"
           style={{ background: 'radial-gradient(circle, #F97316, transparent)', transform: 'translate(30%, -30%)' }} />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] rounded-full opacity-5 pointer-events-none"
@@ -227,9 +260,9 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-lg text-gray-500 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0">
-                Suivi terrain en temps réel, rapports PDF automatiques, chat d'équipe,
-                gestion des anomalies. Tout ce dont votre entreprise a besoin,
-                dans une seule application mobile.
+                Planning équipe, suivi terrain en temps réel, rapports PDF,
+                chat intégré, gestion des anomalies et import matériel par IA.
+                Tout en une seule application mobile.
               </p>
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
@@ -238,10 +271,10 @@ export default function LandingPage() {
                   style={{ background: 'linear-gradient(135deg, #EA580C, #F97316)', boxShadow: '0 4px 16px rgba(249,115,22,0.4)' }}>
                   Essayer gratuitement →
                 </Link>
-                <a href="#how"
+                <a href="#apercu"
                   className="bg-white border border-gray-200 text-gray-700 font-semibold px-6 py-3.5 rounded-xl text-sm hover:bg-gray-50 transition-colors text-center"
                   style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                  Voir comment ça marche
+                  Voir l'application
                 </a>
               </div>
 
@@ -317,11 +350,27 @@ export default function LandingPage() {
               </div>
             ))}
           </div>
+
+          {/* Highlights IA & avancé */}
+          <div className="mt-8 grid md:grid-cols-3 gap-6">
+            {HIGHLIGHTS.map(h => (
+              <div key={h.title}
+                className="rounded-2xl p-6 border border-gray-100 bg-gradient-to-br from-gray-50 to-white hover:shadow-md transition-all"
+                style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                <div className="flex items-center gap-2 mb-3">
+                  <span className="text-xl">{h.icon}</span>
+                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${h.badgeColor}`}>{h.badge}</span>
+                </div>
+                <h3 className="font-bold text-gray-900 mb-2">{h.title}</h3>
+                <p className="text-sm text-gray-500 leading-relaxed">{h.desc}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </section>
 
       {/* ── Aperçu de l'application ───────────────────────────────────────── */}
-      <section className="py-24 bg-gray-50">
+      <section id="apercu" className="py-24 bg-gray-50">
         <div className="max-w-6xl mx-auto px-6">
           <div className="text-center mb-16">
             <p className="text-orange-500 font-semibold text-sm mb-3">Aperçu</p>
@@ -333,9 +382,8 @@ export default function LandingPage() {
             </p>
           </div>
 
-          {/* Planning desktop */}
-          <div className="mb-10 rounded-2xl overflow-hidden border border-gray-200 shadow-xl">
-            {/* Barre navigateur */}
+          {/* Planning desktop — vue manager */}
+          <div className="mb-12 rounded-2xl overflow-hidden border border-gray-200 shadow-xl">
             <div className="bg-gray-100 border-b border-gray-200 px-4 py-2.5 flex items-center gap-3">
               <div className="flex gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-red-400" />
@@ -343,18 +391,19 @@ export default function LandingPage() {
                 <div className="w-3 h-3 rounded-full bg-green-400" />
               </div>
               <div className="flex-1 bg-white rounded-lg px-3 py-1 text-xs text-gray-400 border border-gray-200">
-                app.mypvpilot.fr
+                app.mypvpilot.fr — Planning équipe
               </div>
             </div>
-            <img src="/Planning.png" alt="Planning équipe PVPilot" className="w-full" />
+            <img src="/screen-planning.png" alt="Planning équipe PVPilot" className="w-full" />
           </div>
 
-          {/* 3 mobiles côte à côte */}
-          <div className="grid grid-cols-3 gap-6 max-w-3xl mx-auto">
+          {/* 4 mobiles côte à côte */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6 max-w-4xl mx-auto">
             {[
-              { src: '/PlanningTechnicien.png', label: 'Mon planning', desc: 'Vue personnelle de la semaine' },
-              { src: '/Etapes.png',             label: 'Suivi terrain',  desc: 'Étapes chantier en temps réel' },
-              { src: '/Chat.png',               label: 'Chat intégré',   desc: 'Messagerie par chantier' },
+              { src: '/screen-dashboard.png', label: 'Tableau de bord',  desc: 'KPIs & anomalies ouvertes' },
+              { src: '/screen-etapes.png',    label: 'Suivi terrain',    desc: 'Étapes chantier en temps réel' },
+              { src: '/screen-rapport.png',   label: 'Rapport terrain',  desc: 'Photos + compte-rendu + PDF' },
+              { src: '/screen-profil.png',    label: 'Préférences',      desc: 'Notifications & profil' },
             ].map(item => (
               <div key={item.label} className="flex flex-col items-center gap-3">
                 <div className="rounded-[2rem] bg-gray-900 p-1.5 shadow-xl w-full"
@@ -543,6 +592,7 @@ export default function LandingPage() {
                 <p className="font-semibold text-white mb-3">Produit</p>
                 <ul className="space-y-2">
                   <li><a href="#features" className="hover:text-white transition-colors">Fonctionnalités</a></li>
+                  <li><a href="#apercu" className="hover:text-white transition-colors">Aperçu</a></li>
                   <li><a href="#pricing" className="hover:text-white transition-colors">Tarifs</a></li>
                   <li><Link to="/signup" className="hover:text-white transition-colors">Inscription</Link></li>
                 </ul>
@@ -565,7 +615,7 @@ export default function LandingPage() {
           </div>
 
           <div className="border-t border-gray-800 pt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
-            <p className="text-xs">© 2025 PVPilot · Tous droits réservés</p>
+            <p className="text-xs">© 2026 PVPilot · Tous droits réservés</p>
             <p className="text-xs">Fait avec ☀️ pour les installateurs PV</p>
           </div>
         </div>
