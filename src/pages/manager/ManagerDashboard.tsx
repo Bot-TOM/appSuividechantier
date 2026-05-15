@@ -6,6 +6,7 @@ import { useAnomalies } from '@/hooks/useAnomalies'
 import { useEtapesProgression } from '@/hooks/useEtapesProgression'
 import { usePushNotifications } from '@/hooks/usePushNotifications'
 import { useNotifications } from '@/hooks/useNotifications'
+import { useNotifPreferences } from '@/hooks/useNotifPreferences'
 import GraviteBadge from '@/components/anomalies/GraviteBadge'
 import Avatar from '@/components/Avatar'
 import { supabase } from '@/lib/supabase'
@@ -175,6 +176,7 @@ export default function ManagerDashboard() {
   const [pwdLoading, setPwdLoading]     = useState(false)
   const [pwdMsg, setPwdMsg]             = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
+  const { prefs: notifPrefs, toggle: toggleNotifPref } = useNotifPreferences(pushStatus === 'subscribed')
   const { notifications, unreadCount, markAllRead, markRead, clearAll } = useNotifications()
   const [showNotifPanel, setShowNotifPanel] = useState(false)
   const notifPanelRef = useRef<HTMLDivElement>(null)
@@ -756,6 +758,45 @@ export default function ManagerDashboard() {
                 </div>
               )}
             </div>
+
+            {/* ── Préférences notifications ────────────────────────────────── */}
+            {pushStatus === 'subscribed' && (
+              <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+                <div className="px-5 py-4 border-b border-gray-50">
+                  <p className="text-sm font-semibold text-gray-900">Préférences de notifications</p>
+                  <p className="text-xs text-gray-400 mt-0.5">Choisissez ce que vous voulez recevoir sur cet appareil</p>
+                </div>
+                <div className="divide-y divide-gray-50">
+                  {([
+                    { key: 'anomalie_notif_enabled',     label: 'Anomalies',        desc: 'Nouvelle anomalie signalée',         emoji: '🔴' },
+                    { key: 'rapport_notif_enabled',      label: 'Rapports terrain',  desc: 'Message d\'un technicien',           emoji: '📝' },
+                    { key: 'chantier_notif_enabled',     label: 'Chantiers',         desc: 'Bloqué ou terminé',                  emoji: '🚨' },
+                    { key: 'autocontrole_notif_enabled', label: 'Auto-contrôles',    desc: 'Rapport soumis par un technicien',   emoji: '✅' },
+                    { key: 'chat_notif_enabled',         label: 'Messages chat',     desc: 'Nouveau message dans un chantier',   emoji: '💬' },
+                  ] as const).map(({ key, label, desc, emoji }) => (
+                    <div key={key} className="flex items-center justify-between px-5 py-3.5">
+                      <div className="flex items-center gap-3">
+                        <span className="text-base">{emoji}</span>
+                        <div>
+                          <p className="text-sm font-medium text-gray-800">{label}</p>
+                          <p className="text-xs text-gray-400">{desc}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => toggleNotifPref(key)}
+                        className={`relative w-10 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
+                          notifPrefs[key] ? 'bg-orange-500' : 'bg-gray-200'
+                        }`}
+                      >
+                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
+                          notifPrefs[key] ? 'translate-x-4' : 'translate-x-0'
+                        }`} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             <button
               onClick={signOut}

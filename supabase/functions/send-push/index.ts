@@ -28,18 +28,21 @@ Deno.serve(async (req) => {
   let body = ''
   let recipientIds: string[] = []
   let chatOnly = false
+  let prefFilter: string | null = null  // colonne push_subscriptions à filtrer (true requis)
 
   if (table === 'notes') {
     title = '📝 Nouveau message technicien'
     body = record.contenu?.slice(0, 80) ?? 'Un technicien a publié un message'
     const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
+    prefFilter = 'rapport_notif_enabled'
 
   } else if (table === 'auto_controles') {
     title = '✅ Auto-contrôle soumis'
     body = "Un technicien a soumis un rapport d'auto-contrôle"
     const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
+    prefFilter = 'autocontrole_notif_enabled'
 
   } else if (table === 'messages') {
     chatOnly = true
@@ -67,18 +70,21 @@ Deno.serve(async (req) => {
     body = `${record.type ?? 'Anomalie'} — ${record.description?.slice(0, 60) ?? ''}`
     const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
+    prefFilter = 'anomalie_notif_enabled'
 
   } else if (table === 'chantiers' && record.statut === 'bloque') {
     title = '🚨 Chantier bloqué'
     body = `${record.nom} est passé en statut Bloqué — action requise`
     const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
+    prefFilter = 'chantier_notif_enabled'
 
   } else if (table === 'chantiers' && record.statut === 'termine') {
     title = '✅ Chantier terminé'
     body = `${record.nom} vient d'être marqué comme terminé`
     const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
+    prefFilter = 'chantier_notif_enabled'
 
   } else if (table === 'bug_reports') {
     const sevEmoji = record.severite === 'bloquant' ? '🔴' : '🟡'
@@ -102,7 +108,7 @@ Deno.serve(async (req) => {
     })
   }
 
-  // Récupère les abonnements push (filtre notif chat si désactivées)
+  // Récupère les abonnements push en respectant les préférences
   let query = supabase
     .from('push_subscriptions')
     .select('endpoint, p256dh, auth')
@@ -110,6 +116,8 @@ Deno.serve(async (req) => {
 
   if (chatOnly) {
     query = (query as any).eq('chat_notif_enabled', true)
+  } else if (prefFilter) {
+    query = (query as any).eq(prefFilter, true)
   }
 
   const { data: subs, error } = await query
