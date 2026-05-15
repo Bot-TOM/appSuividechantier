@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Layers, RefreshCw, AlertTriangle, CheckCircle2, Sun, LogOut, Bell, Calendar, Zap, MoreHorizontal, Shield, ChevronRight, AlertCircle, FileText, CheckSquare, MessageCircle, TrendingUp, ShieldAlert, Search, Filter } from 'lucide-react'
+import { Layers, RefreshCw, AlertTriangle, CheckCircle2, Sun, LogOut, Bell, Calendar, Zap, MoreHorizontal, MoreVertical, Shield, ChevronRight, AlertCircle, FileText, CheckSquare, MessageCircle, TrendingUp, ShieldAlert, Search, Filter, CircleDot, Folder, Clock, Trash2 } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantiers } from '@/hooks/useChantiers'
 import { useAnomalies } from '@/hooks/useAnomalies'
@@ -164,6 +164,7 @@ export default function ManagerDashboard() {
   const [sortKey, setSortKey]           = useState<SortKey>('date')
   const [searchQuery, setSearchQuery]   = useState('')
   const [anomalieFilter, setAnomalieFilter]   = useState<'tous' | 'ouvert' | 'en_cours' | 'resolu'>('tous')
+  const [anomalieSearch, setAnomalieSearch]   = useState('')
   const [anomalieSelectMode, setAnomalieSelectMode] = useState(false)
   const [anomalieSelectedIds, setAnomalieSelectedIds] = useState<Set<string>>(new Set())
 
@@ -224,7 +225,8 @@ export default function ManagerDashboard() {
 
   const progression = useEtapesProgression(chantiers.map(c => c.id))
   const anomaliesOuvertes = anomalies.filter(a => a.statut !== 'resolu')
-  const anomaliesFiltrees = anomalieFilter === 'tous' ? anomalies : anomalies.filter(a => a.statut === anomalieFilter)
+  const anomaliesFiltrees = (anomalieFilter === 'tous' ? anomalies : anomalies.filter(a => a.statut === anomalieFilter))
+    .filter(a => !anomalieSearch || a.description.toLowerCase().includes(anomalieSearch.toLowerCase()) || (a as AnomalieWithRelations).chantiers?.nom?.toLowerCase().includes(anomalieSearch.toLowerCase()))
 
   const stats = {
     total:      chantiers.length,
@@ -487,110 +489,198 @@ export default function ManagerDashboard() {
         {/* ── Onglet Anomalies ──────────────────────────────────────────────── */}
         {activeTab === 'anomalies' && (
           <>
-            {/* Filtres + actions sélection */}
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+            {/* ── Barre filtres + actions ── */}
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+
+              {/* Segmented controls */}
+              <div className="flex bg-slate-100 p-1 rounded-xl w-full sm:w-auto overflow-x-auto no-scrollbar">
                 {([
                   { value: 'tous',     label: 'Toutes' },
                   { value: 'ouvert',   label: 'Ouvertes' },
                   { value: 'en_cours', label: 'En cours' },
                   { value: 'resolu',   label: 'Résolues' },
                 ] as { value: typeof anomalieFilter; label: string }[]).map(f => (
-                  <button key={f.value} onClick={() => setAnomalieFilter(f.value)}
-                    className={`flex-shrink-0 text-sm px-4 py-2 rounded-xl font-medium transition-all duration-150 ${anomalieFilter === f.value ? 'text-white' : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'}`}
-                    style={anomalieFilter === f.value ? { background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' } : undefined}
-                  >{f.label}</button>
+                  <button
+                    key={f.value}
+                    onClick={() => setAnomalieFilter(f.value)}
+                    className={`px-4 py-2 text-sm font-medium rounded-lg transition-all whitespace-nowrap ${
+                      anomalieFilter === f.value
+                        ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50'
+                        : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50 border border-transparent'
+                    }`}
+                  >
+                    {f.label}
+                    {f.value === 'ouvert' && anomaliesOuvertes.length > 0 && (
+                      <span className="ml-2 bg-rose-100 text-rose-600 py-0.5 px-1.5 rounded-md text-[10px] font-bold">
+                        {anomaliesOuvertes.length}
+                      </span>
+                    )}
+                  </button>
                 ))}
               </div>
-              {anomaliesFiltrees.length > 0 && (
-                anomalieSelectMode ? (
-                  <div className="flex items-center gap-2 flex-shrink-0">
+
+              {/* Search + Filter + Sélectionner */}
+              <div className="flex items-center space-x-3 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64 hidden md:block">
+                  <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                  <input
+                    type="text"
+                    placeholder="Rechercher une anomalie..."
+                    value={anomalieSearch}
+                    onChange={e => setAnomalieSearch(e.target.value)}
+                    className="w-full pl-10 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500 transition-all shadow-sm"
+                  />
+                </div>
+                {anomalieSelectMode ? (
+                  <>
                     <button onClick={toggleAnomalieSelectAll} className="text-xs font-semibold text-orange-600 whitespace-nowrap">
                       {anomalieSelectedIds.size === anomaliesFiltrees.length ? 'Tout désélectionner' : 'Tout sélectionner'}
                     </button>
-                    <button onClick={exitAnomalieSelectMode} className="text-xs font-semibold text-gray-500 px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50">Annuler</button>
-                  </div>
+                    <button onClick={exitAnomalieSelectMode}
+                      className="flex items-center space-x-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors h-[38px]">
+                      Annuler
+                    </button>
+                  </>
                 ) : (
-                  <button onClick={() => setAnomalieSelectMode(true)}
-                    className="flex-shrink-0 text-gray-500 text-xs font-semibold px-3 py-1.5 rounded-xl border border-gray-200 hover:bg-gray-50 transition-colors">
-                    Sélectionner
-                  </button>
-                )
-              )}
+                  <>
+                    <button className="flex items-center justify-center space-x-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors h-[38px]">
+                      <Filter className="w-4 h-4 text-slate-400" />
+                      <span className="hidden sm:inline">Filtrer</span>
+                    </button>
+                    {anomaliesFiltrees.length > 0 && (
+                      <button
+                        onClick={() => setAnomalieSelectMode(true)}
+                        className="flex items-center justify-center space-x-2 bg-white border border-slate-200 px-4 py-2 rounded-xl shadow-sm text-sm font-medium text-slate-700 hover:bg-slate-50 transition-colors h-[38px]"
+                      >
+                        <CheckSquare className="w-4 h-4 text-slate-400" />
+                        <span className="hidden sm:inline">Sélectionner</span>
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
             </div>
 
-            <p className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
-              {anomaliesFiltrees.length} anomalie{anomaliesFiltrees.length !== 1 ? 's' : ''}
-              {anomalieSelectMode && anomalieSelectedIds.size > 0 && ` · ${anomalieSelectedIds.size} sélectionnée${anomalieSelectedIds.size > 1 ? 's' : ''}`}
-            </p>
-
+            {/* ── Issue tracker table ── */}
             {anomaliesFiltrees.length === 0 ? (
-              <div className="bg-white rounded-2xl p-14 text-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
-                <div className="text-5xl mb-4">✅</div>
-                <p className="font-semibold text-gray-700 mb-1">Aucune anomalie</p>
-                <p className="text-sm text-gray-400">Tout est en ordre</p>
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-14 flex flex-col items-center justify-center text-center">
+                <CheckCircle2 className="w-10 h-10 text-emerald-400 mb-3" />
+                <p className="font-semibold text-slate-700 mb-1">Aucune anomalie</p>
+                <p className="text-sm text-slate-400">Tout est en ordre</p>
               </div>
             ) : (
-              <div className="space-y-3 pb-24">
-                {(anomaliesFiltrees as AnomalieWithRelations[]).map(a => {
-                  const s          = STATUT_ANOMALIE[a.statut]
-                  const isSelected = anomalieSelectedIds.has(a.id)
-                  return (
-                    <div key={a.id}
-                      onClick={() => anomalieSelectMode && toggleAnomalieSelect(a.id)}
-                      className={`bg-white rounded-2xl p-6 space-y-4 transition-all ${anomalieSelectMode ? 'cursor-pointer' : ''} ${isSelected ? 'ring-2 ring-red-400' : ''}`}
-                      style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
-                      <div className="flex items-start justify-between gap-3">
-                        <div className="min-w-0 flex items-start gap-3">
-                          {anomalieSelectMode && (
-                            <div className={`mt-0.5 w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? 'bg-red-500 border-red-500' : 'border-gray-300'}`}>
+              <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden pb-24">
+
+                {/* Header */}
+                <div className="grid grid-cols-12 gap-4 px-6 py-3 bg-slate-50/80 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                  <div className="col-span-7 md:col-span-5 flex items-center">Anomalie</div>
+                  <div className="hidden md:flex md:col-span-2 items-center">Chantier</div>
+                  <div className="hidden md:flex md:col-span-2 items-center">Signalé par</div>
+                  <div className="col-span-3 md:col-span-2 flex items-center">Statut</div>
+                  <div className="col-span-2 md:col-span-1 flex items-center justify-end">Date</div>
+                </div>
+
+                {/* Rows */}
+                <div className="divide-y divide-slate-100">
+                  {(anomaliesFiltrees as AnomalieWithRelations[]).map(a => {
+                    const isSelected = anomalieSelectedIds.has(a.id)
+                    const isResolu   = a.statut === 'resolu'
+                    const gravityDot = a.gravite === 'haute' ? 'bg-rose-500' : a.gravite === 'moyenne' ? 'bg-amber-500' : 'bg-yellow-400'
+                    const TypeIcon   = ['Électrique', 'Câblage'].includes(a.type) ? Zap : AlertCircle
+                    const statusCfg  = {
+                      ouvert:   { color: 'text-rose-600 bg-rose-50 border-rose-100',         Icon: CircleDot    },
+                      en_cours: { color: 'text-blue-600 bg-blue-50 border-blue-100',         Icon: Clock        },
+                      resolu:   { color: 'text-emerald-600 bg-emerald-50 border-emerald-100', Icon: CheckCircle2 },
+                    }[a.statut] ?? { color: 'text-slate-600 bg-slate-50 border-slate-100', Icon: CircleDot }
+                    const StatusIcon = statusCfg.Icon
+                    return (
+                      <div
+                        key={a.id}
+                        onClick={() => {
+                          if (anomalieSelectMode) toggleAnomalieSelect(a.id)
+                          else navigate(`/chantier/${a.chantier_id}/anomalies`)
+                        }}
+                        className={`grid grid-cols-12 gap-4 px-6 py-4 items-center transition-colors cursor-pointer group ${isResolu ? 'opacity-60 hover:opacity-100' : ''} ${isSelected ? 'bg-orange-50' : 'hover:bg-slate-50/80'}`}
+                      >
+                        {/* Anomalie */}
+                        <div className="col-span-7 md:col-span-5 flex items-center space-x-3">
+                          {anomalieSelectMode ? (
+                            <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${isSelected ? 'bg-orange-500 border-orange-500' : 'border-slate-300'}`}>
                               {isSelected && <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}><path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" /></svg>}
                             </div>
+                          ) : (
+                            <div className={`w-2.5 h-2.5 rounded-full shrink-0 shadow-sm ${isResolu ? 'bg-slate-300' : gravityDot}`} />
                           )}
-                          <div>
-                            <div className="flex items-center gap-2 flex-wrap mb-1">
-                              <span className="text-sm font-semibold text-gray-800">{a.type}</span>
-                              <GraviteBadge gravite={a.gravite} />
+                          <div className="min-w-0">
+                            <div className="flex items-center space-x-2 mb-0.5">
+                              <span className="text-xs font-medium text-slate-400">AN-{a.id.substring(0, 4).toUpperCase()}</span>
+                              <div className="flex items-center space-x-1 text-slate-500 text-xs font-medium">
+                                <TypeIcon className="w-3.5 h-3.5" />
+                                <span>{a.type}</span>
+                              </div>
                             </div>
-                            <button onClick={e => { e.stopPropagation(); navigate(`/chantier/${a.chantier_id}/anomalies`) }}
-                              className="text-xs text-orange-500 font-medium hover:underline">
-                              {(a as AnomalieWithRelations).chantiers?.nom ?? '—'}
-                            </button>
+                            <h3 className={`text-sm font-semibold truncate ${isResolu ? 'text-slate-500 line-through' : 'text-slate-900 group-hover:text-orange-600'}`}>
+                              {a.description}
+                            </h3>
                           </div>
                         </div>
-                        {!anomalieSelectMode && (
-                          <button onClick={() => updateAnomalieStatut(a.id, s.next as Anomalie['statut'])}
-                            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0 transition-all hover:opacity-80 ${s.bg}`}>
-                            <span className={`w-1.5 h-1.5 rounded-full ${s.dot}`} />
-                            {s.label} →
-                          </button>
-                        )}
+
+                        {/* Chantier */}
+                        <div className="hidden md:flex md:col-span-2 items-center space-x-2 min-w-0">
+                          <Folder className="w-4 h-4 text-slate-400 shrink-0" />
+                          <span className="text-sm font-medium text-slate-600 truncate">{(a as AnomalieWithRelations).chantiers?.nom ?? '—'}</span>
+                        </div>
+
+                        {/* Auteur */}
+                        <div className="hidden md:flex md:col-span-2 items-center space-x-2 min-w-0">
+                          <div className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0 text-[10px] font-bold text-slate-500">
+                            {(a as AnomalieWithRelations).profiles?.full_name?.charAt(0) ?? '?'}
+                          </div>
+                          <span className="text-sm font-medium text-slate-600 truncate">{(a as AnomalieWithRelations).profiles?.full_name ?? '—'}</span>
+                        </div>
+
+                        {/* Statut */}
+                        <div className="col-span-3 md:col-span-2 flex items-center">
+                          <span className={`inline-flex items-center space-x-1.5 px-2.5 py-1 rounded-md text-xs font-semibold border ${statusCfg.color}`}>
+                            <StatusIcon className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">{STATUT_ANOMALIE[a.statut]?.label ?? a.statut}</span>
+                          </span>
+                        </div>
+
+                        {/* Date + MoreVertical */}
+                        <div className="col-span-2 md:col-span-1 flex items-center justify-end space-x-2">
+                          <span className="text-xs font-medium text-slate-500">
+                            {new Date(a.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })}
+                          </span>
+                          {!anomalieSelectMode && (
+                            <button
+                              onClick={e => { e.stopPropagation(); updateAnomalieStatut(a.id, STATUT_ANOMALIE[a.statut].next as Anomalie['statut']) }}
+                              className="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-slate-600 p-1 rounded-md hover:bg-slate-200/50 transition-all"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                      <p className="text-sm text-gray-700 leading-relaxed">{a.description}</p>
-                      <p className="text-xs text-gray-400">
-                        {(a as AnomalieWithRelations).profiles?.full_name ?? '—'} · {new Date(a.created_at).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
-                      </p>
-                    </div>
-                  )
-                })}
+                    )
+                  })}
+                </div>
               </div>
             )}
 
-            {/* Barre bulk actions */}
+            {/* ── Bulk actions bar ── */}
             {anomalieSelectMode && anomalieSelectedIds.size > 0 && (
-              <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-gray-100 px-4 py-4"
+              <div className="fixed bottom-0 left-0 right-0 z-20 bg-white border-t border-slate-100 px-4 py-4"
                 style={{ boxShadow: '0 -4px 20px rgba(0,0,0,0.1)', paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}>
-                <p className="text-xs text-gray-400 text-center mb-3 font-medium">
+                <p className="text-xs text-slate-400 text-center mb-3 font-medium">
                   {anomalieSelectedIds.size} anomalie{anomalieSelectedIds.size > 1 ? 's' : ''} sélectionnée{anomalieSelectedIds.size > 1 ? 's' : ''}
                 </p>
                 <div className="flex gap-2 max-w-7xl mx-auto">
                   <button onClick={() => handleAnomalieBulkStatut('en_cours')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-orange-50 text-orange-700 hover:bg-orange-100 transition-colors">En cours</button>
-                  <button onClick={() => handleAnomalieBulkStatut('resolu')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-green-50 text-green-700 hover:bg-green-100 transition-colors">Résoudre</button>
-                  <button onClick={() => handleAnomalieBulkStatut('ouvert')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-red-50 text-red-700 hover:bg-red-100 transition-colors">Rouvrir</button>
-                  <button onClick={handleAnomalieBulkDelete} className="py-3 px-4 rounded-xl text-xs font-semibold bg-gray-100 text-gray-600 hover:bg-gray-200 transition-colors">
-                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                    </svg>
+                  <button onClick={() => handleAnomalieBulkStatut('resolu')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 transition-colors">Résoudre</button>
+                  <button onClick={() => handleAnomalieBulkStatut('ouvert')} className="flex-1 py-3 rounded-xl text-xs font-semibold bg-rose-50 text-rose-700 hover:bg-rose-100 transition-colors">Rouvrir</button>
+                  <button onClick={handleAnomalieBulkDelete} className="py-3 px-4 rounded-xl text-xs font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
