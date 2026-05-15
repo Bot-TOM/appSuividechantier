@@ -17,9 +17,11 @@ import GestionEquipe from '@/pages/manager/GestionEquipe'
 import AdminEntreprisesTab from '@/components/admin/AdminEntreprisesTab'
 import AdminBugReportsTab from '@/components/admin/AdminBugReportsTab'
 import BugReportButton from '@/components/BugReportButton'
+import GlobalChatTab from '@/components/chat/GlobalChatTab'
+import { useGlobalMessages } from '@/hooks/useGlobalMessages'
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
-type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs'
+type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat'
 
 type AnomalieWithRelations = Anomalie & {
   profiles?: { full_name?: string } | null
@@ -191,6 +193,7 @@ export default function ManagerDashboard() {
   const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
   const { prefs: notifPrefs, toggle: toggleNotifPref } = useNotifPreferences(pushStatus === 'subscribed')
   const { notifications, unreadCount, markAllRead, markRead, clearAll } = useNotifications()
+  const { unreadCount: chatUnread } = useGlobalMessages(profile?.id ?? '')
   const [showNotifPanel, setShowNotifPanel] = useState(false)
   const notifPanelRef = useRef<HTMLDivElement>(null)
 
@@ -437,6 +440,7 @@ export default function ManagerDashboard() {
               { key: 'stats',     label: 'Stats' },
               { key: 'planning',  label: 'Planning' },
               { key: 'equipe',    label: 'Équipe' },
+              { key: 'chat',      label: 'Chat', badge: activeTab !== 'chat' ? (chatUnread || undefined) : undefined },
               profile?.role === 'admin' ? { key: 'entreprises', label: 'Entreprises' } : null,
               profile?.role === 'admin' ? { key: 'bugs', label: 'Bugs' } : null,
               { key: 'profil',    label: 'Profil' },
@@ -984,6 +988,11 @@ export default function ManagerDashboard() {
         {/* ── Onglet Bugs (admin seulement) ────────────────────────────────── */}
         {activeTab === 'bugs' && profile?.role === 'admin' && (
           <AdminBugReportsTab />
+        )}
+
+        {/* ── Onglet Chat général ───────────────────────────────────────────── */}
+        {activeTab === 'chat' && profile?.id && (
+          <GlobalChatTab userId={profile.id} isActive={activeTab === 'chat'} />
         )}
       </main>
 
