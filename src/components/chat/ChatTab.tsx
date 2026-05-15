@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
+import { Bell, Users, Paperclip, Mic, Send, CheckCheck } from 'lucide-react'
 import { useMessages } from '@/hooks/useMessages'
 import { useChatNotif } from '@/hooks/useChatNotif'
 import { usePresence } from '@/hooks/usePresence'
@@ -364,42 +365,34 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
   return (
     <>
     <div
-      className="flex flex-col bg-gray-50 rounded-2xl overflow-hidden"
+      className="flex flex-col bg-white rounded-2xl overflow-hidden border border-slate-100"
       style={{ height: 'calc(100dvh - 270px)', minHeight: 420 }}
       onClick={dismiss}
     >
-      {/* ── Header : clochette + participants ────────────────────────── */}
+      {/* ── Header : en ligne + notifs ────────────────────────────────── */}
       {notifEnabled !== null && (
-        <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-white" onClick={e => e.stopPropagation()}>
-          {/* Bouton participants */}
+        <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0" onClick={e => e.stopPropagation()}>
           <button
             onClick={() => setShowParticipants(p => !p)}
-            title="Participants"
             className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
               showParticipants
                 ? 'bg-orange-50 border-orange-200 text-orange-600'
-                : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
+                : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
             }`}
           >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
+            <Users className="w-3.5 h-3.5" />
             <span>{onlineUsers.size} en ligne</span>
           </button>
 
-          {/* Clochette notifications */}
           <button
             onClick={toggleNotif}
-            title={notifEnabled ? 'Désactiver les notifications du chat' : 'Activer les notifications du chat'}
             className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
               notifEnabled
-                ? 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100'
-                : 'bg-gray-100 border-gray-200 text-gray-400 hover:bg-gray-200'
+                ? 'bg-orange-50/50 border-orange-100/50 text-orange-600 hover:bg-orange-50'
+                : 'bg-slate-50 border-slate-100 text-slate-400 hover:bg-slate-100'
             }`}
           >
-            <svg className="w-3.5 h-3.5" fill={notifEnabled ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-            </svg>
+            <Bell className="w-3.5 h-3.5" />
             {notifEnabled ? 'Notifs activées' : 'Activer les notifs'}
           </button>
         </div>
@@ -407,8 +400,8 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
 
       {/* ── Panneau participants ───────────────────────────────────────── */}
       {showParticipants && (
-        <div className="bg-white border-b border-gray-100 px-4 py-3" onClick={e => e.stopPropagation()}>
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5">
+        <div className="bg-white border-b border-slate-100 px-4 py-3 shrink-0" onClick={e => e.stopPropagation()}>
+          <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2.5">
             Participants ({participants.length})
           </p>
           <div className="flex flex-col gap-2">
@@ -420,18 +413,18 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                   <Avatar name={p.name} avatarUrl={p.avatarUrl} size="sm" online={online} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-medium text-gray-800">
+                      <span className="text-sm font-medium text-slate-800">
                         {p.name}
-                        {isMe && <span className="text-[11px] text-gray-400 font-normal ml-1">(vous)</span>}
+                        {isMe && <span className="text-[11px] text-slate-400 font-normal ml-1">(vous)</span>}
                       </span>
                       {p.poste && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">
                           {p.poste}
                         </span>
                       )}
                     </div>
                   </div>
-                  <span className={`text-[11px] font-medium flex-shrink-0 ${online ? 'text-green-500' : 'text-gray-400'}`}>
+                  <span className={`text-[11px] font-medium flex-shrink-0 ${online ? 'text-emerald-500' : 'text-slate-400'}`}>
                     {online ? 'En ligne' : 'Hors ligne'}
                   </span>
                 </div>
@@ -442,7 +435,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
       )}
 
       {/* ── Liste des messages ─────────────────────────────────────────── */}
-      <div ref={msgsContainerRef} className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
+      <div ref={msgsContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 py-12">
             <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center">
@@ -450,8 +443,8 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                 <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
-            <p className="text-gray-500 text-sm font-medium">Aucun message pour l'instant</p>
-            <p className="text-gray-400 text-xs">Soyez le premier à écrire !</p>
+            <p className="text-slate-500 text-sm font-medium">Aucun message pour l'instant</p>
+            <p className="text-slate-400 text-xs">Soyez le premier à écrire !</p>
           </div>
         )}
 
@@ -475,58 +468,66 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
 
           return (
             <div key={msg.id}>
+              {/* Séparateur de date */}
               {showDateSep && (
-                <div className="flex items-center gap-3 py-3 px-2">
-                  <div className="flex-1 h-px bg-gray-200" />
-                  <span className="text-[11px] text-gray-400 font-medium">{dateSeparatorLabel(msg.created_at)}</span>
-                  <div className="flex-1 h-px bg-gray-200" />
+                <div className="flex items-center justify-center my-5 relative">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-100" />
+                  </div>
+                  <div className="relative bg-white px-4 text-xs font-medium text-slate-400">
+                    {dateSeparatorLabel(msg.created_at)}
+                  </div>
                 </div>
               )}
 
+              {/* Ligne de message */}
               <div
-                className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-1 mb-0.5`}
+                className={`flex items-end gap-2 mb-1 ${isOwn ? 'justify-end' : 'justify-start'}`}
                 onClick={e => { e.stopPropagation(); setActiveMsg(p => p === msg.id ? null : msg.id); setEmojiFor(null) }}
               >
+                {/* Avatar (autres) */}
                 {!isOwn && (
                   <Avatar
                     name={msg.profiles?.full_name ?? '?'}
                     avatarUrl={msg.profiles?.avatar_url}
                     size="sm"
                     online={onlineUsers.has(msg.user_id)}
-                    className="mr-1.5 self-end mb-1"
+                    className="self-end mb-1 shrink-0"
                   />
                 )}
 
-                <div className={`max-w-[75%] flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}>
+                {/* Colonne message */}
+                <div className={`flex flex-col gap-0.5 max-w-[75%] group ${isOwn ? 'items-end' : 'items-start'}`}>
+
+                  {/* En-tête auteur (premier message du groupe, autres uniquement) */}
                   {showAuthor && (
-                    <div className="flex items-center gap-1.5 pl-1 mb-0.5">
-                      <span className="text-[11px] font-semibold text-orange-500">
+                    <div className="flex items-baseline gap-1.5 pl-1 mb-0.5">
+                      <span className="text-xs font-semibold text-slate-700">
                         {msg.profiles?.full_name ?? 'Inconnu'}
                       </span>
                       {(() => {
                         const label = msg.profiles?.poste ?? (msg.profiles?.role === 'admin' ? 'Admin' : msg.profiles?.role === 'manager' ? 'Manager' : null)
                         return label ? (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                            {label}
-                          </span>
+                          <span className="text-[10px] font-medium text-slate-500">{label}</span>
                         ) : null
                       })()}
                     </div>
                   )}
 
-                  <div className={`relative rounded-2xl px-3 py-2 ${
+                  {/* Bulle */}
+                  <div className={`relative rounded-2xl px-4 py-2.5 ${
                     isOwn
                       ? 'bg-orange-500 text-white rounded-br-sm'
-                      : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
-                  } ${isActive ? 'ring-2 ring-orange-300 ring-offset-1' : ''}`}
-                    style={isOwn ? {} : { boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}
-                  >
+                      : 'bg-slate-100 text-slate-800 rounded-tl-sm'
+                  } ${isActive ? 'ring-2 ring-orange-300 ring-offset-1' : ''}`}>
+
+                    {/* Aperçu réponse */}
                     {replyMsg && (
                       <div className={`mb-2 pl-2 border-l-2 rounded ${isOwn ? 'border-white/40' : 'border-orange-400'}`}>
                         <p className={`text-[10px] font-semibold ${isOwn ? 'text-white/70' : 'text-orange-500'}`}>
                           {replyMsg.profiles?.full_name ?? 'Inconnu'}
                         </p>
-                        <p className={`text-[11px] truncate ${isOwn ? 'text-white/75' : 'text-gray-500'}`}>
+                        <p className={`text-[11px] truncate ${isOwn ? 'text-white/75' : 'text-slate-500'}`}>
                           {replyMsg.content ?? replyMsg.file_name ?? '📎 Fichier'}
                         </p>
                       </div>
@@ -548,7 +549,6 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                     {msg.file_type === 'document' && msg.file_url && (() => {
                       const isPdf = msg.file_name?.toLowerCase().endsWith('.pdf')
                       return isPdf ? (
-                        // PDF → aperçu inline via modale
                         <button
                           onClick={e => { e.stopPropagation(); setPdfPreview({ url: msg.file_url!, name: msg.file_name ?? 'Document' }) }}
                           className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 w-full text-left transition-opacity hover:opacity-80 ${
@@ -565,10 +565,9 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                           </svg>
                         </button>
                       ) : (
-                        // Autre document → ouverture directe
                         <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
                           className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 ${
-                            isOwn ? 'bg-white/20 text-white' : 'bg-gray-50 text-gray-700 border border-gray-100'
+                            isOwn ? 'bg-white/20 text-white' : 'bg-slate-50 text-slate-700 border border-slate-100'
                           }`}
                         >
                           <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -579,26 +578,46 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                       )
                     })()}
 
-                    {/* Texte avec mentions surlignées */}
                     {msg.content && (
                       <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
                         {renderWithMentions(msg.content, allNames, myName, isOwn)}
                       </p>
                     )}
-
-                    <p className={`text-[10px] mt-1 leading-none ${isOwn ? 'text-white/55 text-right' : 'text-gray-400'}`}>
-                      {formatTime(msg.created_at)}
-                      {isOwn && readers.length > 0 && <span className="ml-1 text-white/80">✓✓</span>}
-                    </p>
                   </div>
 
+                  {/* Heure + statut (HORS bulle) */}
+                  {isOwn ? (
+                    <div className={`flex items-center gap-2 mt-0.5 w-full transition-opacity ${
+                      readers.length > 0 ? 'justify-between' : 'justify-end opacity-0 group-hover:opacity-100'
+                    }`}>
+                      {readers.length > 0 && (
+                        <span className="text-[10px] font-medium text-slate-400">
+                          {(() => {
+                            const names = readers.map(r => r.profiles?.full_name?.split(' ')[0] ?? '?')
+                            if (names.length <= 2) return `Vu par ${names.join(', ')}`
+                            return `Vu par ${names.slice(0, 2).join(', ')} +${names.length - 2}`
+                          })()}
+                        </span>
+                      )}
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-medium text-slate-400">{formatTime(msg.created_at)}</span>
+                        <CheckCheck className="w-3 h-3 text-emerald-500" />
+                      </div>
+                    </div>
+                  ) : (
+                    <span className="text-[10px] font-medium text-slate-400 pl-1 mt-0.5">
+                      {formatTime(msg.created_at)}
+                    </span>
+                  )}
+
+                  {/* Réactions */}
                   {Object.keys(reactionGroups).length > 0 && (
                     <div className={`flex gap-1 flex-wrap ${isOwn ? 'justify-end' : 'justify-start'} px-1`}>
                       {Object.entries(reactionGroups).map(([emoji, { count, mine }]) => (
                         <button key={emoji}
                           onClick={e => { e.stopPropagation(); toggleReaction(msg.id, emoji) }}
                           className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
-                            mine ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
+                            mine ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                           }`}
                         >
                           {emoji}{count > 1 && <span className="ml-0.5 font-medium">{count}</span>}
@@ -607,29 +626,19 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                     </div>
                   )}
 
-                  {isOwn && readers.length > 0 && (
-                    <p className="text-[10px] text-gray-400 pr-1">
-                      {(() => {
-                        const names = readers
-                          .map(r => r.profiles?.full_name?.split(' ')[0] ?? '?')
-                        if (names.length <= 2) return `Vu par ${names.join(', ')}`
-                        return `Vu par ${names.slice(0, 2).join(', ')} +${names.length - 2}`
-                      })()}
-                    </p>
-                  )}
-
+                  {/* Actions au clic */}
                   {isActive && (
                     <div className={`flex gap-1 ${isOwn ? 'justify-end' : 'justify-start'} flex-wrap`} onClick={e => e.stopPropagation()}>
                       <button onClick={() => setEmojiFor(p => p === msg.id ? null : msg.id)}
-                        className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors">
+                        className="text-xs bg-white border border-slate-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-slate-50 transition-colors">
                         😊
                       </button>
                       <button onClick={() => { setReplyTo(msg); dismiss(); textareaRef.current?.focus() }}
-                        className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors font-medium text-gray-600">
+                        className="text-xs bg-white border border-slate-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-slate-50 transition-colors font-medium text-slate-600">
                         ↩ Répondre
                       </button>
                       <button onClick={() => { setForwardMsg(msg); dismiss() }}
-                        className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors font-medium text-gray-600">
+                        className="text-xs bg-white border border-slate-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-slate-50 transition-colors font-medium text-slate-600">
                         ↪ Transférer
                       </button>
                       {(isOwn || can('supprimer_message_autres')) && (
@@ -641,8 +650,9 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                     </div>
                   )}
 
+                  {/* Picker emoji */}
                   {showEmoji && (
-                    <div className={`flex gap-1 bg-white border border-gray-100 rounded-2xl p-2 shadow-xl ${isOwn ? 'self-end' : 'self-start'}`}
+                    <div className={`flex gap-1 bg-white border border-slate-100 rounded-2xl p-2 shadow-xl ${isOwn ? 'self-end' : 'self-start'}`}
                       onClick={e => e.stopPropagation()}>
                       {EMOJIS.map(e => (
                         <button key={e} onClick={() => { toggleReaction(msg.id, e); dismiss() }}
@@ -662,57 +672,57 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
       </div>
 
       {/* ── Barre de saisie ───────────────────────────────────────────── */}
-      <div className="border-t border-gray-200 bg-white px-3 py-2.5 relative" onClick={e => e.stopPropagation()}>
+      <div className="px-3 pb-3 pt-2 relative shrink-0" onClick={e => e.stopPropagation()}>
 
-        {/* ── Indicateur "est en train d'écrire" ────────────────────── */}
+        {/* Indicateur "est en train d'écrire" */}
         {typingNames.length > 0 && (
-          <div className="absolute bottom-full left-3 mb-0.5 flex items-center gap-1.5 text-[11px] text-gray-400">
+          <div className="flex items-center gap-1.5 text-[11px] text-slate-400 mb-1.5 pl-1">
             <span>
               {typingNames.length === 1
                 ? `${typingNames[0]} est en train d'écrire`
                 : `${typingNames.slice(0, 2).join(' et ')} écrivent`}
             </span>
             <span className="flex gap-0.5 items-end pb-0.5">
-              <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+              <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
             </span>
           </div>
         )}
 
-        {/* ── Dropdown mentions ──────────────────────────────────────── */}
+        {/* Dropdown mentions */}
         {mentionAnchor !== null && mentionResults.length > 0 && (
-          <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden z-20">
+          <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden z-20">
             {mentionResults.map((tech, idx) => (
               <button
                 key={tech.id}
                 onMouseDown={e => { e.preventDefault(); selectMention(tech.full_name) }}
                 className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
-                  idx === mentionHighlight ? 'bg-orange-50' : 'hover:bg-gray-50'
+                  idx === mentionHighlight ? 'bg-orange-50' : 'hover:bg-slate-50'
                 }`}
               >
                 <Avatar name={tech.full_name} avatarUrl={tech.avatar_url} size="sm"
                   online={onlineUsers.has(tech.id)} />
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{tech.full_name}</p>
-                  <p className="text-[11px] text-gray-400">Technicien</p>
+                  <p className="text-sm font-semibold text-slate-800 truncate">{tech.full_name}</p>
+                  <p className="text-[11px] text-slate-400">Technicien</p>
                 </div>
                 {onlineUsers.has(tech.id) && (
-                  <span className="text-[10px] text-green-500 font-medium flex-shrink-0">En ligne</span>
+                  <span className="text-[10px] text-emerald-500 font-medium flex-shrink-0">En ligne</span>
                 )}
               </button>
             ))}
           </div>
         )}
 
-        {/* Bandeau de réponse */}
+        {/* Bandeau réponse */}
         {replyTo && (
           <div className="flex items-center gap-2 mb-2 pl-3 border-l-2 border-orange-400 bg-orange-50 rounded-r-xl py-1.5 pr-2">
             <div className="flex-1 min-w-0">
               <p className="text-[11px] font-semibold text-orange-500">{replyTo.profiles?.full_name ?? 'Inconnu'}</p>
-              <p className="text-xs text-gray-500 truncate">{replyTo.content ?? replyTo.file_name ?? '📎 Fichier'}</p>
+              <p className="text-xs text-slate-500 truncate">{replyTo.content ?? replyTo.file_name ?? '📎 Fichier'}</p>
             </div>
-            <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-0.5">
+            <button onClick={() => setReplyTo(null)} className="text-slate-400 hover:text-slate-600 flex-shrink-0 p-0.5">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
               </svg>
@@ -720,27 +730,25 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
           </div>
         )}
 
-        <div className="flex items-end gap-2">
-          <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-100 hover:text-orange-500 transition-colors disabled:opacity-50">
-            {uploading
-              ? <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-              : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
-                </svg>
-            }
-          </button>
+        {/* Pill de saisie */}
+        <div className="bg-white border border-slate-200 rounded-full shadow-sm p-1 flex items-center gap-1 focus-within:border-orange-500 focus-within:ring-4 focus-within:ring-orange-500/10 transition-all">
+
           <input ref={fileRef} type="file" className="hidden" onChange={handleFile}
             accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
 
+          <button onClick={() => fileRef.current?.click()} disabled={uploading}
+            className="shrink-0 p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors disabled:opacity-50">
+            {uploading
+              ? <div className="w-5 h-5 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+              : <Paperclip className="w-5 h-5" />
+            }
+          </button>
+
           {isRecording ? (
-            /* ── Barre enregistrement press & hold ── */
             <>
-              {/* Indicateur "glisser pour annuler" */}
-              <div className="flex-1 flex items-center gap-2 px-3 overflow-hidden">
-                {/* Texte annuler qui glisse selon cancelProgress */}
+              <div className="flex-1 flex items-center gap-2 px-2 overflow-hidden">
                 <span
-                  className="text-xs text-gray-400 flex items-center gap-1 transition-all duration-75 select-none"
+                  className="text-xs text-slate-400 flex items-center gap-1 transition-all duration-75 select-none"
                   style={{ opacity: 0.3 + cancelProgress * 0.7, transform: `translateX(${-cancelProgress * 12}px)` }}
                 >
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -748,31 +756,23 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                   </svg>
                   Annuler
                 </span>
-
                 <div className="flex-1 flex items-center justify-end gap-2">
-                  {/* Point rouge clignotant */}
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
-                  {/* Timer */}
                   <span className="text-sm font-semibold text-red-500 tabular-nums">
                     {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
                   </span>
                 </div>
               </div>
-
-              {/* Bouton micro maintenu — relâcher = envoyer */}
               <button
                 ref={micBtnRef}
                 onPointerDown={handleMicPointerDown}
-                className="flex-shrink-0 w-11 h-11 rounded-full bg-red-500 flex items-center justify-center text-white shadow-lg"
-                style={{ touchAction: 'none', transform: 'scale(1.1)' }}
+                className="shrink-0 w-10 h-10 rounded-full bg-red-500 flex items-center justify-center text-white shadow-md"
+                style={{ touchAction: 'none', transform: 'scale(1.05)' }}
               >
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
+                <Mic className="w-5 h-5" />
               </button>
             </>
           ) : (
-            /* ── Mode saisie texte normal ── */
             <>
               <textarea
                 ref={textareaRef}
@@ -781,30 +781,23 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                 onKeyDown={handleKeyDown}
                 placeholder="Message… (@ pour mentionner)"
                 rows={1}
-                className="flex-1 resize-none rounded-2xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-300 focus:ring-1 focus:ring-orange-100 bg-gray-50 max-h-28 overflow-y-auto"
+                className="flex-1 resize-none bg-transparent border-none focus:outline-none text-sm text-slate-800 placeholder-slate-400 py-2 px-2 max-h-28 overflow-y-auto"
                 style={{ lineHeight: '1.45' }}
               />
-
               {text.trim() ? (
-                /* Bouton envoyer texte */
                 <button onClick={handleSend}
-                  className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 transition-colors">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5" />
-                  </svg>
+                  className="shrink-0 p-2.5 text-white bg-orange-500 hover:bg-orange-600 rounded-full transition-all shadow-md shadow-orange-500/20">
+                  <Send className="w-4 h-4" />
                 </button>
               ) : (
-                /* Bouton micro : maintenir appuyé pour enregistrer */
                 <button
                   ref={micBtnRef}
                   onPointerDown={handleMicPointerDown}
-                  className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-100 hover:text-orange-500 transition-colors select-none"
+                  className="shrink-0 p-2.5 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-full transition-colors select-none"
                   style={{ touchAction: 'none' }}
                   title="Maintenir pour enregistrer"
                 >
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                  </svg>
+                  <Mic className="w-5 h-5" />
                 </button>
               )}
             </>
@@ -815,7 +808,7 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
 
     {/* ── Toast confirmation transfert ─────────────────────────────────── */}
     {forwardDone && (
-      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-gray-900 text-white text-sm px-4 py-2.5 rounded-full shadow-xl">
+      <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50 bg-slate-900 text-white text-sm px-4 py-2.5 rounded-full shadow-xl">
         ↪ Message transféré
       </div>
     )}
@@ -824,21 +817,19 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
     {forwardMsg && (
       <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/50 px-4 pb-4 sm:pb-0" onClick={() => setForwardMsg(null)}>
         <div className="bg-white rounded-2xl w-full max-w-sm shadow-2xl overflow-hidden" onClick={e => e.stopPropagation()}>
-          <div className="px-4 py-3.5 border-b border-gray-100 flex items-center justify-between">
-            <h3 className="font-semibold text-gray-900 text-sm">Transférer vers…</h3>
-            <button onClick={() => setForwardMsg(null)} className="w-7 h-7 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100">
+          <div className="px-4 py-3.5 border-b border-slate-100 flex items-center justify-between">
+            <h3 className="font-semibold text-slate-900 text-sm">Transférer vers…</h3>
+            <button onClick={() => setForwardMsg(null)} className="w-7 h-7 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-100">
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
             </button>
           </div>
-          {/* Aperçu du message à transférer */}
-          <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100">
-            <p className="text-xs text-gray-400 mb-1">Message à transférer</p>
-            <p className="text-sm text-gray-700 truncate">
+          <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100">
+            <p className="text-xs text-slate-400 mb-1">Message à transférer</p>
+            <p className="text-sm text-slate-700 truncate">
               {forwardMsg.content ?? forwardMsg.file_name ?? '📎 Fichier'}
             </p>
           </div>
-          {/* Liste des chantiers */}
-          <div className="max-h-64 overflow-y-auto divide-y divide-gray-50">
+          <div className="max-h-64 overflow-y-auto divide-y divide-slate-50">
             {chantiers.filter(c => c.id !== chantierId).map(c => (
               <button key={c.id} onClick={() => handleForward(c.id)}
                 className="w-full text-left px-4 py-3 hover:bg-orange-50 transition-colors flex items-center gap-3">
@@ -848,13 +839,13 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                   </svg>
                 </div>
                 <div className="min-w-0">
-                  <p className="text-sm font-medium text-gray-800 truncate">{c.nom}</p>
-                  <p className="text-xs text-gray-400 truncate">{c.client_nom}</p>
+                  <p className="text-sm font-medium text-slate-800 truncate">{c.nom}</p>
+                  <p className="text-xs text-slate-400 truncate">{c.client_nom}</p>
                 </div>
               </button>
             ))}
             {chantiers.filter(c => c.id !== chantierId).length === 0 && (
-              <p className="text-center text-gray-400 text-sm py-8">Aucun autre chantier disponible</p>
+              <p className="text-center text-slate-400 text-sm py-8">Aucun autre chantier disponible</p>
             )}
           </div>
         </div>
@@ -862,13 +853,11 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
     )}
 
     {/* ── Modale aperçu PDF ─────────────────────────────────────────────── */}
-
     {pdfPreview && (
       <div
         className="fixed inset-0 z-50 flex flex-col bg-black/80"
         onClick={() => setPdfPreview(null)}
       >
-        {/* Header */}
         <div className="flex items-center justify-between px-4 py-3 bg-black/60 flex-shrink-0" onClick={e => e.stopPropagation()}>
           <span className="text-white text-sm font-medium truncate max-w-[70%]">{pdfPreview.name}</span>
           <div className="flex items-center gap-2">
@@ -887,7 +876,6 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
             </button>
           </div>
         </div>
-        {/* Visionneuse */}
         <div className="flex-1 min-h-0" onClick={e => e.stopPropagation()}>
           <iframe
             src={pdfPreview.url}
