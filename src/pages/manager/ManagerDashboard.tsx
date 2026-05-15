@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Layers, RefreshCw, AlertTriangle, CheckCircle2, Sun, LogOut, Bell, Calendar, Zap, MoreHorizontal } from 'lucide-react'
+import { Layers, RefreshCw, AlertTriangle, CheckCircle2, Sun, LogOut, Bell, Calendar, Zap, MoreHorizontal, Shield, ChevronRight, AlertCircle, FileText, CheckSquare, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantiers } from '@/hooks/useChantiers'
 import { useAnomalies } from '@/hooks/useAnomalies'
@@ -708,114 +708,178 @@ export default function ManagerDashboard() {
 
         {/* ── Onglet Profil ─────────────────────────────────────────────────── */}
         {activeTab === 'profil' && (
-          <div className="max-w-lg space-y-4 pb-6">
-            <div className="bg-white rounded-2xl p-6 text-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
-              <label className="relative inline-block cursor-pointer mb-4">
-                <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="xl" />
-                <div className="absolute bottom-0 right-0 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center border-2 border-white">
-                  {avatarLoading
-                    ? <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-                    : <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                  }
-                </div>
-                <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={avatarLoading} />
-              </label>
-              <h2 className="font-bold text-gray-900 text-lg">{profile?.full_name}</h2>
-              <p className="text-gray-400 text-sm mt-1">{profile?.email}</p>
-              <div className={`mt-3 inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full ${profile?.role === 'admin' ? 'bg-purple-50 text-purple-600' : 'bg-orange-50 text-orange-600'}`}>
-                <span className={`w-1.5 h-1.5 rounded-full ${profile?.role === 'admin' ? 'bg-purple-500' : 'bg-orange-500'}`} />
-                {profile?.role === 'admin' ? 'Admin' : 'Manager'}
-              </div>
-            </div>
+          <div className="max-w-4xl pb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
 
-            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
-              <button
-                onClick={() => { setShowPwd(v => !v); setPwdMsg(null) }}
-                className="w-full px-5 py-4 flex items-center justify-between text-left"
-              >
-                <span className="text-sm font-medium text-gray-900">Changer le mot de passe</span>
-                <span className="text-gray-400 text-lg">{showPwd ? '▴' : '▾'}</span>
-              </button>
-              {showPwd && (
-                <div className="px-5 pb-5 space-y-3 border-t border-gray-50 pt-4">
-                  {pwdMsg && (
-                    <p className={`text-xs font-medium px-3 py-2 rounded-lg ${pwdMsg.type === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
-                      {pwdMsg.text}
-                    </p>
-                  )}
-                  <div className="relative">
-                    <input type={showPwdNew ? 'text' : 'password'} placeholder="Nouveau mot de passe"
-                      value={pwd.new} onChange={e => setPwd(p => ({ ...p, new: e.target.value }))}
-                      className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                    <button type="button" onClick={() => setShowPwdNew(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                      {showPwdNew ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}
-                    </button>
+              {/* ── Colonne gauche ──────────────────────────────────────── */}
+              <div className="md:col-span-1 space-y-4">
+
+                {/* Carte avatar */}
+                <div className="bg-white rounded-2xl border border-slate-100 p-8 flex flex-col items-center text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                  <div className="relative mb-5">
+                    <label className="cursor-pointer block">
+                      <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="xl" />
+                      <div className="absolute bottom-0 right-0 p-1.5 bg-orange-500 hover:bg-orange-600 rounded-full flex items-center justify-center border-2 border-white transition-colors shadow-sm">
+                        {avatarLoading
+                          ? <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin" />
+                          : <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        }
+                      </div>
+                      <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={avatarLoading} />
+                    </label>
                   </div>
-                  <div className="relative">
-                    <input type={showPwdConfirm ? 'text' : 'password'} placeholder="Confirmer le mot de passe"
-                      value={pwd.confirm} onChange={e => setPwd(p => ({ ...p, confirm: e.target.value }))}
-                      className="w-full px-4 py-3 pr-11 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-                    <button type="button" onClick={() => setShowPwdConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors">
-                      {showPwdConfirm ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg> : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>}
-                    </button>
+                  <h2 className="text-xl font-semibold text-slate-800 tracking-tight">{profile?.full_name}</h2>
+                  <p className="text-sm font-medium text-slate-500 mt-1">{profile?.email}</p>
+                  <div className={`mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold ${
+                    profile?.role === 'admin'
+                      ? 'bg-purple-50 text-purple-700 border-purple-100'
+                      : 'bg-orange-50 text-orange-700 border-orange-100'
+                  }`}>
+                    <span className={`w-2 h-2 rounded-full ${profile?.role === 'admin' ? 'bg-purple-500' : 'bg-orange-500'}`} />
+                    {profile?.role === 'admin' ? 'Admin' : 'Manager'}
                   </div>
+                </div>
+
+                {/* Carte mot de passe → ouvre une modal */}
+                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                   <button
-                    onClick={handleChangePwd}
-                    disabled={pwdLoading || !pwd.new || !pwd.confirm}
-                    className="w-full text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-50 transition-all"
-                    style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}
+                    onClick={() => { setShowPwd(true); setPwdMsg(null); setPwd({ new: '', confirm: '' }) }}
+                    className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors group"
                   >
-                    {pwdLoading ? 'Enregistrement...' : 'Enregistrer'}
+                    <div className="flex items-center gap-3 text-slate-700 group-hover:text-slate-900 transition-colors">
+                      <Shield className="w-5 h-5 text-slate-400 group-hover:text-orange-500 transition-colors" />
+                      <span className="text-sm font-semibold">Changer le mot de passe</span>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-slate-400" />
                   </button>
                 </div>
-              )}
-            </div>
 
-            {/* ── Préférences notifications ────────────────────────────────── */}
-            {pushStatus === 'subscribed' && (
-              <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
-                <div className="px-5 py-4 border-b border-gray-50">
-                  <p className="text-sm font-semibold text-gray-900">Préférences de notifications</p>
-                  <p className="text-xs text-gray-400 mt-0.5">Choisissez ce que vous voulez recevoir sur cet appareil</p>
-                </div>
-                <div className="divide-y divide-gray-50">
-                  {([
-                    { key: 'anomalie_notif_enabled',     label: 'Anomalies',        desc: 'Nouvelle anomalie signalée',         emoji: '🔴' },
-                    { key: 'rapport_notif_enabled',      label: 'Rapports terrain',  desc: 'Message d\'un technicien',           emoji: '📝' },
-                    { key: 'chantier_notif_enabled',     label: 'Chantiers',         desc: 'Bloqué ou terminé',                  emoji: '🚨' },
-                    { key: 'autocontrole_notif_enabled', label: 'Auto-contrôles',    desc: 'Rapport soumis par un technicien',   emoji: '✅' },
-                    { key: 'chat_notif_enabled',         label: 'Messages chat',     desc: 'Nouveau message dans un chantier',   emoji: '💬' },
-                  ] as const).map(({ key, label, desc, emoji }) => (
-                    <div key={key} className="flex items-center justify-between px-5 py-3.5">
-                      <div className="flex items-center gap-3">
-                        <span className="text-base">{emoji}</span>
-                        <div>
-                          <p className="text-sm font-medium text-gray-800">{label}</p>
-                          <p className="text-xs text-gray-400">{desc}</p>
+                {/* Déconnexion */}
+                <button
+                  onClick={signOut}
+                  className="w-full bg-red-50 text-red-600 font-semibold py-4 rounded-2xl hover:bg-red-100 transition-colors text-sm border border-red-100"
+                >
+                  Se déconnecter
+                </button>
+              </div>
+
+              {/* ── Colonne droite — Préférences notifications ───────────── */}
+              <div className="md:col-span-2">
+                <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+                  <div className="px-8 py-6 border-b border-slate-100">
+                    <h2 className="text-lg font-semibold text-slate-800">Préférences de notifications</h2>
+                    <p className="text-sm text-slate-500 font-medium mt-1">
+                      {pushStatus === 'subscribed'
+                        ? 'Gérez ce que vous souhaitez recevoir sur cet appareil.'
+                        : 'Activez les notifications push (bouton cloche) pour gérer vos préférences.'}
+                    </p>
+                  </div>
+
+                  <div className="p-2">
+                    {([
+                      { key: 'anomalie_notif_enabled',     label: 'Anomalies',        desc: 'Nouvelle anomalie signalée',              icon: <AlertCircle className="w-5 h-5 text-rose-500" />,    iconBg: 'bg-rose-50'    },
+                      { key: 'rapport_notif_enabled',      label: 'Rapports terrain',  desc: "Message d'un technicien",                 icon: <FileText className="w-5 h-5 text-blue-500" />,       iconBg: 'bg-blue-50'    },
+                      { key: 'chantier_notif_enabled',     label: 'Chantiers',         desc: 'Bloqué ou terminé',                       icon: <AlertTriangle className="w-5 h-5 text-amber-500" />, iconBg: 'bg-amber-50'   },
+                      { key: 'autocontrole_notif_enabled', label: 'Auto-contrôles',    desc: 'Rapport soumis par un technicien',         icon: <CheckSquare className="w-5 h-5 text-emerald-500" />, iconBg: 'bg-emerald-50' },
+                      { key: 'chat_notif_enabled',         label: 'Messages chat',     desc: 'Nouveau message dans un chantier ou chat', icon: <MessageCircle className="w-5 h-5 text-indigo-500" />, iconBg: 'bg-indigo-50' },
+                    ] as const).map(({ key, label, desc, icon, iconBg }) => (
+                      <div key={key} className="flex items-center justify-between p-5 hover:bg-slate-50 rounded-xl transition-colors">
+                        <div className="flex items-start gap-4">
+                          <div className={`p-2.5 ${iconBg} rounded-xl mt-0.5 flex-shrink-0`}>{icon}</div>
+                          <div>
+                            <p className="text-sm font-semibold text-slate-800">{label}</p>
+                            <p className="text-xs font-medium text-slate-500 mt-0.5">{desc}</p>
+                          </div>
                         </div>
+                        <button
+                          onClick={() => pushStatus === 'subscribed' && toggleNotifPref(key)}
+                          disabled={pushStatus !== 'subscribed'}
+                          className={`relative inline-flex h-6 w-11 shrink-0 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
+                            pushStatus !== 'subscribed' ? 'bg-slate-200 cursor-not-allowed opacity-50' :
+                            notifPrefs[key] ? 'bg-orange-500 cursor-pointer' : 'bg-slate-200 cursor-pointer'
+                          }`}
+                        >
+                          <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                            notifPrefs[key] ? 'translate-x-5' : 'translate-x-0'
+                          }`} />
+                        </button>
                       </div>
-                      <button
-                        onClick={() => toggleNotifPref(key)}
-                        className={`relative w-10 h-6 rounded-full transition-colors duration-200 flex-shrink-0 ${
-                          notifPrefs[key] ? 'bg-orange-500' : 'bg-gray-200'
-                        }`}
-                      >
-                        <span className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-sm transition-transform duration-200 ${
-                          notifPrefs[key] ? 'translate-x-4' : 'translate-x-0'
-                        }`} />
-                      </button>
-                    </div>
-                  ))}
+                    ))}
+                  </div>
                 </div>
               </div>
-            )}
 
-            <button
-              onClick={signOut}
-              className="w-full bg-red-50 text-red-600 font-semibold py-4 rounded-2xl hover:bg-red-100 transition-colors text-sm"
-            >
-              Se déconnecter
-            </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Modal : changement de mot de passe ────────────────────────────── */}
+        {showPwd && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+            onClick={e => e.target === e.currentTarget && setShowPwd(false)}
+          >
+            <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.20)' }}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-orange-50 rounded-xl">
+                    <Shield className="w-5 h-5 text-orange-500" />
+                  </div>
+                  <p className="font-bold text-slate-900">Mot de passe</p>
+                </div>
+                <button
+                  onClick={() => setShowPwd(false)}
+                  className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors text-sm">
+                  ✕
+                </button>
+              </div>
+
+              {pwdMsg && (
+                <p className={`text-xs font-medium px-3 py-2.5 rounded-xl ${pwdMsg.type === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+                  {pwdMsg.text}
+                </p>
+              )}
+
+              <div className="relative">
+                <input type={showPwdNew ? 'text' : 'password'} placeholder="Nouveau mot de passe"
+                  value={pwd.new} onChange={e => setPwd(p => ({ ...p, new: e.target.value }))}
+                  className="w-full px-4 py-3 pr-11 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                <button type="button" onClick={() => setShowPwdNew(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                  {showPwdNew
+                    ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                    : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  }
+                </button>
+              </div>
+
+              <div className="relative">
+                <input type={showPwdConfirm ? 'text' : 'password'} placeholder="Confirmer le mot de passe"
+                  value={pwd.confirm} onChange={e => setPwd(p => ({ ...p, confirm: e.target.value }))}
+                  className="w-full px-4 py-3 pr-11 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+                <button type="button" onClick={() => setShowPwdConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                  {showPwdConfirm
+                    ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                    : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                  }
+                </button>
+              </div>
+
+              <div className="flex gap-3 pt-1">
+                <button
+                  onClick={() => setShowPwd(false)}
+                  className="flex-1 py-3 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+                  Annuler
+                </button>
+                <button
+                  onClick={handleChangePwd}
+                  disabled={pwdLoading || !pwd.new || !pwd.confirm}
+                  className="flex-1 text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-50 transition-all"
+                  style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}
+                >
+                  {pwdLoading ? 'Enregistrement...' : 'Enregistrer'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
