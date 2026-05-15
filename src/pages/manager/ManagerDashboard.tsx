@@ -604,7 +604,7 @@ export default function ManagerDashboard() {
           <div className="space-y-6 pb-6">
 
             {/* ── KPI Cards Bento ─────────────────────────────────────────── */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
               {([
                 { label: 'kWc En cours',       value: String(enhancedStats.kwc_en_cours || '—'), subtext: 'Chantiers actifs',                icon: Zap,          color: 'text-orange-600', bg: 'bg-orange-100', accent: 'bg-orange-400' },
                 { label: 'kWc Installés',       value: String(enhancedStats.kwc_installe || '—'), subtext: 'Chantiers terminés',              icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-100', accent: 'bg-emerald-400' },
