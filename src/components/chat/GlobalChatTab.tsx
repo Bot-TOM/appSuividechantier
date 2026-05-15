@@ -287,332 +287,367 @@ export default function GlobalChatTab({ userId, isActive = true }: Props) {
   return (
     <>
     <div
-      className="flex flex-col bg-gray-50 rounded-2xl overflow-hidden"
-      style={{ height: 'calc(100dvh - 270px)', minHeight: 420 }}
+      className="bg-white rounded-2xl border border-slate-200 flex overflow-hidden"
+      style={{ height: 'calc(100dvh - 240px)', minHeight: 480, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
       onClick={dismiss}
     >
-      {/* ── Header ────────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 bg-white" onClick={e => e.stopPropagation()}>
-        <button
-          onClick={() => setShowMembers(p => !p)}
-          className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-            showMembers
-              ? 'bg-orange-50 border-orange-200 text-orange-600'
-              : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-gray-200'
-          }`}
-        >
-          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
-          </svg>
-          <span>{onlineUsers.size} en ligne</span>
-        </button>
 
-        <div className="flex items-center gap-1.5">
-          <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-          <span className="text-xs font-semibold text-gray-500">Canal général</span>
+      {/* ── Sidebar membres (desktop uniquement) ─────────────────────── */}
+      <div className="hidden md:flex w-64 border-r border-slate-100 bg-slate-50/50 flex-col flex-shrink-0">
+        <div className="px-4 py-4 border-b border-slate-100">
+          <p className="text-[11px] font-bold text-slate-400 uppercase tracking-widest">
+            Membres — {members.length}
+          </p>
+        </div>
+        <div className="flex-1 overflow-y-auto py-2 px-2 space-y-0.5">
+          {members.map(m => {
+            const isMe   = m.id === userId
+            const online = isMe || onlineUsers.has(m.id)
+            const roleLabel = m.poste ?? (m.role === 'admin' ? 'Admin' : m.role === 'manager' ? 'Manager' : 'Technicien')
+            return (
+              <div key={m.id} className="flex items-center gap-2.5 px-2 py-2 rounded-lg hover:bg-slate-100/80 transition-colors">
+                <div className="relative flex-shrink-0">
+                  <Avatar name={m.name} avatarUrl={m.avatarUrl} size="sm" />
+                  <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-slate-50 ${online ? 'bg-emerald-500' : 'bg-slate-300'}`} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-slate-700 truncate">
+                    {m.name}{isMe && <span className="text-slate-400 font-normal ml-1">(vous)</span>}
+                  </p>
+                  <p className="text-[10px] text-slate-400 truncate">{roleLabel}</p>
+                </div>
+              </div>
+            )
+          })}
         </div>
       </div>
 
-      {/* ── Liste membres ─────────────────────────────────────────────── */}
-      {showMembers && (
-        <div className="bg-white border-b border-gray-100 px-4 py-3" onClick={e => e.stopPropagation()}>
-          <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wide mb-2.5">
-            Membres ({members.length})
-          </p>
-          <div className="flex flex-col gap-2 max-h-48 overflow-y-auto">
+      {/* ── Zone principale chat ──────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col min-w-0">
+
+        {/* ── Chat header ───────────────────────────────────────────── */}
+        <div className="h-14 border-b border-slate-100 px-4 flex items-center justify-between flex-shrink-0 bg-white/80 backdrop-blur-sm" onClick={e => e.stopPropagation()}>
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-orange-50 flex items-center justify-center flex-shrink-0">
+              <svg className="w-4 h-4 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-slate-800 leading-tight">Général</h2>
+              <p className="text-[11px] text-slate-400 font-medium">
+                {onlineUsers.size > 0 ? `${onlineUsers.size} membre${onlineUsers.size > 1 ? 's' : ''} en ligne` : 'Toute l\'équipe'}
+              </p>
+            </div>
+          </div>
+          {/* Bouton membres sur mobile */}
+          <button
+            onClick={() => setShowMembers(p => !p)}
+            className={`md:hidden flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+              showMembers ? 'bg-orange-50 border-orange-200 text-orange-600' : 'bg-slate-100 border-slate-200 text-slate-500'
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {members.length}
+          </button>
+        </div>
+
+        {/* Liste membres mobile */}
+        {showMembers && (
+          <div className="md:hidden bg-white border-b border-slate-100 px-3 py-2.5 max-h-40 overflow-y-auto" onClick={e => e.stopPropagation()}>
             {members.map(m => {
-              const isMe   = m.id === userId
+              const isMe = m.id === userId
               const online = isMe || onlineUsers.has(m.id)
-              const roleLabel = m.poste ?? (m.role === 'admin' ? 'Admin' : m.role === 'manager' ? 'Manager' : 'Technicien')
               return (
-                <div key={m.id} className="flex items-center gap-2.5">
-                  <Avatar name={m.name} avatarUrl={m.avatarUrl} size="sm" online={online} />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-sm font-medium text-gray-800">
-                        {m.name}
-                        {isMe && <span className="text-[11px] text-gray-400 font-normal ml-1">(vous)</span>}
-                      </span>
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">
-                        {roleLabel}
-                      </span>
-                    </div>
+                <div key={m.id} className="flex items-center gap-2.5 py-1.5">
+                  <div className="relative flex-shrink-0">
+                    <Avatar name={m.name} avatarUrl={m.avatarUrl} size="sm" />
+                    <span className={`absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white ${online ? 'bg-emerald-500' : 'bg-slate-300'}`} />
                   </div>
-                  <span className={`text-[11px] font-medium flex-shrink-0 ${online ? 'text-green-500' : 'text-gray-400'}`}>
+                  <p className="text-xs font-semibold text-slate-700 truncate">
+                    {m.name}{isMe && <span className="text-slate-400 font-normal ml-1">(vous)</span>}
+                  </p>
+                  <span className={`ml-auto text-[10px] font-medium flex-shrink-0 ${online ? 'text-emerald-500' : 'text-slate-400'}`}>
                     {online ? 'En ligne' : 'Hors ligne'}
                   </span>
                 </div>
               )
             })}
           </div>
-        </div>
-      )}
-
-      {/* ── Messages ──────────────────────────────────────────────────── */}
-      <div ref={msgsContainerRef} className="flex-1 overflow-y-auto px-2 py-3 space-y-0.5">
-        {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full gap-3 py-12">
-            <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center">
-              <svg className="w-7 h-7 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-            <p className="text-gray-500 text-sm font-medium">Canal général — toute l'équipe</p>
-            <p className="text-gray-400 text-xs">Soyez le premier à écrire !</p>
-          </div>
         )}
 
-        {messages.map((msg, i) => {
-          const isOwn       = msg.user_id === userId
-          const prev        = messages[i - 1]
-          const showDateSep = !prev || !sameDay(prev.created_at, msg.created_at)
-          const showAuthor  = !isOwn && (!prev || prev.user_id !== msg.user_id || showDateSep)
-          const replyMsg    = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null
-          const isMsgActive = activeMsg === msg.id
-          const showEmoji   = emojiFor === msg.id
+        {/* ── Messages ────────────────────────────────────────────────── */}
+        <div ref={msgsContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1 bg-slate-50/30">
+          {messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full gap-3 py-12">
+              <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center">
+                <svg className="w-7 h-7 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+                </svg>
+              </div>
+              <p className="text-slate-500 text-sm font-medium">Canal général — toute l'équipe</p>
+              <p className="text-slate-400 text-xs">Soyez le premier à écrire !</p>
+            </div>
+          )}
 
-          const reactionGroups: Record<string, { count: number; mine: boolean }> = {}
-          for (const r of msg.global_message_reactions ?? []) {
-            if (!reactionGroups[r.emoji]) reactionGroups[r.emoji] = { count: 0, mine: false }
-            reactionGroups[r.emoji].count++
-            if (r.user_id === userId) reactionGroups[r.emoji].mine = true
-          }
+          {messages.map((msg, i) => {
+            const isOwn       = msg.user_id === userId
+            const prev        = messages[i - 1]
+            const showDateSep = !prev || !sameDay(prev.created_at, msg.created_at)
+            const showAuthor  = !isOwn && (!prev || prev.user_id !== msg.user_id || showDateSep)
+            const replyMsg    = msg.reply_to_id ? messages.find(m => m.id === msg.reply_to_id) : null
+            const isMsgActive = activeMsg === msg.id
+            const showEmoji   = emojiFor === msg.id
 
-          return (
-            <div key={msg.id}>
-              {showDateSep && (
-                <div className="flex items-center gap-3 py-3 px-2">
-                  <div className="flex-1 h-px bg-gray-200" />
-                  <span className="text-[11px] text-gray-400 font-medium">{dateSeparatorLabel(msg.created_at)}</span>
-                  <div className="flex-1 h-px bg-gray-200" />
-                </div>
-              )}
+            const reactionGroups: Record<string, { count: number; mine: boolean }> = {}
+            for (const r of msg.global_message_reactions ?? []) {
+              if (!reactionGroups[r.emoji]) reactionGroups[r.emoji] = { count: 0, mine: false }
+              reactionGroups[r.emoji].count++
+              if (r.user_id === userId) reactionGroups[r.emoji].mine = true
+            }
 
-              <div
-                className={`flex ${isOwn ? 'justify-end' : 'justify-start'} px-1 mb-0.5`}
-                onClick={e => { e.stopPropagation(); setActiveMsg(p => p === msg.id ? null : msg.id); setEmojiFor(null) }}
-              >
-                {!isOwn && (
-                  <Avatar
-                    name={msg.profiles?.full_name ?? '?'}
-                    avatarUrl={msg.profiles?.avatar_url}
-                    size="sm"
-                    online={onlineUsers.has(msg.user_id)}
-                    className="mr-1.5 self-end mb-1"
-                  />
+            return (
+              <div key={msg.id}>
+                {showDateSep && (
+                  <div className="flex items-center gap-3 py-4">
+                    <div className="flex-1 h-px bg-slate-200" />
+                    <span className="text-[11px] text-slate-400 font-medium bg-white px-3 py-1 rounded-full border border-slate-200 shadow-sm">
+                      {dateSeparatorLabel(msg.created_at)}
+                    </span>
+                    <div className="flex-1 h-px bg-slate-200" />
+                  </div>
                 )}
 
-                <div className={`max-w-[75%] flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}>
-                  {showAuthor && (
-                    <div className="flex items-center gap-1.5 pl-1 mb-0.5">
-                      <span className="text-[11px] font-semibold text-orange-500">
-                        {msg.profiles?.full_name ?? 'Inconnu'}
-                      </span>
-                      {(() => {
-                        const label = msg.profiles?.poste ?? (msg.profiles?.role === 'admin' ? 'Admin' : msg.profiles?.role === 'manager' ? 'Manager' : null)
-                        return label ? (
-                          <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500">{label}</span>
-                        ) : null
-                      })()}
-                    </div>
+                <div
+                  className={`flex ${isOwn ? 'justify-end' : 'justify-start'} mb-1`}
+                  onClick={e => { e.stopPropagation(); setActiveMsg(p => p === msg.id ? null : msg.id); setEmojiFor(null) }}
+                >
+                  {/* Avatar autres */}
+                  {!isOwn && (
+                    <Avatar
+                      name={msg.profiles?.full_name ?? '?'}
+                      avatarUrl={msg.profiles?.avatar_url}
+                      size="sm"
+                      online={onlineUsers.has(msg.user_id)}
+                      className="mr-2.5 self-end mb-5 flex-shrink-0"
+                    />
                   )}
 
-                  <div className={`relative rounded-2xl px-3 py-2 ${
-                    isOwn
-                      ? 'bg-orange-500 text-white rounded-br-sm'
-                      : 'bg-white text-gray-800 rounded-bl-sm border border-gray-100'
-                  } ${isMsgActive ? 'ring-2 ring-orange-300 ring-offset-1' : ''}`}
-                    style={isOwn ? {} : { boxShadow: '0 1px 2px rgba(0,0,0,0.06)' }}
-                  >
-                    {replyMsg && (
-                      <div className={`mb-2 pl-2 border-l-2 rounded ${isOwn ? 'border-white/40' : 'border-orange-400'}`}>
-                        <p className={`text-[10px] font-semibold ${isOwn ? 'text-white/70' : 'text-orange-500'}`}>
-                          {replyMsg.profiles?.full_name ?? 'Inconnu'}
-                        </p>
-                        <p className={`text-[11px] truncate ${isOwn ? 'text-white/75' : 'text-gray-500'}`}>
-                          {replyMsg.content ?? replyMsg.file_name ?? '📎 Fichier'}
-                        </p>
+                  <div className={`max-w-[78%] sm:max-w-[70%] flex flex-col gap-0.5 ${isOwn ? 'items-end' : 'items-start'}`}>
+
+                    {/* Nom + heure (au-dessus, pour les autres) */}
+                    {showAuthor && (
+                      <div className="flex items-baseline gap-2 pl-1 mb-0.5">
+                        <span className="text-xs font-bold text-slate-700">
+                          {msg.profiles?.full_name ?? 'Inconnu'}
+                        </span>
+                        {(() => {
+                          const label = msg.profiles?.poste ?? (msg.profiles?.role === 'admin' ? 'Admin' : msg.profiles?.role === 'manager' ? 'Manager' : null)
+                          return label ? (
+                            <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-slate-100 text-slate-500">{label}</span>
+                          ) : null
+                        })()}
+                        <span className="text-[10px] font-medium text-slate-400">{formatTime(msg.created_at)}</span>
                       </div>
                     )}
 
-                    {msg.file_type === 'audio' && msg.file_url && (
-                      <div className="mb-1" onClick={e => e.stopPropagation()}>
-                        <VoiceMessage url={msg.file_url} isOwn={isOwn} />
-                      </div>
-                    )}
+                    {/* Bulle */}
+                    <div className={`relative rounded-2xl px-3.5 py-2.5 ${
+                      isOwn
+                        ? 'bg-orange-500 text-white rounded-br-sm shadow-sm'
+                        : 'bg-white text-slate-700 rounded-bl-sm border border-slate-200 shadow-sm'
+                    } ${isMsgActive ? 'ring-2 ring-orange-300 ring-offset-1' : ''}`}>
 
-                    {msg.file_type === 'image' && msg.file_url && (
-                      <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
-                        <img src={msg.file_url} alt={msg.file_name ?? 'image'}
-                          className="rounded-xl max-w-[200px] max-h-[200px] object-cover mb-1 block" />
-                      </a>
-                    )}
+                      {replyMsg && (
+                        <div className={`mb-2 pl-2 border-l-2 rounded ${isOwn ? 'border-white/40' : 'border-orange-400'}`}>
+                          <p className={`text-[10px] font-semibold ${isOwn ? 'text-white/70' : 'text-orange-500'}`}>
+                            {replyMsg.profiles?.full_name ?? 'Inconnu'}
+                          </p>
+                          <p className={`text-[11px] truncate ${isOwn ? 'text-white/75' : 'text-slate-500'}`}>
+                            {replyMsg.content ?? replyMsg.file_name ?? '📎 Fichier'}
+                          </p>
+                        </div>
+                      )}
 
-                    {msg.file_type === 'document' && msg.file_url && (() => {
-                      const isPdf = msg.file_name?.toLowerCase().endsWith('.pdf')
-                      return isPdf ? (
-                        <button
-                          onClick={e => { e.stopPropagation(); setPdfPreview({ url: msg.file_url!, name: msg.file_name ?? 'Document' }) }}
-                          className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 w-full text-left transition-opacity hover:opacity-80 ${
-                            isOwn ? 'bg-white/20 text-white' : 'bg-red-50 text-red-700 border border-red-100'
-                          }`}
-                        >
-                          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          <span className="truncate max-w-[150px]">{msg.file_name ?? 'Document'}</span>
-                        </button>
-                      ) : (
-                        <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                          className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 ${
-                            isOwn ? 'bg-white/20 text-white' : 'bg-gray-50 text-gray-700 border border-gray-100'
-                          }`}
-                        >
-                          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          <span className="truncate max-w-[150px]">{msg.file_name ?? 'Document'}</span>
+                      {msg.file_type === 'audio' && msg.file_url && (
+                        <div className="mb-1" onClick={e => e.stopPropagation()}>
+                          <VoiceMessage url={msg.file_url} isOwn={isOwn} />
+                        </div>
+                      )}
+
+                      {msg.file_type === 'image' && msg.file_url && (
+                        <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}>
+                          <img src={msg.file_url} alt={msg.file_name ?? 'image'}
+                            className="rounded-xl max-w-[200px] max-h-[200px] object-cover mb-1 block" />
                         </a>
-                      )
-                    })()}
+                      )}
 
-                    {msg.content && (
-                      <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                        {renderWithMentions(msg.content, isOwn)}
-                      </p>
-                    )}
+                      {msg.file_type === 'document' && msg.file_url && (() => {
+                        const isPdf = msg.file_name?.toLowerCase().endsWith('.pdf')
+                        return isPdf ? (
+                          <button
+                            onClick={e => { e.stopPropagation(); setPdfPreview({ url: msg.file_url!, name: msg.file_name ?? 'Document' }) }}
+                            className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 w-full text-left transition-opacity hover:opacity-80 ${
+                              isOwn ? 'bg-white/20 text-white' : 'bg-red-50 text-red-700 border border-red-100'
+                            }`}
+                          >
+                            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="truncate max-w-[150px]">{msg.file_name ?? 'Document'}</span>
+                          </button>
+                        ) : (
+                          <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                            className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 ${
+                              isOwn ? 'bg-white/20 text-white' : 'bg-slate-50 text-slate-700 border border-slate-100'
+                            }`}
+                          >
+                            <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span className="truncate max-w-[150px]">{msg.file_name ?? 'Document'}</span>
+                          </a>
+                        )
+                      })()}
 
-                    <p className={`text-[10px] mt-1 leading-none ${isOwn ? 'text-white/55 text-right' : 'text-gray-400'}`}>
-                      {formatTime(msg.created_at)}
-                    </p>
-                  </div>
-
-                  {Object.keys(reactionGroups).length > 0 && (
-                    <div className={`flex gap-1 flex-wrap ${isOwn ? 'justify-end' : 'justify-start'} px-1`}>
-                      {Object.entries(reactionGroups).map(([emoji, { count, mine }]) => (
-                        <button key={emoji}
-                          onClick={e => { e.stopPropagation(); toggleReaction(msg.id, emoji) }}
-                          className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
-                            mine ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-gray-200 text-gray-600 hover:bg-gray-50'
-                          }`}
-                        >
-                          {emoji}{count > 1 && <span className="ml-0.5 font-medium">{count}</span>}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-
-                  {isMsgActive && (
-                    <div className={`flex gap-1 ${isOwn ? 'justify-end' : 'justify-start'} flex-wrap`} onClick={e => e.stopPropagation()}>
-                      <button onClick={() => setEmojiFor(p => p === msg.id ? null : msg.id)}
-                        className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors">
-                        😊
-                      </button>
-                      <button onClick={() => { setReplyTo(msg); dismiss(); textareaRef.current?.focus() }}
-                        className="text-xs bg-white border border-gray-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-gray-50 transition-colors font-medium text-gray-600">
-                        ↩ Répondre
-                      </button>
-                      {isOwn && (
-                        <button onClick={() => { deleteMessage(msg.id); dismiss() }}
-                          className="text-xs bg-red-50 border border-red-100 text-red-500 rounded-full px-2.5 py-1 shadow-sm hover:bg-red-100 transition-colors font-medium">
-                          Supprimer
-                        </button>
+                      {msg.content && (
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
+                          {renderWithMentions(msg.content, isOwn)}
+                        </p>
                       )}
                     </div>
-                  )}
 
-                  {showEmoji && (
-                    <div className={`flex gap-1 bg-white border border-gray-100 rounded-2xl p-2 shadow-xl ${isOwn ? 'self-end' : 'self-start'}`}
-                      onClick={e => e.stopPropagation()}>
-                      {EMOJIS.map(e => (
-                        <button key={e} onClick={() => { toggleReaction(msg.id, e); dismiss() }}
-                          className="text-xl hover:scale-125 transition-transform active:scale-90 leading-none">
-                          {e}
+                    {/* Heure en dessous (mes messages uniquement) */}
+                    {isOwn && (
+                      <span className="text-[10px] font-medium text-slate-400 pr-1">{formatTime(msg.created_at)}</span>
+                    )}
+
+                    {/* Réactions */}
+                    {Object.keys(reactionGroups).length > 0 && (
+                      <div className={`flex gap-1 flex-wrap ${isOwn ? 'justify-end' : 'justify-start'} px-1`}>
+                        {Object.entries(reactionGroups).map(([emoji, { count, mine }]) => (
+                          <button key={emoji}
+                            onClick={e => { e.stopPropagation(); toggleReaction(msg.id, emoji) }}
+                            className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-xs border transition-colors ${
+                              mine ? 'bg-orange-100 border-orange-300 text-orange-700' : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                            }`}
+                          >
+                            {emoji}{count > 1 && <span className="ml-0.5 font-medium">{count}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Actions sur message (clic) */}
+                    {isMsgActive && (
+                      <div className={`flex gap-1 ${isOwn ? 'justify-end' : 'justify-start'} flex-wrap`} onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setEmojiFor(p => p === msg.id ? null : msg.id)}
+                          className="text-xs bg-white border border-slate-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-slate-50 transition-colors">
+                          😊
                         </button>
-                      ))}
-                    </div>
-                  )}
+                        <button onClick={() => { setReplyTo(msg); dismiss(); textareaRef.current?.focus() }}
+                          className="text-xs bg-white border border-slate-200 rounded-full px-2.5 py-1 shadow-sm hover:bg-slate-50 transition-colors font-medium text-slate-600">
+                          ↩ Répondre
+                        </button>
+                        {isOwn && (
+                          <button onClick={() => { deleteMessage(msg.id); dismiss() }}
+                            className="text-xs bg-red-50 border border-red-100 text-red-500 rounded-full px-2.5 py-1 shadow-sm hover:bg-red-100 transition-colors font-medium">
+                            Supprimer
+                          </button>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Picker emoji */}
+                    {showEmoji && (
+                      <div className={`flex gap-1 bg-white border border-slate-100 rounded-2xl p-2 shadow-xl ${isOwn ? 'self-end' : 'self-start'}`}
+                        onClick={e => e.stopPropagation()}>
+                        {EMOJIS.map(e => (
+                          <button key={e} onClick={() => { toggleReaction(msg.id, e); dismiss() }}
+                            className="text-xl hover:scale-125 transition-transform active:scale-90 leading-none">
+                            {e}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
-          )
-        })}
-        <div ref={bottomRef} />
-      </div>
+            )
+          })}
+          <div ref={bottomRef} />
+        </div>
 
-      {/* ── Barre de saisie ───────────────────────────────────────────── */}
-      <div className="border-t border-gray-200 bg-white px-3 py-2.5 relative" onClick={e => e.stopPropagation()}>
-
+        {/* ── Indicateur "en train d'écrire" ──────────────────────────── */}
         {typingNames.length > 0 && (
-          <div className="absolute bottom-full left-3 mb-0.5 flex items-center gap-1.5 text-[11px] text-gray-400">
+          <div className="px-4 py-1 flex items-center gap-1.5 text-[11px] text-slate-400 bg-white border-t border-slate-50">
             <span>
               {typingNames.length === 1
                 ? `${typingNames[0]} est en train d'écrire`
                 : `${typingNames.slice(0, 2).join(' et ')} écrivent`}
             </span>
             <span className="flex gap-0.5 items-end pb-0.5">
-              <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '0ms' }} />
-              <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '150ms' }} />
-              <span className="w-1 h-1 rounded-full bg-gray-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+              <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+              <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+              <span className="w-1 h-1 rounded-full bg-slate-400 animate-bounce" style={{ animationDelay: '300ms' }} />
             </span>
           </div>
         )}
 
-        {mentionAnchor !== null && mentionResults.length > 0 && (
-          <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-gray-100 rounded-2xl shadow-xl overflow-hidden z-20">
-            {mentionResults.map((member, idx) => (
-              <button key={member.id}
-                onMouseDown={e => { e.preventDefault(); selectMention(member.name) }}
-                className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
-                  idx === mentionHighlight ? 'bg-orange-50' : 'hover:bg-gray-50'
-                }`}
-              >
-                <Avatar name={member.name} avatarUrl={member.avatarUrl} size="sm" online={onlineUsers.has(member.id)} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">{member.name}</p>
-                  <p className="text-[11px] text-gray-400">{member.poste ?? member.role ?? 'Membre'}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        )}
+        {/* ── Zone de saisie enrichie ──────────────────────────────────── */}
+        <div className="p-3 bg-white border-t border-slate-100 flex-shrink-0 relative" onClick={e => e.stopPropagation()}>
 
-        {replyTo && (
-          <div className="flex items-center gap-2 mb-2 pl-3 border-l-2 border-orange-400 bg-orange-50 rounded-r-xl py-1.5 pr-2">
-            <div className="flex-1 min-w-0">
-              <p className="text-[11px] font-semibold text-orange-500">{replyTo.profiles?.full_name ?? 'Inconnu'}</p>
-              <p className="text-xs text-gray-500 truncate">{replyTo.content ?? replyTo.file_name ?? '📎 Fichier'}</p>
+          {/* Autocomplete mentions */}
+          {mentionAnchor !== null && mentionResults.length > 0 && (
+            <div className="absolute bottom-full left-3 right-3 mb-1 bg-white border border-slate-100 rounded-2xl shadow-xl overflow-hidden z-20">
+              {mentionResults.map((member, idx) => (
+                <button key={member.id}
+                  onMouseDown={e => { e.preventDefault(); selectMention(member.name) }}
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-left transition-colors ${
+                    idx === mentionHighlight ? 'bg-orange-50' : 'hover:bg-slate-50'
+                  }`}
+                >
+                  <Avatar name={member.name} avatarUrl={member.avatarUrl} size="sm" online={onlineUsers.has(member.id)} />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-slate-800 truncate">{member.name}</p>
+                    <p className="text-[11px] text-slate-400">{member.poste ?? member.role ?? 'Membre'}</p>
+                  </div>
+                </button>
+              ))}
             </div>
-            <button onClick={() => setReplyTo(null)} className="text-gray-400 hover:text-gray-600 flex-shrink-0 p-0.5">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        )}
+          )}
 
-        <div className="flex items-end gap-2">
-          <button onClick={() => fileRef.current?.click()} disabled={uploading}
-            className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-100 hover:text-orange-500 transition-colors disabled:opacity-50">
-            {uploading
-              ? <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-              : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+          {/* Bannière réponse */}
+          {replyTo && (
+            <div className="flex items-center gap-2 mb-2 pl-3 border-l-2 border-orange-400 bg-orange-50 rounded-r-xl py-1.5 pr-2">
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-semibold text-orange-500">{replyTo.profiles?.full_name ?? 'Inconnu'}</p>
+                <p className="text-xs text-slate-500 truncate">{replyTo.content ?? replyTo.file_name ?? '📎 Fichier'}</p>
+              </div>
+              <button onClick={() => setReplyTo(null)} className="text-slate-400 hover:text-slate-600 flex-shrink-0 p-0.5">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
-            }
-          </button>
-          <input ref={fileRef} type="file" className="hidden" onChange={handleFile}
-            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
+              </button>
+            </div>
+          )}
 
-          {isRecording ? (
-            <>
-              <div className="flex-1 flex items-center gap-2 px-3 overflow-hidden">
-                <span className="text-xs text-gray-400 flex items-center gap-1 transition-all duration-75 select-none"
+          {/* Conteneur input enrichi */}
+          <div className={`relative bg-white border rounded-xl overflow-hidden transition-all ${
+            isRecording ? 'border-red-300 ring-4 ring-red-500/10' : 'border-slate-200 focus-within:border-orange-400 focus-within:ring-4 focus-within:ring-orange-500/10'
+          }`}>
+
+            {isRecording ? (
+              /* ── Mode enregistrement ── */
+              <div className="flex items-center gap-3 px-4 py-3">
+                <span className="text-xs text-slate-400 flex items-center gap-1 transition-all duration-75 select-none"
                   style={{ opacity: 0.3 + cancelProgress * 0.7, transform: `translateX(${-cancelProgress * 12}px)` }}>
                   <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
                   </svg>
-                  Annuler
+                  Glisser pour annuler
                 </span>
                 <div className="flex-1 flex items-center justify-end gap-2">
                   <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse flex-shrink-0" />
@@ -620,45 +655,75 @@ export default function GlobalChatTab({ userId, isActive = true }: Props) {
                     {String(Math.floor(recordingSeconds / 60)).padStart(2, '0')}:{String(recordingSeconds % 60).padStart(2, '0')}
                   </span>
                 </div>
-              </div>
-              <button ref={micBtnRef} onPointerDown={handleMicPointerDown}
-                className="flex-shrink-0 w-11 h-11 rounded-full bg-red-500 flex items-center justify-center text-white shadow-lg"
-                style={{ touchAction: 'none', transform: 'scale(1.1)' }}>
-                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
-                </svg>
-              </button>
-            </>
-          ) : (
-            <>
-              <textarea
-                ref={textareaRef}
-                value={text}
-                onChange={handleTextChange}
-                onKeyDown={handleKeyDown}
-                placeholder="Message à toute l'équipe… (@ pour mentionner)"
-                rows={1}
-                className="flex-1 resize-none rounded-2xl border border-gray-200 px-3 py-2 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:border-orange-300 focus:ring-1 focus:ring-orange-100 bg-gray-50 max-h-28 overflow-y-auto"
-                style={{ lineHeight: '1.45' }}
-              />
-              {text.trim() ? (
-                <button onClick={handleSend}
-                  className="flex-shrink-0 w-9 h-9 rounded-full bg-orange-500 flex items-center justify-center text-white hover:bg-orange-600 transition-colors">
-                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5" />
-                  </svg>
-                </button>
-              ) : (
                 <button ref={micBtnRef} onPointerDown={handleMicPointerDown}
-                  className="flex-shrink-0 w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-orange-100 hover:text-orange-500 transition-colors select-none"
-                  style={{ touchAction: 'none' }} title="Maintenir pour enregistrer">
+                  className="w-9 h-9 rounded-full bg-red-500 flex items-center justify-center text-white shadow-sm"
+                  style={{ touchAction: 'none' }}>
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
                   </svg>
                 </button>
-              )}
-            </>
-          )}
+              </div>
+            ) : (
+              <>
+                {/* Textarea */}
+                <textarea
+                  ref={textareaRef}
+                  value={text}
+                  onChange={handleTextChange}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Envoyer un message dans # Général  (@ pour mentionner)"
+                  rows={2}
+                  className="w-full bg-transparent border-none focus:outline-none text-sm px-4 pt-3 pb-1 text-slate-800 placeholder-slate-400 resize-none max-h-32 overflow-y-auto"
+                  style={{ lineHeight: '1.5' }}
+                />
+
+                {/* Toolbar sous le textarea */}
+                <div className="flex items-center justify-between px-2 py-1.5 border-t border-slate-100 bg-slate-50/50">
+                  <div className="flex items-center gap-0.5">
+                    {/* Pièce jointe */}
+                    <button onClick={() => fileRef.current?.click()} disabled={uploading}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors disabled:opacity-50"
+                      title="Joindre un fichier">
+                      {uploading
+                        ? <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                        : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
+                          </svg>
+                      }
+                    </button>
+                    <div className="w-px h-4 bg-slate-200 mx-1" />
+                    {/* Micro */}
+                    <button ref={micBtnRef} onPointerDown={handleMicPointerDown}
+                      className="p-1.5 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors select-none"
+                      style={{ touchAction: 'none' }} title="Maintenir pour enregistrer un vocal">
+                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M19 11a7 7 0 01-7 7m0 0a7 7 0 01-7-7m7 7v4m0 0H8m4 0h4m-4-8a3 3 0 01-3-3V5a3 3 0 116 0v6a3 3 0 01-3 3z" />
+                      </svg>
+                    </button>
+                  </div>
+
+                  {/* Bouton Envoyer */}
+                  <button
+                    onClick={handleSend}
+                    className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm font-semibold transition-all ${
+                      text.trim()
+                        ? 'bg-orange-500 text-white shadow-sm hover:bg-orange-600'
+                        : 'bg-slate-100 text-slate-400 cursor-not-allowed'
+                    }`}
+                    disabled={!text.trim()}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.269 20.876L5.999 12zm0 0h7.5" />
+                    </svg>
+                    <span className="hidden sm:inline">Envoyer</span>
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+
+          <input ref={fileRef} type="file" className="hidden" onChange={handleFile}
+            accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt" />
         </div>
       </div>
     </div>
