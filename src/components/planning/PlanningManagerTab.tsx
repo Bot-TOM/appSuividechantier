@@ -320,7 +320,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
     <div className="space-y-5 pb-8">
 
       {/* ── Toolbar ──────────────────────────────────────────────────────────── */}
-      <div className="flex items-center gap-3 flex-wrap">
+      <div className="flex flex-col md:flex-row md:items-center gap-3 flex-wrap bg-white rounded-2xl px-4 py-3.5 border border-slate-100" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
 
         {/* Navigation */}
         <div className="flex items-center gap-2">
@@ -394,13 +394,15 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
 
       {/* ── Onglets Planning activité / Heures équipe ─────────────────────── */}
       {displayMode === 'semaine' && (
-        <div className="flex gap-1 p-1 bg-gray-100 rounded-xl w-fit">
+        <div className="flex p-1 bg-white rounded-xl border border-slate-100 w-fit" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
           {(['activite', 'heures'] as const).map(v => (
             <button
               key={v}
               onClick={() => setView(v)}
-              className={`px-5 py-2 text-xs font-semibold rounded-lg transition-all ${
-                view === v ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+              className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all ${
+                view === v
+                  ? 'bg-slate-50 text-orange-600 ring-1 ring-slate-200/70 shadow-sm'
+                  : 'text-slate-500 hover:text-slate-700'
               }`}>
               {v === 'activite' ? 'Planning activité' : 'Heures équipe'}
             </button>
@@ -436,15 +438,15 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
 
                 {/* ── En-tête : JOUR + une colonne par personne ── */}
                 <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left px-5 py-4 text-xs font-semibold text-gray-400 uppercase tracking-widest sticky left-0 bg-white z-10 w-40">
-                      JOUR
+                  <tr className="border-b border-gray-100 bg-slate-50/60">
+                    <th className="text-left px-5 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50/60 z-10 w-40">
+                      Jour
                     </th>
                     {sorted.map(person => (
-                      <th key={person.id} className="px-3 py-3 text-center" style={{ minWidth: 130 }}>
-                        <div className="flex flex-col items-center gap-1.5">
+                      <th key={person.id} className="px-3 py-4 text-center border-l border-slate-100/60" style={{ minWidth: 130 }}>
+                        <div className="flex flex-col items-center gap-2">
                           <Avatar name={person.full_name} avatarUrl={person.avatar_url} size="sm" />
-                          <p className="text-xs font-semibold text-gray-700 leading-tight">
+                          <p className="text-xs font-bold text-slate-800 leading-tight">
                             {person.full_name.split(' ')[0]}
                           </p>
                         </div>
@@ -462,15 +464,21 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                     const isFerie   = !isWeekend && feries.has(date)
 
                     return (
-                      <tr key={date} className="border-b border-gray-50 last:border-0">
+                      <tr key={date} className={`border-b border-gray-50 last:border-0 group ${isWeekend ? 'bg-slate-50/50' : ''}`}>
 
                         {/* Colonne JOUR */}
-                        <td className={`px-5 py-3 sticky left-0 z-10 border-r border-gray-100 ${isToday ? 'bg-orange-50/50' : 'bg-white'}`}>
-                          <p className={`text-sm font-semibold ${isToday ? 'text-orange-500' : isWeekend ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <td className={`px-5 py-3 sticky left-0 z-10 border-r border-gray-100 transition-colors ${
+                          isToday
+                            ? 'bg-orange-50/40 border-l-4 border-l-orange-500'
+                            : isWeekend
+                            ? 'bg-slate-50/50'
+                            : 'bg-white group-hover:bg-slate-50/30'
+                        }`}>
+                          <p className={`text-sm font-bold ${isToday ? 'text-orange-600' : isWeekend ? 'text-slate-400' : 'text-slate-800'}`}>
                             {dayLabel}
                           </p>
                           {isToday && (
-                            <p className="text-[11px] text-orange-400 font-medium mt-0.5">Aujourd'hui</p>
+                            <p className="text-[11px] text-orange-500 font-semibold mt-0.5">Aujourd'hui</p>
                           )}
                         </td>
 
@@ -479,8 +487,8 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                           // Weekend → tiret
                           if (isWeekend) {
                             return (
-                              <td key={person.id} className="px-3 py-2 text-center">
-                                <span className="text-gray-300 text-sm">—</span>
+                              <td key={person.id} className="px-3 py-2 text-center border-l border-slate-100/40">
+                                <span className="text-slate-300 text-sm">—</span>
                               </td>
                             )
                           }
@@ -513,8 +521,8 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                                   ? toggleCell(person.id, date)
                                   : openEdit(person.id, person.full_name, date)
                               }
-                              className={`px-3 py-2 cursor-pointer transition-colors relative ${
-                                isSelected ? 'bg-orange-50' : 'hover:bg-gray-50/70'
+                              className={`px-2 py-2 cursor-pointer transition-colors relative border-l border-slate-100/40 ${
+                                isSelected ? 'bg-orange-50' : 'hover:bg-slate-50/40'
                               }`}>
 
                               {/* Checkbox mode sélection */}
@@ -530,11 +538,11 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                                 </div>
                               )}
 
-                              {/* Pill de la cellule */}
-                              <div className={`rounded-xl px-3 py-2.5 min-h-[52px] flex flex-col justify-center border ${bg} ${border}`}>
-                                <p className={`text-xs font-semibold leading-tight ${textColor}`}>{label}</p>
+                              {/* Card de la cellule */}
+                              <div className={`rounded-xl px-2.5 py-2.5 min-h-[64px] flex flex-col justify-center border transition-shadow hover:shadow-sm ${bg} ${border}`}>
+                                <p className={`text-xs font-bold leading-tight tracking-tight ${textColor}`}>{label}</p>
                                 {note && (
-                                  <p className="text-[10px] text-gray-500 mt-0.5 leading-snug line-clamp-2">{note}</p>
+                                  <p className="text-[10px] opacity-75 mt-0.5 leading-snug line-clamp-2">{note}</p>
                                 )}
                               </div>
                             </td>
@@ -601,15 +609,15 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                   className="w-full border-collapse"
                   style={{ minWidth: `${180 + sorted.length * 120}px` }}>
                   <thead>
-                    <tr className="border-b border-gray-100">
-                      <th className="text-left px-5 py-4 text-xs font-semibold text-gray-400 uppercase tracking-widest sticky left-0 bg-white z-10 w-40">
-                        JOUR
+                    <tr className="border-b border-gray-100 bg-slate-50/60">
+                      <th className="text-left px-5 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50/60 z-10 w-40">
+                        Jour
                       </th>
                       {sorted.map(person => (
-                        <th key={person.id} className="px-3 py-3 text-center" style={{ minWidth: 110 }}>
-                          <div className="flex flex-col items-center gap-1.5">
+                        <th key={person.id} className="px-3 py-4 text-center border-l border-slate-100/60" style={{ minWidth: 110 }}>
+                          <div className="flex flex-col items-center gap-2">
                             <Avatar name={person.full_name} avatarUrl={person.avatar_url} size="sm" />
-                            <p className="text-xs font-semibold text-gray-700 leading-tight">
+                            <p className="text-xs font-bold text-slate-800 leading-tight">
                               {person.full_name.split(' ')[0]}
                             </p>
                           </div>
@@ -627,20 +635,30 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                       const isFerie   = !isWeekend && feriesOfDay.has(date)
                       // Numéro de semaine ISO pour l'alternance
                       const weekIdx = Math.floor(dayIdx / 7)
-                      const rowBg = isToday ? 'bg-orange-50/50' : weekIdx % 2 === 1 ? 'bg-gray-50/40' : ''
+                      const rowBg = isToday
+                        ? 'bg-orange-50/30'
+                        : isWeekend
+                        ? 'bg-slate-50/50'
+                        : weekIdx % 2 === 1 ? 'bg-gray-50/30' : ''
 
                       return (
-                        <tr key={date} className={`border-b border-gray-50 last:border-0 ${rowBg}`}>
-                          <td className={`px-5 py-1.5 sticky left-0 z-10 border-r border-gray-100 ${isToday ? 'bg-orange-50/50' : weekIdx % 2 === 1 ? 'bg-gray-50/40' : 'bg-white'}`}>
-                            <p className={`text-xs font-semibold ${isToday ? 'text-orange-500' : isWeekend ? 'text-gray-300' : 'text-gray-600'}`}>
+                        <tr key={date} className={`border-b border-gray-50 last:border-0 group ${rowBg}`}>
+                          <td className={`px-5 py-1.5 sticky left-0 z-10 border-r border-gray-100 transition-colors ${
+                            isToday
+                              ? 'bg-orange-50/40 border-l-4 border-l-orange-500'
+                              : isWeekend
+                              ? 'bg-slate-50/50'
+                              : weekIdx % 2 === 1 ? 'bg-gray-50/30' : 'bg-white group-hover:bg-slate-50/30'
+                          }`}>
+                            <p className={`text-xs font-bold ${isToday ? 'text-orange-600' : isWeekend ? 'text-slate-400' : 'text-slate-700'}`}>
                               {dayLabel}
                             </p>
                           </td>
                           {sorted.map(person => {
                             if (isWeekend) {
                               return (
-                                <td key={person.id} className="px-2 py-1 text-center">
-                                  <span className="text-gray-200 text-xs">—</span>
+                                <td key={person.id} className="px-2 py-1 text-center border-l border-slate-100/40">
+                                  <span className="text-slate-300 text-xs">—</span>
                                 </td>
                               )
                             }
