@@ -17,6 +17,7 @@ import {
 } from '@/hooks/usePlanning'
 import { useTeamTimeEntries, calcDuree } from '@/hooks/useTimeEntries'
 import Avatar from '@/components/Avatar'
+import { Coffee, Clock, ArrowRight } from 'lucide-react'
 
 // ─── Couleurs par type ────────────────────────────────────────────────────────
 const PT: Record<PlanningType, { label: string; bg: string; text: string; border: string }> = {
@@ -780,174 +781,246 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
               <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
             </div>
           ) : (
-            <div
-              className="bg-white rounded-2xl overflow-hidden overflow-x-auto"
-              style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
-              <table className="w-full text-xs min-w-[700px]">
-                <thead>
-                  <tr className="border-b border-gray-100">
-                    <th className="text-left px-5 py-3 text-gray-400 font-semibold uppercase tracking-wide w-36">Nom</th>
-                    {days.map(date => {
-                      const d   = new Date(date + 'T00:00:00')
-                      const raw = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric' })
-                      const lbl = raw.charAt(0).toUpperCase() + raw.slice(1)
-                      return (
-                        <th key={date} colSpan={4}
-                          className={`text-center px-1 py-3 font-semibold uppercase tracking-wide ${date === TODAY ? 'text-orange-500' : 'text-gray-400'}`}>
-                          {lbl}
-                        </th>
-                      )
-                    })}
-                    <th className="text-center px-4 py-3 text-gray-400 font-semibold uppercase tracking-wide">Total</th>
-                  </tr>
-                  <tr className="border-b border-gray-100 bg-gray-50/60">
-                    <th className="px-5 py-2" />
-                    {days.flatMap((_, i) => ([
-                      <th key={`a${i}`} className="px-1 py-2 text-[10px] text-gray-400 font-medium text-center">Arr.</th>,
-                      <th key={`d${i}`} className="px-1 py-2 text-[10px] text-gray-400 font-medium text-center">Dép.</th>,
-                      <th key={`p${i}`} className="px-1 py-2 text-[10px] text-gray-400 font-medium text-center">Pause</th>,
-                      <th key={`r${i}`} className="px-1 py-2 text-[10px] text-gray-400 font-medium text-center">Dur.</th>,
-                    ]))}
-                    <th className="px-4 py-2" />
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {sorted.map(person => {
-                    let totalMins = 0
-                    const cells = days.map(date => {
-                      const e   = timeEntries.find(t => t.technicien_id === person.id && t.date === date)
-                      const dur = calcDuree(e?.arrivee ?? null, e?.depart ?? null, e?.pause ?? null)
-                      if (dur !== '—' && e?.arrivee && e?.depart) {
-                        const [ah, am] = e.arrivee.split(':').map(Number)
-                        const [dh, dm] = e.depart.split(':').map(Number)
-                        const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
-                        if (mins > 0) totalMins += mins
-                      }
-                      return { e, dur }
-                    })
-                    const th = Math.floor(totalMins / 60), tm = totalMins % 60
-                    const totalStr = totalMins > 0
-                      ? (tm > 0 ? `${th}h${tm.toString().padStart(2, '0')}` : `${th}h`)
-                      : '—'
-                    return (
-                      <tr key={person.id}>
-                        <td className="px-5 py-3">
-                          <p className="font-semibold text-gray-800">{person.full_name.split(' ')[0]}</p>
-                          {person.role === 'admin'
-                            ? <p className="text-[10px] text-purple-500">Admin</p>
-                            : person.role === 'manager'
-                            ? <p className="text-[10px] text-orange-500">Manager</p>
-                            : person.poste && <p className="text-[10px] text-gray-400">{person.poste}</p>}
-                        </td>
-                        {cells.flatMap(({ e, dur }, i) => ([
-                          <td key={`a${i}`} className="px-1 py-3 text-center text-gray-600">{e?.arrivee ?? <span className="text-gray-200">—</span>}</td>,
-                          <td key={`d${i}`} className="px-1 py-3 text-center text-gray-600">{e?.depart ?? <span className="text-gray-200">—</span>}</td>,
-                          <td key={`p${i}`} className="px-1 py-3 text-center text-gray-400">{e?.pause ? `${e.pause}mn` : <span className="text-gray-200">—</span>}</td>,
-                          <td key={`r${i}`} className={`px-1 py-3 text-center font-semibold ${dur !== '—' ? 'text-gray-800' : 'text-gray-200'}`}>{dur}</td>,
-                        ]))}
-                        <td className="px-4 py-3 text-center font-bold text-orange-500">{totalStr}</td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-                <tfoot>
-                  <tr className="border-t-2 border-orange-100 bg-orange-50/60">
-                    <td className="px-5 py-3 text-xs font-bold text-orange-700">Total équipe</td>
-                    {days.flatMap((date, i) => {
-                      let dayMins = 0
-                      sorted.forEach(p => {
-                        const e = timeEntries.find(t => t.technicien_id === p.id && t.date === date)
-                        if (e?.arrivee && e?.depart) {
-                          const [ah, am] = e.arrivee.split(':').map(Number)
-                          const [dh, dm] = e.depart.split(':').map(Number)
-                          const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
-                          if (mins > 0) dayMins += mins
-                        }
-                      })
-                      const h = Math.floor(dayMins / 60), m = dayMins % 60
-                      const s = dayMins > 0 ? (m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`) : '—'
-                      return [
-                        <td key={`ta${i}`} colSpan={3} className="px-1 py-3" />,
-                        <td key={`td${i}`} className="px-1 py-3 text-center font-bold text-orange-600">{s}</td>,
-                      ]
-                    })}
-                    <td className="px-4 py-3" />
-                  </tr>
-                </tfoot>
-              </table>
-            </div>
-          )}
+            <div className="space-y-8">
 
-          {/* ── Récapitulatif par chantier ─────────────────────────────────── */}
-          {!timeLoading && chantiersLoaded && (() => {
-            // Regrouper les time_entries par chantier_id
-            type ChantierStat = { chantier_id: string; totalMins: number; techIds: Set<string> }
-            const map = new Map<string, ChantierStat>()
-            for (const e of timeEntries) {
-              if (!e.chantier_id || !e.arrivee || !e.depart) continue
-              const [ah, am] = e.arrivee.split(':').map(Number)
-              const [dh, dm] = e.depart.split(':').map(Number)
-              const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
-              if (mins <= 0) continue
-              const existing = map.get(e.chantier_id)
-              if (existing) {
-                existing.totalMins += mins
-                existing.techIds.add(e.technicien_id)
-              } else {
-                map.set(e.chantier_id, { chantier_id: e.chantier_id, totalMins: mins, techIds: new Set([e.technicien_id]) })
-              }
-            }
-            // Ne garder que les chantiers qu'on connaît (filtre multi-entreprise)
-            const stats = Array.from(map.values())
-              .filter(s => chantiers.some(c => c.id === s.chantier_id))
-              .sort((a, b) => b.totalMins - a.totalMins)
-            return (
-              <div className="mt-6 space-y-3">
-                <p className="text-sm font-semibold text-gray-700">Heures par chantier — semaine</p>
-                {stats.length === 0 ? (
-                  <p className="text-sm text-gray-400 italic">
+              {/* ── Tableau Time Cards ─────────────────────────────────────── */}
+              <div
+                className="bg-white rounded-2xl overflow-hidden overflow-x-auto border border-slate-100"
+                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+                <table className="w-full text-left border-collapse min-w-[900px]">
+                  <thead>
+                    <tr className="bg-slate-50/80 border-b border-slate-100">
+                      <th className="p-5 font-medium text-xs text-slate-500 uppercase tracking-widest w-56">Équipe</th>
+                      {days.map(date => {
+                        const d   = new Date(date + 'T00:00:00')
+                        const raw = d.toLocaleDateString('fr-FR', { weekday: 'short', day: 'numeric', month: 'short' })
+                        const lbl = raw.split(' ').map(p => p.charAt(0).toUpperCase() + p.slice(1)).join(' ')
+                        const isWeekend = [0, 6].includes(d.getDay())
+                        return (
+                          <th key={date} className="p-5 text-center">
+                            <span className={`text-sm font-medium tracking-wide ${
+                              date === TODAY ? 'text-orange-600' : isWeekend ? 'text-slate-300' : 'text-slate-500'
+                            }`}>
+                              {lbl}
+                            </span>
+                          </th>
+                        )
+                      })}
+                    </tr>
+                  </thead>
+
+                  <tbody className="divide-y divide-slate-100">
+                    {sorted.map(person => (
+                      <tr key={person.id} className="hover:bg-slate-50/30 transition-colors">
+
+                        {/* Colonne nom */}
+                        <td className="p-5 align-middle">
+                          <div className="flex items-center gap-3">
+                            <Avatar name={person.full_name} avatarUrl={person.avatar_url} size="sm" />
+                            <div>
+                              <div className="font-medium text-slate-800">{person.full_name}</div>
+                              {(person.poste || person.role === 'admin' || person.role === 'manager') && (
+                                <div className="text-[11px] text-slate-400 font-medium uppercase tracking-wider mt-0.5">
+                                  {person.poste ?? (person.role === 'admin' ? 'Admin' : 'Manager')}
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        </td>
+
+                        {/* Time Cards par jour */}
+                        {days.map(date => {
+                          const isToday   = date === TODAY
+                          const isWeekend = [0, 6].includes(new Date(date + 'T00:00:00').getDay())
+                          const e   = timeEntries.find(t => t.technicien_id === person.id && t.date === date)
+                          const dur = e?.arrivee && e?.depart ? calcDuree(e.arrivee, e.depart, e.pause) : null
+                          const pauseMin = e?.pause ?? 0
+                          const pauseStr = pauseMin > 0
+                            ? (pauseMin >= 60
+                              ? `${Math.floor(pauseMin / 60)}h${pauseMin % 60 > 0 ? (pauseMin % 60) + 'm' : ''}`
+                              : `${pauseMin}m`)
+                            : null
+
+                          // Cellule weekend ou vide
+                          if (isWeekend || !e?.arrivee) {
+                            return (
+                              <td key={date} className="p-2 align-middle">
+                                <div className={`h-[84px] w-full rounded-xl border-2 border-dashed flex items-center justify-center ${
+                                  isToday && !isWeekend
+                                    ? 'border-orange-200/50 bg-orange-50/20'
+                                    : 'border-slate-100'
+                                }`}>
+                                  <div className="w-4 h-0.5 bg-slate-200 rounded-full" />
+                                </div>
+                              </td>
+                            )
+                          }
+
+                          // Time Card avec données
+                          return (
+                            <td key={date} className="p-2 align-middle">
+                              <div className={`h-[84px] w-full rounded-xl border p-3 flex flex-col justify-between transition-all group ${
+                                isToday
+                                  ? 'bg-orange-50/50 border-orange-200 hover:border-orange-400 hover:shadow-md hover:shadow-orange-500/10'
+                                  : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-md'
+                              }`}>
+                                <div className="flex justify-between items-start">
+                                  <div className="flex items-center text-[11px] font-medium text-slate-600 group-hover:text-slate-900 transition-colors">
+                                    {e.arrivee}
+                                    <ArrowRight className="w-3 h-3 mx-1 text-slate-400 shrink-0" />
+                                    {e.depart || '...'}
+                                  </div>
+                                  {dur && dur !== '—' && (
+                                    <div className={`text-xs font-semibold px-2 py-0.5 rounded-md shadow-sm border shrink-0 ml-1 ${
+                                      isToday
+                                        ? 'bg-orange-500 text-white border-orange-600'
+                                        : 'bg-slate-100 text-slate-800 border-slate-200'
+                                    }`}>
+                                      {dur}
+                                    </div>
+                                  )}
+                                </div>
+                                {pauseStr && (
+                                  <div className="flex items-center text-[10px] font-medium text-slate-400">
+                                    <span className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                      <Coffee className="w-3 h-3 mr-1 text-slate-400" />{pauseStr}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                          )
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+
+                  {/* Footer totaux */}
+                  <tfoot className="bg-orange-50/30 border-t border-orange-100/50">
+                    <tr>
+                      <td className="p-5">
+                        <div className="flex items-center gap-2">
+                          <Clock className="w-5 h-5 text-orange-500" />
+                          <span className="font-semibold text-orange-800 text-sm uppercase tracking-wider">Total Équipe</span>
+                        </div>
+                      </td>
+                      {days.map(date => {
+                        let dayMins = 0
+                        sorted.forEach(p => {
+                          const e = timeEntries.find(t => t.technicien_id === p.id && t.date === date)
+                          if (e?.arrivee && e?.depart) {
+                            const [ah, am] = e.arrivee.split(':').map(Number)
+                            const [dh, dm] = e.depart.split(':').map(Number)
+                            const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
+                            if (mins > 0) dayMins += mins
+                          }
+                        })
+                        const h = Math.floor(dayMins / 60), m = dayMins % 60
+                        const s = dayMins > 0 ? (m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`) : '0h'
+                        return (
+                          <td key={date} className="p-5 text-center">
+                            <div className={`inline-flex items-center justify-center px-4 py-1.5 rounded-lg text-sm font-semibold tracking-tight ${
+                              dayMins > 0
+                                ? 'bg-white border border-orange-200 text-orange-600 shadow-sm'
+                                : 'text-slate-400'
+                            }`}>
+                              {s}
+                            </div>
+                          </td>
+                        )
+                      })}
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+
+              {/* ── Répartition par chantier ───────────────────────────────── */}
+              {chantiersLoaded && (() => {
+                type ChantierStat = { chantier_id: string; totalMins: number; techIds: Set<string> }
+                const map = new Map<string, ChantierStat>()
+                for (const e of timeEntries) {
+                  if (!e.chantier_id || !e.arrivee || !e.depart) continue
+                  const [ah, am] = e.arrivee.split(':').map(Number)
+                  const [dh, dm] = e.depart.split(':').map(Number)
+                  const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
+                  if (mins <= 0) continue
+                  const existing = map.get(e.chantier_id)
+                  if (existing) {
+                    existing.totalMins += mins
+                    existing.techIds.add(e.technicien_id)
+                  } else {
+                    map.set(e.chantier_id, { chantier_id: e.chantier_id, totalMins: mins, techIds: new Set([e.technicien_id]) })
+                  }
+                }
+                const stats = Array.from(map.values())
+                  .filter(s => chantiers.some(c => c.id === s.chantier_id))
+                  .sort((a, b) => b.totalMins - a.totalMins)
+
+                if (stats.length === 0) return (
+                  <p className="text-sm text-slate-400 italic px-1">
                     Aucun chantier associé cette semaine. Les techniciens peuvent sélectionner un chantier lors de la saisie de leurs heures.
                   </p>
-                ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-                  {stats.map(s => {
-                    const chantier = chantiers.find(c => c.id === s.chantier_id)
-                    const h = Math.floor(s.totalMins / 60), m = s.totalMins % 60
-                    const dur = m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`
-                    const techNames = Array.from(s.techIds)
-                      .map(id => profiles.find(p => p.id === id)?.full_name ?? null)
-                      .filter(Boolean) as string[]
-                    return (
-                      <div
-                        key={s.chantier_id}
-                        className="bg-white rounded-2xl px-5 py-4 flex items-center justify-between gap-3"
-                        style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
-                        <div className="min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">
-                            {chantier?.nom ?? 'Chantier inconnu'}
-                          </p>
-                          {chantier?.client_nom && (
-                            <p className="text-xs text-gray-400 truncate">{chantier.client_nom}</p>
-                          )}
-                          {techNames.length > 0 ? (
-                            <p className="text-xs text-gray-400 mt-0.5 truncate">
-                              {techNames.join(', ')}
-                            </p>
-                          ) : (
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {s.techIds.size} technicien{s.techIds.size > 1 ? 's' : ''}
-                            </p>
-                          )}
-                        </div>
-                        <p className="text-2xl font-bold text-orange-500 flex-shrink-0">{dur}</p>
-                      </div>
-                    )
-                  })}
-                </div>
-                )}
-              </div>
-            )
-          })()}
+                )
+
+                const totalAllMins = stats.reduce((acc, s) => acc + s.totalMins, 0)
+
+                return (
+                  <div>
+                    <div className="flex items-center justify-between mb-4 px-1">
+                      <h3 className="text-lg font-semibold text-slate-800 tracking-tight">Répartition par chantier</h3>
+                      <span className="text-sm font-medium text-slate-500 bg-white border border-slate-200 px-3 py-1 rounded-full shadow-sm">Semaine en cours</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+                      {stats.map(s => {
+                        const chantier = chantiers.find(c => c.id === s.chantier_id)
+                        const h = Math.floor(s.totalMins / 60), m = s.totalMins % 60
+                        const dur = m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`
+                        const techNames = Array.from(s.techIds)
+                          .map(id => profiles.find(p => p.id === id)?.full_name ?? null)
+                          .filter(Boolean) as string[]
+                        const pct = Math.round((s.totalMins / totalAllMins) * 100)
+                        return (
+                          <div
+                            key={s.chantier_id}
+                            className="bg-white p-6 rounded-2xl border border-slate-100 flex flex-col justify-between transition-all hover:shadow-md group"
+                            style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07)' }}>
+                            <div className="flex justify-between items-start mb-6">
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-medium text-slate-900 text-base group-hover:text-orange-600 transition-colors truncate">
+                                  {chantier?.nom ?? 'Chantier inconnu'}
+                                </span>
+                                {chantier?.client_nom && (
+                                  <span className="text-xs text-slate-500 font-medium mt-1 truncate">{chantier.client_nom}</span>
+                                )}
+                              </div>
+                              <div className="text-2xl font-semibold text-slate-800 tracking-tight flex-shrink-0 ml-3">{dur}</div>
+                            </div>
+                            <div className="w-full">
+                              <div className="flex justify-between items-end mb-2">
+                                <span className="text-xs text-slate-400 font-medium line-clamp-1 flex-1 pr-4">
+                                  {techNames.length > 0
+                                    ? techNames.join(', ')
+                                    : `${s.techIds.size} technicien${s.techIds.size > 1 ? 's' : ''}`}
+                                </span>
+                                <span className="text-xs font-medium text-orange-500">{pct}%</span>
+                              </div>
+                              <div className="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                                <div
+                                  className="bg-orange-500 h-2 rounded-full transition-all duration-1000 ease-out"
+                                  style={{ width: `${pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          </div>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })()}
+
+            </div>
+          )}
         </>
       )}
 
