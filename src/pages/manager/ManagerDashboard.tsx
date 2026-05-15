@@ -819,7 +819,7 @@ export default function ManagerDashboard() {
         {activeTab === 'chantiers' && (<>
 
         {/* ── KPIs ──────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
           {[
             { label: 'Total Chantiers', value: stats.total,    sub: 'Sur la période',        border: 'border-l-slate-800',   icon: <Layers className="w-5 h-5 text-slate-700" />,      iconBg: 'bg-slate-100'   },
             { label: 'En cours',        value: stats.en_cours, sub: 'Actuellement sur site',  border: 'border-l-blue-500',    icon: <RefreshCw className="w-5 h-5 text-blue-600" />,    iconBg: 'bg-blue-50'     },
