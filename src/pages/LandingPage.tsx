@@ -550,8 +550,8 @@ export default function LandingPage() {
               <ul className="space-y-3">
                 <li><a href="#faq" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">FAQ</a></li>
                 <li><a href="mailto:contact@mypvpilot.fr" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">Contact</a></li>
-                <li><a href="#" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">CGU</a></li>
-                <li><a href="#" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">Confidentialité</a></li>
+                <li><Link to="/cgu" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">CGU</Link></li>
+                <li><Link to="/confidentialite" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">Confidentialité</Link></li>
               </ul>
             </div>
           </div>
