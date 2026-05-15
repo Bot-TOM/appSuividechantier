@@ -79,9 +79,9 @@ process("image-1778852412956.png", "screen-etapes.png", [
 ])
 
 # ── Dashboard mobile ──────────────────────────────────────────────────────────
-# Zones : section entiere "Anomalies ouvertes" + texte anomalie
-process("image-1778852420710.png", "screen-dashboard.png", [
-    (0.04, 0.60, 0.96, 0.79),   # "Anomalies ouvertes" + "Dijoncteur en surchauffe"
-])
+# Pas de donnée sensible - copie directe
+shutil.copy(os.path.join(SRC, "image-1778852420710.png"),
+            os.path.join(DST, "screen-dashboard.png"))
+print("screen-dashboard.png - copie tel quel")
 
 print("\nTous les screens traites et copies dans public/")
