@@ -357,7 +357,7 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">Mot de passe provisoire *</label>
                 <input name="password" value={form.password} onChange={handleChange} required
-                  type="text" placeholder="Au moins 6 caractères" minLength={6}
+                  type="password" placeholder="Au moins 6 caractères" minLength={6}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent text-sm" />
                 <p className="text-xs text-gray-400 mt-1.5">Le technicien pourra le modifier après connexion</p>
               </div>
@@ -506,7 +506,7 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
                 <label className="block text-sm font-medium text-gray-700 mb-1.5">
                   Nouveau mot de passe <span className="text-gray-400 font-normal">(laisser vide = inchangé)</span>
                 </label>
-                <input type="text" value={editModal.password} placeholder="••••••••"
+                <input type="password" value={editModal.password} placeholder="••••••••"
                   onChange={e => setEditModal(m => m ? { ...m, password: e.target.value } : m)}
                   minLength={6}
                   className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 text-sm" />

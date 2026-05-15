@@ -44,6 +44,16 @@ export default async function handler(req: Request) {
     return new Response(JSON.stringify({ error: 'userId manquant' }), { status: 400 })
   }
 
+  // 3b. Vérifier que la cible est bien un technicien (pas un manager ou admin)
+  const targetRes = await fetch(
+    `${supabaseUrl}/rest/v1/profiles?id=eq.${userId}&select=role`,
+    { headers: { apikey: anonKey, Authorization: `Bearer ${serviceKey}` } }
+  )
+  const targets = await targetRes.json() as { role: string }[]
+  if (!targets?.[0] || targets[0].role !== 'technicien') {
+    return new Response(JSON.stringify({ error: 'Cible non autorisée' }), { status: 403 })
+  }
+
   // 4. Suppression
   if (req.method === 'DELETE') {
     const delRes = await fetch(`${supabaseUrl}/auth/v1/admin/users/${userId}`, {
