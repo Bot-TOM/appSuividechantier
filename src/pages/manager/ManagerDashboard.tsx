@@ -976,7 +976,8 @@ export default function ManagerDashboard() {
                       { key: 'rapport_notif_enabled',      label: 'Rapports terrain',  desc: "Message d'un technicien",                 icon: <FileText className="w-5 h-5 text-blue-500" />,        iconBg: 'bg-blue-50'    },
                       { key: 'chantier_notif_enabled',     label: 'Chantiers',         desc: 'Bloqué ou terminé',                       icon: <AlertTriangle className="w-5 h-5 text-amber-500" />,  iconBg: 'bg-amber-50'   },
                       { key: 'autocontrole_notif_enabled', label: 'Auto-contrôles',    desc: 'Rapport soumis par un technicien',         icon: <CheckSquare className="w-5 h-5 text-emerald-500" />,  iconBg: 'bg-emerald-50' },
-                      { key: 'chat_notif_enabled',         label: 'Messages chat',     desc: 'Nouveau message dans un chantier ou chat', icon: <MessageCircle className="w-5 h-5 text-indigo-500" />, iconBg: 'bg-indigo-50'  },
+                      { key: 'chat_notif_enabled',           label: 'Messages chantier',  desc: 'Nouveau message dans un chantier',          icon: <MessageCircle className="w-5 h-5 text-indigo-500" />, iconBg: 'bg-indigo-50'  },
+                      { key: 'global_messages_notif_enabled', label: 'Chat équipe',        desc: 'Nouveau message dans le chat global',        icon: <MessageCircle className="w-5 h-5 text-cyan-500" />,   iconBg: 'bg-cyan-50'    },
                     ] as const).map(({ key, label, desc, icon, iconBg }) => (
                       <div key={key} className="flex items-center justify-between px-4 py-3.5 sm:p-5 hover:bg-slate-50 rounded-xl transition-colors">
                         <div className="flex items-start gap-3 sm:gap-4 min-w-0">

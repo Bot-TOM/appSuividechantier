@@ -26,6 +26,7 @@ Deno.serve(async (req) => {
 
   let title = ''
   let body = ''
+  let url = '/'
   let recipientIds: string[] = []
   let chatOnly = false
   let prefFilter: string | null = null  // colonne push_subscriptions à filtrer (true requis)
@@ -45,6 +46,7 @@ Deno.serve(async (req) => {
     prefFilter = 'autocontrole_notif_enabled'
 
   } else if (table === 'messages') {
+    // Chat par chantier
     chatOnly = true
     const { data: sender } = await supabase
       .from('profiles').select('full_name').eq('id', record.user_id).single()
@@ -63,6 +65,25 @@ Deno.serve(async (req) => {
       ...(managers?.map((m: { id: string }) => m.id) ?? []),
     ]
     recipientIds = [...new Set(allIds)].filter(id => id !== record.user_id)
+    url = record.chantier_id ? `/chantier/${record.chantier_id}?tab=chat` : '/'
+
+  } else if (table === 'global_messages') {
+    // Chat global — tous les membres de la même entreprise sauf l'expéditeur
+    const { data: sender } = await supabase
+      .from('profiles').select('full_name').eq('id', record.user_id).single()
+    const senderName = sender?.full_name ?? 'Quelqu\'un'
+    title = '💬 Chat équipe'
+    body = `${senderName} : ${record.content?.slice(0, 60) ?? '📎 Fichier'}`
+
+    const { data: members } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('entreprise_id', record.entreprise_id)
+    recipientIds = (members ?? [])
+      .map((m: { id: string }) => m.id)
+      .filter((id: string) => id !== record.user_id)
+    prefFilter = 'global_messages_notif_enabled'
+    url = '/'
 
   } else if (table === 'anomalies') {
     const graviteEmoji = record.gravite === 'haute' ? '🔴' : record.gravite === 'moyenne' ? '🟡' : '🟢'
@@ -71,6 +92,7 @@ Deno.serve(async (req) => {
     const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'anomalie_notif_enabled'
+    url = record.chantier_id ? `/chantier/${record.chantier_id}/anomalies` : '/'
 
   } else if (table === 'chantiers' && record.statut === 'bloque') {
     title = '🚨 Chantier bloqué'
@@ -78,6 +100,7 @@ Deno.serve(async (req) => {
     const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'chantier_notif_enabled'
+    url = record.id ? `/chantier/${record.id}` : '/'
 
   } else if (table === 'chantiers' && record.statut === 'termine') {
     title = '✅ Chantier terminé'
@@ -85,6 +108,7 @@ Deno.serve(async (req) => {
     const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'chantier_notif_enabled'
+    url = record.id ? `/chantier/${record.id}` : '/'
 
   } else if (table === 'bug_reports') {
     const sevEmoji = record.severite === 'bloquant' ? '🔴' : '🟡'
@@ -92,6 +116,7 @@ Deno.serve(async (req) => {
     body = record.description?.slice(0, 80) ?? 'Un utilisateur a signalé un problème'
     const { data: admins } = await supabase.from('profiles').select('id').eq('role', 'admin')
     recipientIds = admins?.map((a: { id: string }) => a.id) ?? []
+    url = '/'
 
   } else {
     return new Response(JSON.stringify({ ignored: true, table }), {
@@ -129,16 +154,7 @@ Deno.serve(async (req) => {
     })
   }
 
-  // Pour la table chantiers, l'id du chantier est record.id directement
-  const chantierId = table === 'chantiers' ? (record?.id ?? '') : (record?.chantier_id ?? '')
-  const url = chantierId
-    ? (chatOnly ? `/chantier/${chantierId}?tab=chat` : `/chantier/${chantierId}`)
-    : '/'
-  const notifPayload = JSON.stringify({
-    title,
-    body,
-    url,
-  })
+  const notifPayload = JSON.stringify({ title, body, url })
 
   const results = await Promise.allSettled(
     subs.map((sub: { endpoint: string; p256dh: string; auth: string }) =>
@@ -149,7 +165,7 @@ Deno.serve(async (req) => {
     ),
   )
 
-  const sent = results.filter((r) => r.status === 'fulfilled').length
+  const sent   = results.filter((r) => r.status === 'fulfilled').length
   const failed = results.filter((r) => r.status === 'rejected').length
 
   // Nettoie les abonnements expirés (HTTP 410)

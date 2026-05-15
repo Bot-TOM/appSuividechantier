@@ -67,13 +67,17 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
 
   const sendMessage = useCallback(async (content: string, replyToId?: string) => {
     if (!entrepriseId) return
-    const { error } = await supabase.from('global_messages').insert({
+    const { data, error } = await supabase.from('global_messages').insert({
       user_id:       userId,
       entreprise_id: entrepriseId,
       content,
       reply_to_id:   replyToId ?? null,
-    })
-    if (error) console.error('[global-chat] sendMessage:', error)
+    }).select().single()
+    if (error) { console.error('[global-chat] sendMessage:', error); return }
+    // Notif push à tous les membres de l'entreprise (sauf l'expéditeur)
+    supabase.functions.invoke('send-push', {
+      body: { table: 'global_messages', record: data },
+    }).catch(() => {})
   }, [userId, entrepriseId])
 
   const sendFile = useCallback(async (file: File, replyToId?: string) => {
@@ -85,15 +89,20 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
       const { data: upload, error } = await supabase.storage.from('chat-files').upload(path, file)
       if (error) throw error
       const { data: { publicUrl } } = supabase.storage.from('chat-files').getPublicUrl(upload.path)
-      const { error: insertErr } = await supabase.from('global_messages').insert({
+      const { data: fileData, error: insertErr } = await supabase.from('global_messages').insert({
         user_id:       userId,
         entreprise_id: entrepriseId,
         file_url:      publicUrl,
         file_name:     file.name,
         file_type:     file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'audio' : 'document',
         reply_to_id:   replyToId ?? null,
-      })
-      if (insertErr) console.error('[global-chat] sendFile insert:', insertErr)
+      }).select().single()
+      if (insertErr) { console.error('[global-chat] sendFile insert:', insertErr) }
+      else {
+        supabase.functions.invoke('send-push', {
+          body: { table: 'global_messages', record: fileData },
+        }).catch(() => {})
+      }
     } finally {
       setUploading(false)
     }

@@ -12,6 +12,7 @@ import PlanningTechTab from '@/components/planning/PlanningTechTab'
 import BugReportButton from '@/components/BugReportButton'
 import GlobalChatTab from '@/components/chat/GlobalChatTab'
 import { useGlobalMessages } from '@/hooks/useGlobalMessages'
+import { useNotifPreferences } from '@/hooks/useNotifPreferences'
 
 const STATUT_LABEL: Record<ChantierStatut, string> = {
   planifie:   'Planifié',
@@ -104,6 +105,28 @@ function ChantierCard({
   )
 }
 
+// ─── Toggle notif chat global (utilisé dans ProfilTab) ───────────────────────
+function GlobalChatNotifToggle({ pushStatus }: { pushStatus: 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed' }) {
+  const { prefs, toggle } = useNotifPreferences(pushStatus === 'subscribed')
+  if (pushStatus !== 'subscribed') return null
+  const enabled = prefs.global_messages_notif_enabled
+  return (
+    <button
+      onClick={() => toggle('global_messages_notif_enabled')}
+      className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full border transition-colors ${
+        enabled
+          ? 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100'
+          : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-cyan-50 hover:text-cyan-600 hover:border-cyan-200'
+      }`}
+    >
+      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+      </svg>
+      {enabled ? 'Chat équipe notifié' : 'Chat équipe silencieux'}
+    </button>
+  )
+}
+
 // ─── Onglet Profil ───────────────────────────────────────────────────────────
 function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePush, onAvatarChange }: {
   profile: { id: string; full_name: string; email?: string; avatar_url?: string | null; poste?: string | null } | null
@@ -177,7 +200,7 @@ function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePus
         {/* Toggle notifications push */}
 
         {pushStatus !== 'unsupported' && (
-          <div className="mt-4">
+          <div className="mt-4 flex flex-col items-center gap-3">
             <button
               onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
               disabled={pushStatus === 'denied'}
@@ -199,8 +222,9 @@ function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePus
                 : 'Activer les notifications'}
             </button>
             {pushStatus === 'denied' && (
-              <p className="text-xs text-gray-400 mt-1.5">Autorise les notifications dans les paramètres du navigateur</p>
+              <p className="text-xs text-gray-400 mt-0.5">Autorise les notifications dans les paramètres du navigateur</p>
             )}
+            <GlobalChatNotifToggle pushStatus={pushStatus} />
           </div>
         )}
       </div>
