@@ -105,28 +105,6 @@ function ChantierCard({
   )
 }
 
-// ─── Toggle notif chat global (utilisé dans ProfilTab) ───────────────────────
-function GlobalChatNotifToggle({ pushStatus }: { pushStatus: 'unsupported' | 'denied' | 'subscribed' | 'unsubscribed' }) {
-  const { prefs, toggle } = useNotifPreferences(pushStatus === 'subscribed')
-  if (pushStatus !== 'subscribed') return null
-  const enabled = prefs.global_messages_notif_enabled
-  return (
-    <button
-      onClick={() => toggle('global_messages_notif_enabled')}
-      className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full border transition-colors ${
-        enabled
-          ? 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100'
-          : 'bg-gray-100 border-gray-200 text-gray-500 hover:bg-cyan-50 hover:text-cyan-600 hover:border-cyan-200'
-      }`}
-    >
-      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-      </svg>
-      {enabled ? 'Chat équipe notifié' : 'Chat équipe silencieux'}
-    </button>
-  )
-}
-
 // ─── Onglet Profil ───────────────────────────────────────────────────────────
 function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePush, onAvatarChange }: {
   profile: { id: string; full_name: string; email?: string; avatar_url?: string | null; poste?: string | null } | null
@@ -136,11 +114,14 @@ function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePus
   unsubscribePush: () => void
   onAvatarChange: (url: string) => void
 }) {
-  const [showPwd, setShowPwd]       = useState(false)
-  const [pwd, setPwd]               = useState({ new: '', confirm: '' })
-  const [pwdLoading, setPwdLoading] = useState(false)
-  const [pwdMsg, setPwdMsg]         = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [showPwd, setShowPwd]           = useState(false)
+  const [pwd, setPwd]                   = useState({ new: '', confirm: '' })
+  const [showPwdNew, setShowPwdNew]     = useState(false)
+  const [showPwdConfirm, setShowPwdConfirm] = useState(false)
+  const [pwdLoading, setPwdLoading]     = useState(false)
+  const [pwdMsg, setPwdMsg]             = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
   const [avatarLoading, setAvatarLoading] = useState(false)
+  const { prefs: notifPrefs, toggle: toggleNotifPref } = useNotifPreferences(pushStatus === 'subscribed')
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -170,41 +151,69 @@ function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePus
     if (error) {
       setPwdMsg({ type: 'err', text: error.message })
     } else {
-      setPwdMsg({ type: 'ok', text: 'Mot de passe modifié' })
+      setPwdMsg({ type: 'ok', text: 'Mot de passe modifié ✓' })
       setPwd({ new: '', confirm: '' })
       setShowPwd(false)
     }
     setPwdLoading(false)
   }
 
+  const notifItems = [
+    {
+      key: 'chat_notif_enabled' as const,
+      label: 'Messages chantier',
+      desc: 'Nouveau message dans un chantier',
+      iconBg: 'bg-indigo-50',
+      icon: (
+        <svg className="w-5 h-5 text-indigo-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+        </svg>
+      ),
+    },
+    {
+      key: 'global_messages_notif_enabled' as const,
+      label: 'Chat équipe',
+      desc: 'Nouveau message dans le chat global',
+      iconBg: 'bg-cyan-50',
+      icon: (
+        <svg className="w-5 h-5 text-cyan-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
+        </svg>
+      ),
+    },
+  ]
+
   return (
-    <div className="space-y-4">
-      <div className="bg-white rounded-2xl p-6 text-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
-        <label className="relative inline-block cursor-pointer mb-4">
-          <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="xl" />
-          <div className="absolute bottom-0 right-0 w-6 h-6 bg-orange-500 rounded-full flex items-center justify-center border-2 border-white">
-            {avatarLoading
-              ? <div className="w-3 h-3 border border-white border-t-transparent rounded-full animate-spin" />
-              : <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-            }
-          </div>
-          <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={avatarLoading} />
-        </label>
-        <h2 className="font-bold text-gray-900 text-lg">{profile?.full_name}</h2>
-        <p className="text-gray-400 text-sm mt-1">{profile?.email}</p>
-        <div className="mt-3 inline-flex items-center gap-1.5 bg-orange-50 text-orange-600 text-xs font-semibold px-3 py-1.5 rounded-full">
-          <span className="w-1.5 h-1.5 rounded-full bg-orange-500" />
+    <div className="space-y-4 pb-4">
+
+      {/* ── Carte avatar ────────────────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-100 p-6 flex flex-col items-center text-center" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div className="relative mb-4">
+          <label className="cursor-pointer block">
+            <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="xl" />
+            <div className="absolute bottom-0 right-0 p-1.5 bg-orange-500 hover:bg-orange-600 rounded-full flex items-center justify-center border-2 border-white transition-colors shadow-sm">
+              {avatarLoading
+                ? <div className="w-4 h-4 border border-white border-t-transparent rounded-full animate-spin" />
+                : <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+              }
+            </div>
+            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={avatarLoading} />
+          </label>
+        </div>
+        <h2 className="text-lg font-semibold text-slate-800 tracking-tight">{profile?.full_name}</h2>
+        <p className="text-sm font-medium text-slate-500 mt-1 break-all">{profile?.email}</p>
+        <div className="mt-3 inline-flex items-center gap-1.5 px-3 py-1 rounded-full border text-xs font-semibold bg-orange-50 text-orange-700 border-orange-100">
+          <span className="w-2 h-2 rounded-full bg-orange-500" />
           {profile?.poste ?? 'Technicien'}
         </div>
 
-        {/* Toggle notifications push */}
-
+        {/* Bouton push */}
         {pushStatus !== 'unsupported' && (
-          <div className="mt-4 flex flex-col items-center gap-3">
+          <div className="mt-4 w-full">
             <button
               onClick={pushStatus === 'subscribed' ? unsubscribePush : subscribePush}
               disabled={pushStatus === 'denied'}
-              className={`flex items-center gap-2 text-sm font-medium px-4 py-2 rounded-full border transition-colors ${
+              className={`w-full flex items-center justify-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl border transition-colors ${
                 pushStatus === 'subscribed'
                   ? 'bg-orange-50 border-orange-200 text-orange-600 hover:bg-orange-100'
                   : pushStatus === 'denied'
@@ -215,54 +224,133 @@ function ProfilTab({ profile, signOut, pushStatus, subscribePush, unsubscribePus
               <svg className="w-4 h-4" fill={pushStatus === 'subscribed' ? 'currentColor' : 'none'} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
               </svg>
-              {pushStatus === 'subscribed'
-                ? 'Notifications activées'
-                : pushStatus === 'denied'
-                ? 'Notifications bloquées'
-                : 'Activer les notifications'}
+              {pushStatus === 'subscribed' ? 'Notifications activées' : pushStatus === 'denied' ? 'Notifications bloquées' : 'Activer les notifications'}
             </button>
             {pushStatus === 'denied' && (
-              <p className="text-xs text-gray-400 mt-0.5">Autorise les notifications dans les paramètres du navigateur</p>
+              <p className="text-xs text-gray-400 mt-1.5 text-center">Autorise les notifications dans les paramètres du navigateur</p>
             )}
-            <GlobalChatNotifToggle pushStatus={pushStatus} />
           </div>
         )}
       </div>
 
-      <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+      {/* ── Préférences de notifications ────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        <div className="px-5 py-4 border-b border-slate-100">
+          <h2 className="text-base font-semibold text-slate-800">Préférences de notifications</h2>
+          <p className="text-xs text-slate-500 font-medium mt-0.5">
+            {pushStatus === 'subscribed'
+              ? 'Gérez ce que vous souhaitez recevoir.'
+              : 'Activez les notifications push pour gérer vos préférences.'}
+          </p>
+        </div>
+        <div className="p-1.5">
+          {notifItems.map(({ key, label, desc, icon, iconBg }) => (
+            <div key={key} className="flex items-center justify-between px-4 py-3.5 hover:bg-slate-50 rounded-xl transition-colors">
+              <div className="flex items-start gap-3 min-w-0">
+                <div className={`p-2 ${iconBg} rounded-xl mt-0.5 flex-shrink-0`}>{icon}</div>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-slate-800">{label}</p>
+                  <p className="text-xs font-medium text-slate-500 mt-0.5">{desc}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => pushStatus === 'subscribed' && toggleNotifPref(key)}
+                disabled={pushStatus !== 'subscribed'}
+                className={`relative inline-flex h-6 w-11 shrink-0 ml-3 rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-orange-500 focus:ring-offset-2 ${
+                  pushStatus !== 'subscribed' ? 'bg-slate-200 cursor-not-allowed opacity-50' :
+                  notifPrefs[key] ? 'bg-orange-500 cursor-pointer' : 'bg-slate-200 cursor-pointer'
+                }`}
+              >
+                <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                  notifPrefs[key] ? 'translate-x-5' : 'translate-x-0'
+                }`} />
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Changer le mot de passe ─────────────────────────────────────── */}
+      <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
         <button
-          onClick={() => { setShowPwd(v => !v); setPwdMsg(null) }}
-          className="w-full px-5 py-4 flex items-center justify-between text-left"
+          onClick={() => { setShowPwd(true); setPwdMsg(null); setPwd({ new: '', confirm: '' }) }}
+          className="w-full flex items-center justify-between p-5 hover:bg-slate-50 transition-colors group"
         >
-          <span className="text-sm font-medium text-gray-900">Changer le mot de passe</span>
-          <span className="text-gray-400 text-lg">{showPwd ? '▴' : '▾'}</span>
+          <div className="flex items-center gap-3 text-slate-700 group-hover:text-slate-900 transition-colors">
+            <svg className="w-5 h-5 text-slate-400 group-hover:text-orange-500 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+            <span className="text-sm font-semibold">Changer le mot de passe</span>
+          </div>
+          <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" /></svg>
         </button>
-        {showPwd && (
-          <div className="px-5 pb-5 space-y-3 border-t border-gray-50 pt-4">
+      </div>
+
+      {/* ── Déconnexion ─────────────────────────────────────────────────── */}
+      <button onClick={signOut}
+        className="w-full bg-red-50 text-red-600 font-semibold py-4 rounded-2xl hover:bg-red-100 transition-colors text-sm border border-red-100">
+        Se déconnecter
+      </button>
+
+      {/* ── Modal : changement de mot de passe ─────────────────────────── */}
+      {showPwd && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+          onClick={e => e.target === e.currentTarget && setShowPwd(false)}
+        >
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.20)' }}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-orange-50 rounded-xl">
+                  <svg className="w-5 h-5 text-orange-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" /></svg>
+                </div>
+                <p className="font-bold text-slate-900">Mot de passe</p>
+              </div>
+              <button onClick={() => setShowPwd(false)} className="w-8 h-8 flex items-center justify-center rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors text-sm">✕</button>
+            </div>
+
             {pwdMsg && (
-              <p className={`text-xs font-medium px-3 py-2 rounded-lg ${pwdMsg.type === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
+              <p className={`text-xs font-medium px-3 py-2.5 rounded-xl ${pwdMsg.type === 'ok' ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-600'}`}>
                 {pwdMsg.text}
               </p>
             )}
-            <input type="password" placeholder="Nouveau mot de passe" value={pwd.new}
-              onChange={e => setPwd(p => ({ ...p, new: e.target.value }))}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-            <input type="password" placeholder="Confirmer le mot de passe" value={pwd.confirm}
-              onChange={e => setPwd(p => ({ ...p, confirm: e.target.value }))}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
-            <button onClick={handleChangePwd} disabled={pwdLoading || !pwd.new || !pwd.confirm}
-              className="w-full text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-50 transition-all"
-              style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
-              {pwdLoading ? 'Enregistrement...' : 'Enregistrer'}
-            </button>
-          </div>
-        )}
-      </div>
 
-      <button onClick={signOut}
-        className="w-full bg-red-50 text-red-600 font-semibold py-4 rounded-2xl hover:bg-red-100 transition-colors text-sm">
-        Se déconnecter
-      </button>
+            <div className="relative">
+              <input type={showPwdNew ? 'text' : 'password'} placeholder="Nouveau mot de passe"
+                value={pwd.new} onChange={e => setPwd(p => ({ ...p, new: e.target.value }))}
+                className="w-full px-4 py-3 pr-11 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              <button type="button" onClick={() => setShowPwdNew(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                {showPwdNew
+                  ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                  : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                }
+              </button>
+            </div>
+
+            <div className="relative">
+              <input type={showPwdConfirm ? 'text' : 'password'} placeholder="Confirmer le mot de passe"
+                value={pwd.confirm} onChange={e => setPwd(p => ({ ...p, confirm: e.target.value }))}
+                className="w-full px-4 py-3 pr-11 rounded-xl border border-slate-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              <button type="button" onClick={() => setShowPwdConfirm(v => !v)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors">
+                {showPwdConfirm
+                  ? <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21" /></svg>
+                  : <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                }
+              </button>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setShowPwd(false)}
+                className="flex-1 py-3 rounded-xl text-sm font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors">
+                Annuler
+              </button>
+              <button onClick={handleChangePwd} disabled={pwdLoading || !pwd.new || !pwd.confirm}
+                className="flex-1 text-white font-semibold py-3 rounded-xl text-sm disabled:opacity-50 transition-all"
+                style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
+                {pwdLoading ? 'Enregistrement...' : 'Enregistrer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

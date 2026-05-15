@@ -806,6 +806,9 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                           </th>
                         )
                       })}
+                      <th className="p-5 text-center">
+                        <span className="text-sm font-semibold text-orange-500 uppercase tracking-wide">Total</span>
+                      </th>
                     </tr>
                   </thead>
 
@@ -891,6 +894,31 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                             </td>
                           )
                         })}
+
+                        {/* Total semaine par personne */}
+                        {(() => {
+                          let personTotalMins = 0
+                          days.forEach(date => {
+                            const e = timeEntries.find(t => t.technicien_id === person.id && t.date === date)
+                            if (e?.arrivee && e?.depart) {
+                              const [ah, am] = e.arrivee.split(':').map(Number)
+                              const [dh, dm] = e.depart.split(':').map(Number)
+                              const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
+                              if (mins > 0) personTotalMins += mins
+                            }
+                          })
+                          const ph = Math.floor(personTotalMins / 60), pm = personTotalMins % 60
+                          const str = personTotalMins > 0 ? (pm > 0 ? `${ph}h${pm.toString().padStart(2, '0')}` : `${ph}h`) : '—'
+                          return (
+                            <td className="p-2 align-middle">
+                              <div className={`h-[84px] w-full rounded-xl flex items-center justify-center font-bold text-lg ${
+                                personTotalMins > 0 ? 'text-orange-600 bg-orange-50 border border-orange-100' : 'text-slate-300 bg-slate-50'
+                              }`}>
+                                {str}
+                              </div>
+                            </td>
+                          )
+                        })()}
                       </tr>
                     ))}
                   </tbody>
@@ -929,6 +957,32 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                           </td>
                         )
                       })}
+                      {/* Grand total toutes personnes + toute la semaine */}
+                      {(() => {
+                        let grandTotalMins = 0
+                        sorted.forEach(p => {
+                          days.forEach(date => {
+                            const e = timeEntries.find(t => t.technicien_id === p.id && t.date === date)
+                            if (e?.arrivee && e?.depart) {
+                              const [ah, am] = e.arrivee.split(':').map(Number)
+                              const [dh, dm] = e.depart.split(':').map(Number)
+                              const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
+                              if (mins > 0) grandTotalMins += mins
+                            }
+                          })
+                        })
+                        const h = Math.floor(grandTotalMins / 60), m = grandTotalMins % 60
+                        const str = grandTotalMins > 0 ? (m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`) : '—'
+                        return (
+                          <td className="p-5 text-center">
+                            <div className={`inline-flex items-center justify-center px-4 py-1.5 rounded-lg text-sm font-bold tracking-tight ${
+                              grandTotalMins > 0 ? 'bg-orange-500 text-white shadow-sm' : 'text-slate-400'
+                            }`}>
+                              {str}
+                            </div>
+                          </td>
+                        )
+                      })()}
                     </tr>
                   </tfoot>
                 </table>

@@ -282,44 +282,59 @@ export default function PlanningTechTab() {
               <button
                 key={date}
                 onClick={() => openTimeEdit(date)}
-                className={`w-full flex items-center gap-4 bg-white rounded-2xl px-4 py-3 text-left hover:bg-gray-50/80 transition-colors ${isToday ? 'ring-2 ring-orange-400 ring-offset-1' : ''}`}
+                className={`w-full flex items-center gap-3 bg-white rounded-2xl px-4 py-3.5 text-left transition-colors ${isToday ? 'ring-2 ring-orange-400 ring-offset-1' : 'hover:bg-slate-50/50'}`}
                 style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-                <div className="w-20 flex-shrink-0">
+                {/* Label jour */}
+                <div className="w-[72px] flex-shrink-0">
                   <p className={`text-sm font-semibold ${isToday ? 'text-orange-500' : 'text-gray-700'}`}>
                     {dayLabel}
                   </p>
                   {isToday && <p className="text-[10px] text-orange-400 font-medium">Aujourd'hui</p>}
                 </div>
+                {/* Time card */}
                 {e?.arrivee ? (
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 text-xs text-gray-600 flex-shrink-0">
-                      <span className="text-gray-400">▶</span>
-                      <span className="font-medium">{e.arrivee}</span>
-                    </div>
-                    <span className="text-gray-200 flex-shrink-0">→</span>
-                    <div className="flex items-center gap-1.5 text-xs text-gray-600 flex-shrink-0">
-                      <span className="font-medium">{e.depart ?? '—'}</span>
-                      <span className="text-gray-400">◀</span>
-                    </div>
-                    {e.pause ? <span className="text-xs text-gray-400 flex-shrink-0">{e.pause}mn</span> : null}
-                    {e.chantier_id && (() => {
-                      const c = myChantiers.find(ch => ch.id === e.chantier_id)
-                      return c ? (
-                        <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full truncate">
-                          {c.nom}
+                  <div className={`flex-1 rounded-xl border p-3 flex flex-col justify-between min-h-[72px] transition-all ${
+                    isToday
+                      ? 'bg-orange-50/50 border-orange-200'
+                      : 'bg-white border-slate-200'
+                  }`}>
+                    <div className="flex justify-between items-start">
+                      <div className="flex items-center text-[12px] font-medium text-slate-700">
+                        {e.arrivee}
+                        <svg className="w-3 h-3 mx-1.5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
+                        {e.depart || '...'}
+                      </div>
+                      {dur && dur !== '—' && (
+                        <span className={`text-xs font-bold px-2 py-0.5 rounded-md shadow-sm border shrink-0 ml-1 ${
+                          isToday
+                            ? 'bg-orange-500 text-white border-orange-600'
+                            : 'bg-slate-100 text-slate-800 border-slate-200'
+                        }`}>
+                          {dur}
                         </span>
-                      ) : null
-                    })()}
-                    <div className="ml-auto flex-shrink-0">
-                      <span className={`text-sm font-bold ${dur !== '—' ? 'text-orange-500' : 'text-gray-300'}`}>
-                        {dur}
-                      </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 flex-wrap mt-1.5">
+                      {e.pause ? (
+                        <span className="flex items-center gap-1 text-[10px] text-slate-400 bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                          ☕ {e.pause}mn
+                        </span>
+                      ) : null}
+                      {e.chantier_id && (() => {
+                        const c = myChantiers.find(ch => ch.id === e.chantier_id)
+                        return c ? (
+                          <span className="text-[10px] font-medium text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-100 truncate max-w-[120px]">
+                            {c.nom}
+                          </span>
+                        ) : null
+                      })()}
                     </div>
                   </div>
                 ) : (
-                  <div className="flex-1 flex items-center justify-between">
-                    <p className="text-sm text-gray-300">Aucune saisie</p>
-                    <p className="text-xs text-orange-400 font-medium">+ Saisir</p>
+                  <div className={`flex-1 rounded-xl border-2 border-dashed flex items-center justify-center min-h-[72px] ${
+                    isToday ? 'border-orange-200/60 bg-orange-50/20' : 'border-slate-100'
+                  }`}>
+                    <p className="text-xs text-orange-400 font-semibold">+ Saisir</p>
                   </div>
                 )}
               </button>
