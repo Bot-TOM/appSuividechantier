@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Layers, RefreshCw, AlertTriangle, CheckCircle2, Sun, LogOut, Bell, Calendar, Zap, MoreHorizontal, Shield, ChevronRight, AlertCircle, FileText, CheckSquare, MessageCircle } from 'lucide-react'
+import { Layers, RefreshCw, AlertTriangle, CheckCircle2, Sun, LogOut, Bell, Calendar, Zap, MoreHorizontal, Shield, ChevronRight, AlertCircle, FileText, CheckSquare, MessageCircle, TrendingUp, ShieldAlert, Search, Filter } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantiers } from '@/hooks/useChantiers'
 import { useAnomalies } from '@/hooks/useAnomalies'
@@ -238,6 +238,7 @@ export default function ManagerDashboard() {
   // ── Stats avancées ──────────────────────────────────────────────────────────
   const [techStats, setTechStats]     = useState<TechStat[]>([])
   const [loadingStats, setLoadingStats] = useState(false)
+  const [statsSearch, setStatsSearch]   = useState('')
 
   const enhancedStats = useMemo(() => {
     const kwc_en_cours = chantiers
@@ -600,108 +601,212 @@ export default function ManagerDashboard() {
 
         {/* ── Onglet Stats ──────────────────────────────────────────────────── */}
         {activeTab === 'stats' && (
-          <div className="space-y-5 pb-6">
+          <div className="space-y-6 pb-6">
 
-            {/* Métriques globales */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'kWc en cours', value: enhancedStats.kwc_en_cours || '—', unit: enhancedStats.kwc_en_cours ? 'kWc' : '', color: 'text-orange-500' },
-                { label: 'kWc installés', value: enhancedStats.kwc_installe || '—', unit: enhancedStats.kwc_installe ? 'kWc' : '', color: 'text-green-500' },
-                { label: 'Progression moy.', value: `${enhancedStats.progression_moy}%`, unit: 'tous chantiers', color: 'text-blue-500' },
-                { label: 'Anomalies ouvertes', value: anomaliesOuvertes.length, unit: 'à traiter', color: anomaliesOuvertes.length > 0 ? 'text-red-500' : 'text-green-500' },
-              ].map(kpi => (
-                <div key={kpi.label} className="bg-white rounded-2xl p-5" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
-                  <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">{kpi.label}</p>
-                  <p className={`text-4xl font-bold ${kpi.color}`}>{kpi.value}</p>
-                  {kpi.unit && <p className="text-xs text-gray-400 mt-1.5">{kpi.unit}</p>}
-                </div>
-              ))}
+            {/* ── KPI Cards Bento ─────────────────────────────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+              {([
+                { label: 'kWc En cours',       value: String(enhancedStats.kwc_en_cours || '—'), subtext: 'Chantiers actifs',                icon: Zap,          color: 'text-orange-600', bg: 'bg-orange-100', accent: 'bg-orange-400' },
+                { label: 'kWc Installés',       value: String(enhancedStats.kwc_installe || '—'), subtext: 'Chantiers terminés',              icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-100', accent: 'bg-emerald-400' },
+                { label: 'Progression Moy.',    value: `${enhancedStats.progression_moy}%`,       subtext: "Sur l'ensemble des chantiers",    icon: TrendingUp,   color: 'text-blue-600',   bg: 'bg-blue-100',   accent: 'bg-blue-400'   },
+                { label: 'Anomalies Ouvertes',  value: String(anomaliesOuvertes.length),           subtext: anomaliesOuvertes.length > 0 ? `${anomaliesOuvertes.length} à traiter` : 'Aucune', icon: ShieldAlert, color: 'text-rose-600', bg: 'bg-rose-100', accent: 'bg-rose-400' },
+              ] as { label: string; value: string; subtext: string; icon: React.ElementType; color: string; bg: string; accent: string }[]).map((kpi, i) => {
+                const Icon = kpi.icon
+                return (
+                  <div key={i} className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200 transition-all hover:shadow-md flex flex-col relative overflow-hidden group">
+                    <div className="flex justify-between items-start mb-4">
+                      <div className={`p-2.5 rounded-xl ${kpi.bg}`}>
+                        <Icon className={`w-5 h-5 ${kpi.color}`} />
+                      </div>
+                      <span className="text-3xl font-semibold text-slate-800 tracking-tight">{kpi.value}</span>
+                    </div>
+                    <div>
+                      <h3 className="text-sm font-medium text-slate-700">{kpi.label}</h3>
+                      <p className="text-xs text-slate-500 font-medium mt-1">{kpi.subtext}</p>
+                    </div>
+                    {/* Barre accent au hover */}
+                    <div className={`absolute bottom-0 left-0 h-1 w-0 group-hover:w-full transition-all duration-300 ${kpi.accent}`} />
+                  </div>
+                )
+              })}
             </div>
 
-            {/* Répartition statuts */}
-            {stats.total > 0 && (
-              <div className="bg-white rounded-2xl p-6" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
-                <h3 className="font-semibold text-gray-900 mb-5">Répartition des chantiers</h3>
-                <div className="space-y-4">
-                  {[
-                    { label: 'En cours',   count: stats.en_cours,   color: 'bg-blue-500' },
-                    { label: 'Terminés',   count: stats.termines,   color: 'bg-green-500' },
-                    { label: 'Planifiés',  count: stats.planifies,  color: 'bg-purple-400' },
-                    { label: 'En attente', count: stats.en_attente, color: 'bg-gray-400' },
-                    { label: 'Bloqués',    count: stats.bloques,    color: 'bg-red-500' },
-                  ].map(item => (
-                    <div key={item.label}>
-                      <div className="flex justify-between text-xs mb-1.5">
-                        <span className="font-medium text-gray-600">{item.label}</span>
-                        <span className="text-gray-400">{item.count} / {stats.total}</span>
-                      </div>
-                      <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div
-                          className={`h-full rounded-full transition-all duration-700 ${item.color}`}
-                          style={{ width: `${Math.round(item.count / stats.total * 100)}%` }}
-                        />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
+            {/* ── Grille 2 colonnes ────────────────────────────────────────── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-            {/* Performance équipe */}
-            <div className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
-              <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2.5">
-                <h3 className="font-semibold text-gray-900">Performance équipe</h3>
-                {loadingStats && <div className="w-3 h-3 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />}
-              </div>
-              {!loadingStats && techStats.length === 0 ? (
-                <div className="py-10 text-center text-sm text-gray-400">Aucun technicien</div>
-              ) : (
-                <>
-                  {/* En-tête colonnes */}
-                  <div className="hidden md:grid grid-cols-[1fr_auto_auto_auto_auto] gap-4 px-6 py-3 bg-gray-50 text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                    <span>Technicien</span>
-                    <span className="text-center w-16">Actifs</span>
-                    <span className="text-center w-16">Total</span>
-                    <span className="text-center w-16">Anomalies</span>
-                    <span className="text-center w-20">Progression</span>
-                  </div>
-                  <div className="divide-y divide-gray-50">
-                    {techStats.map(tech => (
-                      <div key={tech.id} className="flex items-center gap-4 px-6 py-4">
-                        <Avatar name={tech.full_name} avatarUrl={tech.avatar_url} size="md" />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-900 truncate">{tech.full_name}</p>
-                          <p className="text-xs text-gray-400">{tech.poste ?? 'Technicien'}</p>
+              {/* Répartition globale (1/3) */}
+              <div className="lg:col-span-1 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col">
+                <div className="px-6 py-5 border-b border-slate-100">
+                  <h2 className="text-base font-semibold text-slate-800">Répartition globale</h2>
+                </div>
+
+                <div className="p-6 flex-1 flex flex-col justify-center space-y-6">
+                  {/* Donut SVG */}
+                  {stats.total > 0 && (() => {
+                    const segs = [
+                      { count: stats.en_cours,   hex: '#3b82f6' },
+                      { count: stats.termines,   hex: '#10b981' },
+                      { count: stats.planifies,  hex: '#a78bfa' },
+                      { count: stats.en_attente, hex: '#94a3b8' },
+                      { count: stats.bloques,    hex: '#ef4444' },
+                    ]
+                    let cum = 0
+                    return (
+                      <div className="flex items-center justify-center">
+                        <div className="relative w-32 h-32 flex items-center justify-center">
+                          <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                            <path d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                              fill="none" stroke="#f1f5f9" strokeWidth="3" />
+                            {segs.map((seg, si) => {
+                              const pct = Math.round(seg.count / stats.total * 100)
+                              const off = cum
+                              cum += pct
+                              if (pct === 0) return null
+                              return (
+                                <path key={si}
+                                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                                  fill="none" stroke={seg.hex} strokeWidth="3"
+                                  strokeDasharray={`${pct}, 100`}
+                                  strokeDashoffset={`-${off}`} />
+                              )
+                            })}
+                          </svg>
+                          <div className="absolute flex flex-col items-center justify-center text-center">
+                            <span className="text-2xl font-semibold text-slate-800">{stats.total}</span>
+                            <span className="text-[10px] font-medium text-slate-400 uppercase tracking-widest mt-0.5">Total</span>
+                          </div>
                         </div>
-                        <div className="text-center w-16">
-                          <p className="text-lg font-bold text-blue-500">{tech.nb_actifs}</p>
-                          <p className="text-[10px] text-gray-400 md:hidden">actifs</p>
+                      </div>
+                    )
+                  })()}
+
+                  {/* Barres de statuts */}
+                  <div className="space-y-4">
+                    {[
+                      { label: 'En cours',   count: stats.en_cours,   color: 'bg-blue-500'   },
+                      { label: 'Terminés',   count: stats.termines,   color: 'bg-emerald-500'},
+                      { label: 'Planifiés',  count: stats.planifies,  color: 'bg-purple-400' },
+                      { label: 'En attente', count: stats.en_attente, color: 'bg-slate-400'  },
+                      { label: 'Bloqués',    count: stats.bloques,    color: 'bg-red-500'    },
+                    ].map(item => (
+                      <div key={item.label} className="flex flex-col space-y-1.5">
+                        <div className="flex justify-between items-center text-sm">
+                          <div className="flex items-center space-x-2">
+                            <span className={`w-2 h-2 rounded-full ${item.color}`} />
+                            <span className="font-medium text-slate-700">{item.label}</span>
+                          </div>
+                          <span className="font-medium text-slate-800">
+                            {item.count} <span className="text-slate-400 font-normal">/ {stats.total || 1}</span>
+                          </span>
                         </div>
-                        <div className="text-center w-16">
-                          <p className="text-lg font-bold text-gray-500">{tech.nb_total}</p>
-                          <p className="text-[10px] text-gray-400 md:hidden">total</p>
-                        </div>
-                        <div className="text-center w-16">
-                          <p className={`text-lg font-bold ${tech.nb_anomalies > 0 ? 'text-red-500' : 'text-gray-300'}`}>{tech.nb_anomalies}</p>
-                          <p className="text-[10px] text-gray-400 md:hidden">anomalies</p>
-                        </div>
-                        <div className="text-center w-20 hidden md:block">
-                          {tech.nb_actifs > 0 ? (
-                            <>
-                              <p className="text-lg font-bold text-orange-500">{tech.progression_moy}%</p>
-                              <div className="h-1 bg-gray-100 rounded-full mt-1 overflow-hidden">
-                                <div className="h-full bg-orange-400 rounded-full" style={{ width: `${tech.progression_moy}%` }} />
-                              </div>
-                            </>
-                          ) : (
-                            <p className="text-sm text-gray-300">—</p>
-                          )}
+                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                          <div
+                            className={`${item.color} h-1.5 rounded-full transition-all duration-700`}
+                            style={{ width: stats.total > 0 ? `${Math.round(item.count / stats.total * 100)}%` : '0%' }}
+                          />
                         </div>
                       </div>
                     ))}
                   </div>
-                </>
-              )}
+                </div>
+              </div>
+
+              {/* Performance équipe (2/3) */}
+              <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 flex flex-col overflow-hidden">
+                <div className="px-6 py-4 border-b border-slate-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <h2 className="text-base font-semibold text-slate-800">
+                    Performance de l'équipe
+                    {loadingStats && <span className="inline-block ml-2 w-3 h-3 border-2 border-orange-500 border-t-transparent rounded-full animate-spin align-middle" />}
+                  </h2>
+                  <div className="flex items-center gap-2 w-full sm:w-auto">
+                    <div className="relative flex-1 sm:w-48">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+                      <input
+                        type="text"
+                        value={statsSearch}
+                        onChange={e => setStatsSearch(e.target.value)}
+                        placeholder="Rechercher..."
+                        className="w-full pl-9 pr-3 py-1.5 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-orange-500/20 focus:border-orange-500"
+                      />
+                    </div>
+                    <button className="p-1.5 border border-slate-200 rounded-lg text-slate-500 hover:bg-slate-50 flex-shrink-0">
+                      <Filter className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {!loadingStats && techStats.length === 0 ? (
+                  <div className="py-10 text-center text-sm text-slate-400">Aucun technicien</div>
+                ) : (
+                  <div className="flex-1 overflow-x-auto">
+                    <div className="min-w-[580px] p-2">
+                      {/* En-tête liste */}
+                      <div className="grid grid-cols-12 gap-4 px-4 py-2 text-xs font-medium text-slate-400 uppercase tracking-widest border-b border-slate-100 mb-1">
+                        <div className="col-span-5">Technicien</div>
+                        <div className="col-span-2 text-center">Actifs</div>
+                        <div className="col-span-2 text-center">Anomalies</div>
+                        <div className="col-span-3 text-right">Progression</div>
+                      </div>
+
+                      <div className="space-y-0.5">
+                        {techStats
+                          .filter(t => !statsSearch.trim() || t.full_name.toLowerCase().includes(statsSearch.toLowerCase()))
+                          .map(tech => (
+                          <div key={tech.id} className="grid grid-cols-12 gap-4 px-4 py-3 items-center rounded-xl hover:bg-slate-50 transition-colors cursor-default">
+
+                            {/* Nom (5/12) */}
+                            <div className="col-span-5 flex items-center gap-3">
+                              <Avatar name={tech.full_name} avatarUrl={tech.avatar_url} size="sm" />
+                              <div className="min-w-0">
+                                <div className="font-medium text-slate-800 text-sm truncate">{tech.full_name}</div>
+                                <div className="text-[11px] text-slate-500 truncate mt-0.5">{tech.poste ?? 'Technicien'}</div>
+                              </div>
+                            </div>
+
+                            {/* Actifs / Total (2/12) */}
+                            <div className="col-span-2 flex items-center justify-center">
+                              <div className={`flex items-center justify-center px-2.5 py-1 rounded-md text-xs font-medium ${
+                                tech.nb_actifs > 0
+                                  ? 'bg-blue-50 text-blue-700 border border-blue-100'
+                                  : 'bg-slate-50 text-slate-500 border border-slate-200'
+                              }`}>
+                                {tech.nb_actifs}<span className="opacity-40 mx-0.5">/</span>{tech.nb_total}
+                              </div>
+                            </div>
+
+                            {/* Anomalies (2/12) */}
+                            <div className="col-span-2 flex items-center justify-center">
+                              {tech.nb_anomalies > 0 ? (
+                                <span className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium bg-rose-50 text-rose-700 border border-rose-100">
+                                  <ShieldAlert className="w-3 h-3" />
+                                  {tech.nb_anomalies}
+                                </span>
+                              ) : (
+                                <span className="text-slate-300 font-medium text-sm">—</span>
+                              )}
+                            </div>
+
+                            {/* Progression (3/12) */}
+                            <div className="col-span-3 flex items-center justify-end">
+                              {tech.nb_actifs > 0 ? (
+                                <div className="flex items-center gap-3 w-full justify-end">
+                                  <div className="flex-1 h-1.5 bg-slate-100 rounded-full overflow-hidden max-w-[80px]">
+                                    <div className="h-full bg-orange-500 rounded-full" style={{ width: `${tech.progression_moy}%` }} />
+                                  </div>
+                                  <span className="text-sm font-medium text-slate-800 w-9 text-right">{tech.progression_moy}%</span>
+                                </div>
+                              ) : (
+                                <span className="text-slate-300 font-medium text-sm w-9 text-right">—</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
             </div>
           </div>
         )}
