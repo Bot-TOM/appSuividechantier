@@ -49,7 +49,7 @@ def process(src_name, dst_name, regions):
 # Zones : "ROMAND tom / Admin" (haut droite) + ligne des noms des techs
 process("image-1778852354493.png", "screen-planning.png", [
     (0.67, 0.00, 0.86, 0.08),   # "ROMAND tom / Admin"
-    (0.19, 0.47, 1.00, 0.57),   # noms techniciens (Benoit, Clément, Jules, ..., Test2@test.com)
+    (0.19, 0.41, 1.00, 0.57),   # avatars (photos) + noms techniciens
 ])
 
 # ── Profil mobile ─────────────────────────────────────────────────────────────
