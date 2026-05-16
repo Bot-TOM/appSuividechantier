@@ -13,6 +13,7 @@ import { PdfOptions, PDF_OPTIONS_DEFAULT } from '@/components/pdf/ChantierPDF'
 import AnomaliesTabContent from '@/components/anomalies/AnomaliesTabContent'
 import ChatTab from '@/components/chat/ChatTab'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
+import VoiceReportButton from '@/components/rapport/VoiceReportButton'
 import { usePermissions } from '@/hooks/usePermissions'
 
 type InnerTab = 'etapes' | 'rapport' | 'chat' | 'docs' | 'notes' | 'materiel' | 'anomalies' | 'autocontrole' | 'infos'
@@ -1100,7 +1101,13 @@ export default function ChantierDetail() {
           <>
             {/* Formulaire nouveau rapport */}
             <section className="bg-white rounded-2xl p-5 space-y-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
-              <h2 className="font-semibold text-gray-900 text-sm">Ajouter une entrée</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="font-semibold text-gray-900 text-sm">Ajouter une entrée</h2>
+                <VoiceReportButton
+                  chantierContext={chantier ? `${chantier.nom} — client : ${chantier.client_nom}, adresse : ${chantier.client_adresse}` : undefined}
+                  onGenerated={(text) => setRapportMessage(text)}
+                />
+              </div>
 
               <textarea
                 value={rapportMessage}
