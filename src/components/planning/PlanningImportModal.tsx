@@ -3,6 +3,172 @@ import * as XLSX from 'xlsx'
 import { supabase } from '@/lib/supabase'
 import type { UserProfile, PlanningType } from '@/types'
 
+// ─── Conversion numéro série Excel → date ISO ─────────────────────────────────
+function excelSerialToISO(serial: number): string {
+  // Excel epoch : 30 décembre 1899
+  const d = new Date(Math.round((serial - 25569) * 86400 * 1000))
+  return `${d.getUTCFullYear()}-${String(d.getUTCMonth()+1).padStart(2,'0')}-${String(d.getUTCDate()).padStart(2,'0')}`
+}
+
+// ─── Classification du texte libre → PlanningType ────────────────────────────
+function classifyCell(raw: string): { type: PlanningType; label: string } {
+  const text  = raw.replace(/\n/g, ' – ').trim()
+  const lower = text.toLowerCase()
+
+  if (!lower) return { type: 'libre', label: '' }
+
+  if (/fér[ié]|ferie/.test(lower))
+    return { type: 'ferie', label: '' }
+
+  if (/cong[eé]|cp\b|récup|repos|rtt|vacance|paternit|maternit/.test(lower))
+    return { type: 'repos_conges', label: text }
+
+  if (/arrêt|arret|maladie|accident|accident/.test(lower))
+    return { type: 'absent', label: text }
+
+  if (/^route\b|^retour\b/.test(lower))
+    return { type: 'route', label: text }
+
+  if (/grand.d[eé]p|gd\.?d[eé]p/.test(lower))
+    return { type: 'grand_deplacement', label: text }
+
+  if (/d[eé]p[oô]t|atelier|entrepôt|entrepot/.test(lower))
+    return { type: 'depot', label: text }
+
+  // Texte présent mais inconnu → chantier avec le texte comme label
+  return { type: 'chantier', label: text }
+}
+
+// ─── Correspondance nom → profil ──────────────────────────────────────────────
+function matchProfile(name: string, profiles: UserProfile[]): UserProfile | null {
+  const lower = name.toLowerCase().trim()
+  if (!lower) return null
+  // Exact
+  const exact = profiles.find(p => p.full_name.toLowerCase().trim() === lower)
+  if (exact) return exact
+  // Partiel (ex: "Tom ROMAND" ↔ "Tom Romand")
+  return profiles.find(p =>
+    p.full_name.toLowerCase().replace(/\s+/g, ' ').trim() === lower ||
+    lower.split(' ').every(part => p.full_name.toLowerCase().includes(part)) ||
+    p.full_name.toLowerCase().split(' ').every(part => lower.includes(part))
+  ) ?? null
+}
+
+// ─── Parser format pivot (Année / Mois / Sem / Jour / Date / Tech…) ───────────
+function parsePivotFormat(
+  data: unknown[][],
+  profiles: UserProfile[],
+): ImportRow[] | null {
+  if (!data.length) return null
+  const headers = (data[0] as unknown[]).map(c => String(c ?? '').trim().toLowerCase())
+
+  // Détection : colonnes 0-3 doivent ressembler à "année","mois","sem","jour"
+  const isPivot =
+    headers[0]?.includes('ann') &&
+    headers[1]?.includes('mois') &&
+    headers[3]?.includes('jour') &&
+    headers[4]?.includes('date')
+
+  if (!isPivot) return null
+
+  // Colonnes techniciens : tout ce qui est après l'index 4
+  const techCols: { idx: number; name: string; profile: UserProfile | null }[] = []
+  for (let c = 5; c < headers.length; c++) {
+    const name = String(data[0][c] ?? '').trim()
+    if (!name) continue  // colonnes cachées/vides
+    techCols.push({ idx: c, name, profile: matchProfile(name, profiles) })
+  }
+
+  const rows: ImportRow[] = []
+  for (let r = 1; r < data.length; r++) {
+    const row    = data[r] as unknown[]
+    const serial = row[4]
+    if (!serial && serial !== 0) continue
+
+    // Numéro série → date ISO
+    const dateISO = typeof serial === 'number'
+      ? excelSerialToISO(serial)
+      : typeof serial === 'string' && /^\d+$/.test(serial.trim())
+        ? excelSerialToISO(parseInt(serial.trim(), 10))
+        : serial instanceof Date
+          ? excelSerialToISO(Math.floor((serial.getTime() / 86400000) + 25569))
+          : null
+
+    if (!dateISO) continue
+
+    // Ignorer week-ends (samedi=6, dimanche=0)
+    const dayOfWeek = new Date(dateISO + 'T00:00:00Z').getUTCDay()
+    if (dayOfWeek === 0 || dayOfWeek === 6) continue
+
+    for (const col of techCols) {
+      const cellVal = String(row[col.idx] ?? '').trim()
+      if (!cellVal || cellVal.toLowerCase() === 'non concerné') continue
+
+      const { type, label } = classifyCell(cellVal)
+      if (type === 'libre') continue  // cellule vide ou weekend → on n'importe pas
+
+      rows.push({
+        date:     dateISO,
+        techName: col.name,
+        techId:   col.profile?.id ?? null,
+        type,
+        label,
+        status:   !col.profile ? 'unknown_tech' : 'ok',
+      })
+    }
+  }
+  return rows
+}
+
+// ─── Parser IA (fallback pour formats inconnus) ───────────────────────────────
+async function parseWithAI(
+  csvContent: string,
+  profiles: UserProfile[],
+  token: string,
+): Promise<ImportRow[]> {
+  const res = await fetch('/api/parse-planning', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+    body: JSON.stringify({
+      content:     csvContent,
+      techniciens: profiles.map(p => p.full_name),
+    }),
+  })
+  const data = await res.json() as { entries?: AIEntry[]; error?: string }
+  if (!res.ok || data.error) throw new Error(data.error ?? `Erreur API ${res.status}`)
+
+  const VALID_TYPES = new Set<string>([
+    'chantier', 'grand_deplacement', 'depot', 'route',
+    'repos_conges', 'absent', 'ferie', 'libre',
+  ])
+
+  return (data.entries ?? []).map(e => {
+    const type    = VALID_TYPES.has(e.type) ? (e.type as PlanningType) : 'chantier'
+    const profile = matchProfile(e.technicien, profiles)
+    const dateOk  = /^\d{4}-\d{2}-\d{2}$/.test(e.date ?? '')
+    return {
+      date:     e.date ?? '',
+      techName: e.technicien,
+      techId:   profile?.id ?? null,
+      type,
+      label:    e.note ?? '',
+      status:   !dateOk ? 'bad_date' : !profile ? 'unknown_tech' : 'ok',
+    } as ImportRow
+  })
+}
+
+// ─── Types ────────────────────────────────────────────────────────────────────
+interface AIEntry { date: string; technicien: string; type: string; note: string }
+
+interface ImportRow {
+  date:     string
+  techName: string
+  techId:   string | null
+  type:     PlanningType
+  label:    string
+  status:   'ok' | 'unknown_tech' | 'bad_date'
+}
+
 const TYPE_LABELS: Record<PlanningType, string> = {
   chantier:          'Chantier',
   grand_deplacement: 'Grand déplacement',
@@ -14,45 +180,13 @@ const TYPE_LABELS: Record<PlanningType, string> = {
   libre:             'Libre',
 }
 
-const VALID_TYPES = new Set<string>([
-  'chantier', 'grand_deplacement', 'depot', 'route',
-  'repos_conges', 'absent', 'ferie', 'libre',
-])
-
-function matchProfile(name: string, profiles: UserProfile[]): UserProfile | null {
-  const lower = name.toLowerCase().trim()
-  if (!lower) return null
-  return (
-    profiles.find(p => p.full_name.toLowerCase().trim() === lower) ??
-    profiles.find(p =>
-      p.full_name.toLowerCase().includes(lower) ||
-      lower.includes(p.full_name.toLowerCase()),
-    ) ?? null
-  )
-}
-
-interface AIEntry {
-  date:       string
-  technicien: string
-  type:       string
-  note:       string
-}
-
-interface ImportRow {
-  date:     string
-  techName: string
-  techId:   string | null
-  type:     PlanningType
-  label:    string
-  status:   'ok' | 'unknown_tech' | 'bad_date'
-}
-
 interface Props {
   profiles: UserProfile[]
   onClose:  () => void
   onDone:   () => void
 }
 
+// ─── Composant ────────────────────────────────────────────────────────────────
 export default function PlanningImportModal({ profiles, onClose, onDone }: Props) {
   const [rows,      setRows]      = useState<ImportRow[]>([])
   const [loading,   setLoading]   = useState(false)
@@ -60,6 +194,7 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
   const [fileName,  setFileName]  = useState('')
   const [error,     setError]     = useState('')
   const [step,      setStep]      = useState<'idle' | 'parsing' | 'preview'>('idle')
+  const [parseMode, setParseMode] = useState<'direct' | 'ai'>('direct')
   const fileRef = useRef<HTMLInputElement>(null)
 
   async function handleFile(file: File) {
@@ -70,63 +205,35 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
     setStep('parsing')
 
     try {
-      // 1. Lire le fichier Excel → texte brut (CSV)
       const buf  = await file.arrayBuffer()
-      const wb   = XLSX.read(buf, { type: 'array', cellDates: true })
+      const wb   = XLSX.read(buf, { type: 'array', cellDates: false }) // raw numbers pour les dates
       const ws   = wb.Sheets[wb.SheetNames[0]]
-      // On envoie une représentation CSV + texte pour que l'IA comprenne la structure
-      const csvContent = XLSX.utils.sheet_to_csv(ws, { blankrows: false })
+      const data = XLSX.utils.sheet_to_json<unknown[]>(ws, { header: 1, defval: '' }) as unknown[][]
 
-      // 2. Envoyer à l'API Claude pour analyse intelligente
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.access_token) throw new Error('Non connecté')
+      // Essai parser direct (format pivot connu)
+      const directRows = parsePivotFormat(data, profiles)
 
-      const res = await fetch('/api/parse-planning', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
-          content:     csvContent,
-          techniciens: profiles.map(p => p.full_name),
-        }),
-      })
-
-      const data = await res.json() as { entries?: AIEntry[]; error?: string; raw?: string }
-
-      if (!res.ok || data.error) {
-        throw new Error(data.error ?? `Erreur serveur ${res.status}`)
-      }
-
-      const entries: AIEntry[] = data.entries ?? []
-
-      if (!entries.length) {
-        setError('L\'IA n\'a trouvé aucune entrée de planning dans ce fichier.')
-        setStep('idle')
-        setLoading(false)
-        return
-      }
-
-      // 3. Faire correspondre les noms aux profils
-      const parsed: ImportRow[] = entries.map(e => {
-        const type    = VALID_TYPES.has(e.type) ? (e.type as PlanningType) : 'chantier'
-        const profile = matchProfile(e.technicien, profiles)
-        const dateOk  = /^\d{4}-\d{2}-\d{2}$/.test(e.date ?? '')
-        return {
-          date:     e.date ?? '',
-          techName: e.technicien,
-          techId:   profile?.id ?? null,
-          type,
-          label:    e.note ?? '',
-          status:   !dateOk ? 'bad_date' : !profile ? 'unknown_tech' : 'ok',
+      if (directRows && directRows.length > 0) {
+        setParseMode('direct')
+        setRows(directRows)
+        setStep('preview')
+      } else {
+        // Fallback IA
+        setParseMode('ai')
+        const csvContent = XLSX.utils.sheet_to_csv(ws, { blankrows: false })
+        const { data: { session } } = await supabase.auth.getSession()
+        if (!session?.access_token) throw new Error('Non connecté')
+        const aiRows = await parseWithAI(csvContent, profiles, session.access_token)
+        if (!aiRows.length) {
+          setError('Aucune entrée trouvée. Le fichier est peut-être vide ou dans un format non supporté.')
+          setStep('idle')
+        } else {
+          setRows(aiRows)
+          setStep('preview')
         }
-      })
-
-      setRows(parsed)
-      setStep('preview')
+      }
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Erreur inconnue')
+      setError(err instanceof Error ? err.message : 'Erreur lors de la lecture')
       setStep('idle')
     }
     setLoading(false)
@@ -173,7 +280,7 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
           <div>
             <h2 className="font-bold text-gray-900">Importer un planning Excel</h2>
             <p className="text-xs text-gray-400 mt-0.5">
-              L'IA analyse ton fichier et reconnaît le format automatiquement
+              Format pivot (Année/Mois/Date/Technicien…) ou export de l'app
             </p>
           </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600 ml-4">
@@ -206,18 +313,19 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
             </label>
           )}
 
-          {/* Chargement IA */}
+          {/* Chargement */}
           {loading && (
             <div className="flex flex-col items-center gap-3 py-6">
-              <div className="w-8 h-8 border-3 border-orange-400 border-t-transparent rounded-full animate-spin" style={{ borderWidth: 3 }} />
+              <div className="w-8 h-8 border-orange-400 border-t-transparent rounded-full animate-spin" style={{ borderWidth: 3, borderStyle: 'solid' }} />
               <div className="text-center">
-                <p className="text-sm font-medium text-gray-700">IA en cours d'analyse…</p>
-                <p className="text-xs text-gray-400 mt-0.5">Reconnaissance du format, extraction des entrées</p>
+                <p className="text-sm font-medium text-gray-700">
+                  {parseMode === 'ai' ? 'IA en cours d\'analyse…' : 'Lecture du fichier…'}
+                </p>
+                <p className="text-xs text-gray-400 mt-0.5">Quelques secondes</p>
               </div>
             </div>
           )}
 
-          {/* Erreur */}
           {error && (
             <div className="bg-red-50 border border-red-100 rounded-xl px-4 py-3">
               <p className="text-xs text-red-600">{error}</p>
@@ -227,19 +335,20 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
           {/* Preview */}
           {step === 'preview' && !loading && (
             <>
-              {/* Fichier + reset */}
               <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-gray-50 border border-gray-100">
                 <svg className="w-4 h-4 text-green-500 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span className="text-xs text-gray-600 flex-1 truncate">{fileName}</span>
-                <button onClick={() => { setStep('idle'); setRows([]); setFileName(''); setError('') }}
-                  className="text-xs text-orange-500 hover:text-orange-700 font-medium">
+                {parseMode === 'ai' && <span className="text-xs text-orange-500 font-medium">via IA</span>}
+                <button
+                  onClick={() => { setStep('idle'); setRows([]); setFileName(''); setError('') }}
+                  className="text-xs text-orange-500 hover:text-orange-700 font-medium"
+                >
                   Changer
                 </button>
               </div>
 
-              {/* Stats */}
               <div className="flex gap-3">
                 <div className="flex-1 bg-green-50 border border-green-100 rounded-xl p-3 text-center">
                   <p className="text-2xl font-bold text-green-600">{okCount}</p>
@@ -248,18 +357,17 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
                 {errCount > 0 && (
                   <div className="flex-1 bg-amber-50 border border-amber-100 rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-amber-500">{errCount}</p>
-                    <p className="text-xs text-amber-400 mt-0.5">ignorées</p>
+                    <p className="text-xs text-amber-400 mt-0.5">ignorées (tech inconnu)</p>
                   </div>
                 )}
               </div>
 
               {errCount > 0 && (
                 <p className="text-xs text-gray-400">
-                  Les lignes ignorées ont un technicien introuvable dans l'équipe ou une date invalide. Elles ne seront pas importées.
+                  Technicien inconnu = son nom dans le fichier ne correspond à aucun membre de l'équipe.
                 </p>
               )}
 
-              {/* Tableau aperçu */}
               <div className="rounded-xl border border-gray-100 overflow-hidden">
                 <div className="max-h-52 overflow-y-auto">
                   <table className="w-full text-xs">
@@ -284,7 +392,7 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
                             {row.status === 'ok'
                               ? <span className="text-green-500 font-bold">✓</span>
                               : <span className="text-red-400 font-bold cursor-help"
-                                  title={row.status === 'unknown_tech' ? 'Technicien non trouvé' : 'Date invalide'}>✗</span>
+                                  title="Technicien non trouvé dans l'équipe">✗</span>
                             }
                           </td>
                         </tr>
