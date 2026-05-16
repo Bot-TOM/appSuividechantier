@@ -16,6 +16,7 @@ export default function SignupPage() {
   const [error, setError]           = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showPwd, setShowPwd]       = useState(false)
+  const [success, setSuccess]       = useState(false)
 
   if (!loading && user && profile) {
     return <Navigate to={isManagerRole(profile.role) ? '/manager' : '/technicien'} replace />
@@ -47,7 +48,31 @@ export default function SignupPage() {
     if (error) {
       setError(error)
       setSubmitting(false)
+    } else {
+      setSuccess(true)
     }
+  }
+
+  if (success) {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center px-6" style={{ background: 'linear-gradient(160deg, #FFF7ED 0%, #F8FAFC 50%, #F8FAFC 100%)' }}>
+        <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center" style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl mx-auto mb-5 shadow-lg"
+            style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 8px 24px rgba(249,115,22,0.35)' }}>
+            ✉️
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 mb-2">Vérifiez votre email</h2>
+          <p className="text-gray-500 text-sm leading-relaxed mb-6">
+            Un email de confirmation a été envoyé à <span className="font-semibold text-gray-700">{form.email}</span>.<br />
+            Cliquez sur le lien pour activer votre compte ChantierPV.
+          </p>
+          <p className="text-xs text-gray-400">Pas reçu ? Vérifiez vos spams.</p>
+          <Link to="/login" className="block mt-6 text-sm text-orange-500 font-semibold hover:text-orange-600 transition-colors">
+            Retour à la connexion →
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
