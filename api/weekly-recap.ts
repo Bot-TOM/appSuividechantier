@@ -282,8 +282,11 @@ export default async function handler(req: Request) {
   const thisWeek = thisWeekRange()
   const sevenDaysAgo = new Date(); sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 
-  // Managers
-  const profiles: Profile[] = await sb(supabaseUrl, serviceKey, `profiles?role=eq.manager&select=id,full_name,email,role,entreprise_id`)
+  // Managers + admins
+  const profiles: Profile[] = await sb(supabaseUrl, serviceKey, `profiles?role=in.(manager,admin)&select=id,full_name,email,role,entreprise_id`)
+
+  // Admins globaux (sans entreprise_id) → reçoivent le récap de toutes les entreprises
+  const globalAdmins = profiles.filter(p => p.role === 'admin' && !p.entreprise_id)
 
   // Grouper par entreprise
   const entreprises = new Map<string, Profile[]>()
@@ -291,6 +294,12 @@ export default async function handler(req: Request) {
     if (!p.entreprise_id) continue
     if (!entreprises.has(p.entreprise_id)) entreprises.set(p.entreprise_id, [])
     entreprises.get(p.entreprise_id)!.push(p)
+  }
+  // Ajouter les admins globaux à chaque entreprise
+  for (const [, members] of entreprises) {
+    for (const admin of globalAdmins) {
+      if (!members.find(m => m.id === admin.id)) members.push(admin)
+    }
   }
 
   const results: string[] = []
