@@ -7,7 +7,7 @@ const corsHeaders = {
 }
 
 webpush.setVapidDetails(
-  'mailto:contact@mypvpilot.fr',
+  'mailto:contact@chantierpv.fr',
   Deno.env.get('VAPID_PUBLIC_KEY')!,
   Deno.env.get('VAPID_PRIVATE_KEY')!,
 )

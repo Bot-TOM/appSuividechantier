@@ -122,7 +122,7 @@ const PRICING = [
     highlight: false,
     features: ["Utilisateurs illimités", "Chantiers illimités", "Tout ce qu'inclut Pro", "Multi-entreprise isolé", "Support prioritaire", "Onboarding personnalisé", "Facturation annuelle disponible"],
     cta: "Contacter l'équipe",
-    href: 'mailto:contact@mypvpilot.fr',
+    href: 'mailto:contact@chantierpv.fr',
   },
 ]
 
@@ -359,7 +359,7 @@ export default function LandingPage() {
                   <div className="w-3 h-3 rounded-full bg-emerald-400" />
                 </div>
                 <div className="mx-auto bg-white px-4 py-1.5 rounded-md text-xs text-slate-400 font-medium flex items-center justify-center w-full max-w-md border border-slate-200 shadow-sm">
-                  app.mypvpilot.fr — Planning équipe
+                  app.chantierpv.fr — Planning équipe
                 </div>
               </div>
               <img src="/screen-planning.png" alt="Planning équipe ChantierPV" className="w-full h-auto object-cover" />
@@ -511,7 +511,7 @@ export default function LandingPage() {
               className="bg-white text-orange-600 hover:bg-orange-50 px-8 py-4 rounded-full text-base font-bold transition-all shadow-lg hover:shadow-xl flex items-center justify-center">
               Commencer gratuitement <ArrowRight className="w-4 h-4 ml-2" />
             </Link>
-            <a href="mailto:contact@mypvpilot.fr"
+            <a href="mailto:contact@chantierpv.fr"
               className="bg-transparent border-2 border-white/30 text-white hover:bg-white/10 px-8 py-4 rounded-full text-base font-bold transition-all flex items-center justify-center">
               Demander une démo
             </a>
@@ -549,7 +549,7 @@ export default function LandingPage() {
               <h4 className="text-white font-bold mb-4">Support & Légal</h4>
               <ul className="space-y-3">
                 <li><a href="#faq" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">FAQ</a></li>
-                <li><a href="mailto:contact@mypvpilot.fr" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">Contact</a></li>
+                <li><a href="mailto:contact@chantierpv.fr" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">Contact</a></li>
                 <li><Link to="/cgu" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">CGU</Link></li>
                 <li><Link to="/confidentialite" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">Confidentialité</Link></li>
               </ul>

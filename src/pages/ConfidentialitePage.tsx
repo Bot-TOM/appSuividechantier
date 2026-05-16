@@ -33,7 +33,7 @@ export default function ConfidentialitePage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">1. Responsable du traitement</h2>
             <p className="text-slate-600 leading-relaxed">
-              Le responsable du traitement des données personnelles collectées via ChantierPV est Tom Romand Malaure, joignable à <a href="mailto:contact@mypvpilot.fr" className="text-orange-500 hover:underline">contact@mypvpilot.fr</a>.
+              Le responsable du traitement des données personnelles collectées via ChantierPV est Tom Romand Malaure, joignable à <a href="mailto:contact@chantierpv.fr" className="text-orange-500 hover:underline">contact@chantierpv.fr</a>.
             </p>
           </section>
 
@@ -139,7 +139,7 @@ export default function ConfidentialitePage() {
               ))}
             </ul>
             <p className="text-slate-600 leading-relaxed mt-4">
-              Pour exercer ces droits, contactez-nous à <a href="mailto:contact@mypvpilot.fr" className="text-orange-500 hover:underline">contact@mypvpilot.fr</a>. Nous répondrons dans un délai de 30 jours. Vous disposez également du droit d'introduire une réclamation auprès de la <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">CNIL</a>.
+              Pour exercer ces droits, contactez-nous à <a href="mailto:contact@chantierpv.fr" className="text-orange-500 hover:underline">contact@chantierpv.fr</a>. Nous répondrons dans un délai de 30 jours. Vous disposez également du droit d'introduire une réclamation auprès de la <a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-orange-500 hover:underline">CNIL</a>.
             </p>
           </section>
 
@@ -160,7 +160,7 @@ export default function ConfidentialitePage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">10. Contact</h2>
             <p className="text-slate-600 leading-relaxed">
-              Pour toute question relative à la protection de vos données : <a href="mailto:contact@mypvpilot.fr" className="text-orange-500 hover:underline">contact@mypvpilot.fr</a>
+              Pour toute question relative à la protection de vos données : <a href="mailto:contact@chantierpv.fr" className="text-orange-500 hover:underline">contact@chantierpv.fr</a>
             </p>
           </section>
 
@@ -173,7 +173,7 @@ export default function ConfidentialitePage() {
           <div className="flex gap-6">
             <Link to="/cgu" className="hover:text-slate-600 transition-colors">CGU</Link>
             <Link to="/confidentialite" className="hover:text-slate-600 transition-colors">Confidentialité</Link>
-            <a href="mailto:contact@mypvpilot.fr" className="hover:text-slate-600 transition-colors">Contact</a>
+            <a href="mailto:contact@chantierpv.fr" className="hover:text-slate-600 transition-colors">Contact</a>
           </div>
         </div>
       </footer>

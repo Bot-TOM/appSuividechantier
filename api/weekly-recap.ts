@@ -70,7 +70,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: 'ChantierPV <recap@mypvpilot.fr>', to: [to], subject, html }),
+    body: JSON.stringify({ from: 'ChantierPV <recap@chantierpv.fr>', to: [to], subject, html }),
   })
 }
 
@@ -255,14 +255,14 @@ function buildHTML(opts: {
 
     <!-- CTA -->
     <div style="text-align:center;margin:36px 0 8px;">
-      <a href="https://www.mypvpilot.fr" style="display:inline-block;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;text-decoration:none;padding:16px 40px;border-radius:14px;font-weight:700;font-size:15px;letter-spacing:-0.01em;">
+      <a href="https://www.chantierpv.fr" style="display:inline-block;background:linear-gradient(135deg,#EA580C,#F97316);color:#fff;text-decoration:none;padding:16px 40px;border-radius:14px;font-weight:700;font-size:15px;letter-spacing:-0.01em;">
         Ouvrir le dashboard →
       </a>
     </div>
   </div>
 
   <div style="padding:16px 36px;border-top:1px solid #f3f4f6;text-align:center;">
-    <p style="margin:0;font-size:11px;color:#d1d5db;">ChantierPV · Récap automatique chaque lundi matin · <a href="https://www.mypvpilot.fr" style="color:#f97316;text-decoration:none;">mypvpilot.fr</a></p>
+    <p style="margin:0;font-size:11px;color:#d1d5db;">ChantierPV · Récap automatique chaque lundi matin · <a href="https://www.chantierpv.fr" style="color:#f97316;text-decoration:none;">chantierpv.fr</a></p>
   </div>
 </div>
 </body>

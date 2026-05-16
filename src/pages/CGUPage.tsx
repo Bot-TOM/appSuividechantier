@@ -33,10 +33,10 @@ export default function CGUPage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">1. Présentation de ChantierPV</h2>
             <p className="text-slate-600 leading-relaxed">
-              ChantierPV est une application web de gestion et de pilotage de chantiers photovoltaïques, éditée et exploitée par Tom Romand Malaure (ci-après « l'Éditeur »), joignable à l'adresse <a href="mailto:contact@mypvpilot.fr" className="text-orange-500 hover:underline">contact@mypvpilot.fr</a>.
+              ChantierPV est une application web de gestion et de pilotage de chantiers photovoltaïques, éditée et exploitée par Tom Romand Malaure (ci-après « l'Éditeur »), joignable à l'adresse <a href="mailto:contact@chantierpv.fr" className="text-orange-500 hover:underline">contact@chantierpv.fr</a>.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
-              L'application est accessible à l'adresse <span className="font-medium text-slate-800">app.mypvpilot.fr</span> et destinée exclusivement aux professionnels du secteur de l'installation photovoltaïque (managers, techniciens et administrateurs).
+              L'application est accessible à l'adresse <span className="font-medium text-slate-800">app.chantierpv.fr</span> et destinée exclusivement aux professionnels du secteur de l'installation photovoltaïque (managers, techniciens et administrateurs).
             </p>
           </section>
 
@@ -132,7 +132,7 @@ export default function CGUPage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">9. Résiliation</h2>
             <p className="text-slate-600 leading-relaxed">
-              L'utilisateur peut supprimer son compte à tout moment en contactant l'Éditeur à <a href="mailto:contact@mypvpilot.fr" className="text-orange-500 hover:underline">contact@mypvpilot.fr</a>. L'Éditeur se réserve le droit de suspendre ou supprimer tout compte ne respectant pas les présentes CGU, sans préavis ni remboursement.
+              L'utilisateur peut supprimer son compte à tout moment en contactant l'Éditeur à <a href="mailto:contact@chantierpv.fr" className="text-orange-500 hover:underline">contact@chantierpv.fr</a>. L'Éditeur se réserve le droit de suspendre ou supprimer tout compte ne respectant pas les présentes CGU, sans préavis ni remboursement.
             </p>
           </section>
 
@@ -146,7 +146,7 @@ export default function CGUPage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">11. Contact</h2>
             <p className="text-slate-600 leading-relaxed">
-              Pour toute question relative aux présentes CGU : <a href="mailto:contact@mypvpilot.fr" className="text-orange-500 hover:underline">contact@mypvpilot.fr</a>
+              Pour toute question relative aux présentes CGU : <a href="mailto:contact@chantierpv.fr" className="text-orange-500 hover:underline">contact@chantierpv.fr</a>
             </p>
           </section>
 
@@ -159,7 +159,7 @@ export default function CGUPage() {
           <div className="flex gap-6">
             <Link to="/cgu" className="hover:text-slate-600 transition-colors">CGU</Link>
             <Link to="/confidentialite" className="hover:text-slate-600 transition-colors">Confidentialité</Link>
-            <a href="mailto:contact@mypvpilot.fr" className="hover:text-slate-600 transition-colors">Contact</a>
+            <a href="mailto:contact@chantierpv.fr" className="hover:text-slate-600 transition-colors">Contact</a>
           </div>
         </div>
       </footer>
