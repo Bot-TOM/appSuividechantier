@@ -15,6 +15,7 @@ import EditChantier from '@/pages/manager/EditChantier'
 import LandingPage from '@/pages/LandingPage'
 import CGUPage from '@/pages/CGUPage'
 import ConfidentialitePage from '@/pages/ConfidentialitePage'
+import UpgradeSuccessPage from '@/pages/UpgradeSuccessPage'
 
 export default function App() {
   return (
@@ -60,6 +61,7 @@ export default function App() {
           <Route path="/" element={<LandingPage />} />
           <Route path="/cgu" element={<CGUPage />} />
           <Route path="/confidentialite" element={<ConfidentialitePage />} />
+          <Route path="/upgrade/success" element={<UpgradeSuccessPage />} />
           <Route path="*" element={<Navigate to="/login" replace />} />
         </Routes>
       </BrowserRouter>
