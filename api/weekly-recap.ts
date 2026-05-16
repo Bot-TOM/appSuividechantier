@@ -70,7 +70,7 @@ async function sendEmail(to: string, subject: string, html: string) {
   await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${key}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: 'PVPilot <recap@mypvpilot.fr>', to: [to], subject, html }),
+    body: JSON.stringify({ from: 'ChantierPV <recap@mypvpilot.fr>', to: [to], subject, html }),
   })
 }
 
@@ -202,13 +202,13 @@ function buildHTML(opts: {
   return `<!DOCTYPE html>
 <html lang="fr">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Récap PVPilot</title></head>
+<title>Récap ChantierPV</title></head>
 <body style="margin:0;padding:0;background:#f3f4f6;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,sans-serif;">
 <div style="max-width:620px;margin:32px auto 64px;background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 2px 16px rgba(0,0,0,0.08);">
 
   <!-- Header -->
   <div style="background:linear-gradient(135deg,#EA580C 0%,#F97316 100%);padding:36px 36px 28px;">
-    <p style="margin:0 0 4px;color:rgba(255,255,255,0.7);font-size:12px;letter-spacing:0.05em;text-transform:uppercase;">PVPilot</p>
+    <p style="margin:0 0 4px;color:rgba(255,255,255,0.7);font-size:12px;letter-spacing:0.05em;text-transform:uppercase;">ChantierPV</p>
     <h1 style="margin:0 0 6px;color:#fff;font-size:26px;font-weight:800;letter-spacing:-0.02em;">Récap de la semaine</h1>
     <p style="margin:0;color:rgba(255,255,255,0.85);font-size:14px;">${weekLabel}</p>
   </div>
@@ -262,7 +262,7 @@ function buildHTML(opts: {
   </div>
 
   <div style="padding:16px 36px;border-top:1px solid #f3f4f6;text-align:center;">
-    <p style="margin:0;font-size:11px;color:#d1d5db;">PVPilot · Récap automatique chaque lundi matin · <a href="https://www.mypvpilot.fr" style="color:#f97316;text-decoration:none;">mypvpilot.fr</a></p>
+    <p style="margin:0;font-size:11px;color:#d1d5db;">ChantierPV · Récap automatique chaque lundi matin · <a href="https://www.mypvpilot.fr" style="color:#f97316;text-decoration:none;">mypvpilot.fr</a></p>
   </div>
 </div>
 </body>
@@ -393,7 +393,7 @@ export default async function handler(req: Request) {
         totalHeures, progressMap, techsMap,
         heuresParTech, planning, planningDays: thisWeek.days, allTechNames,
       })
-      await sendEmail(manager.email, `📊 Récap semaine ${lastWeek.label} — PVPilot`, html)
+      await sendEmail(manager.email, `📊 Récap semaine ${lastWeek.label} — ChantierPV`, html)
     }
 
     results.push(`entreprise ${entrepriseId}: ${managers.length} managers, ${enCours.length} chantiers, ${Math.round(totalHeures/60)}h`)

@@ -12,7 +12,7 @@ export default function ConfidentialitePage() {
             <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center">
               <Sun className="text-white w-4 h-4" />
             </div>
-            <span className="font-bold text-lg tracking-tight">PVPilot</span>
+            <span className="font-bold text-lg tracking-tight">ChantierPV</span>
           </Link>
           <Link to="/" className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -33,13 +33,13 @@ export default function ConfidentialitePage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">1. Responsable du traitement</h2>
             <p className="text-slate-600 leading-relaxed">
-              Le responsable du traitement des données personnelles collectées via PVPilot est Tom Romand Malaure, joignable à <a href="mailto:contact@mypvpilot.fr" className="text-orange-500 hover:underline">contact@mypvpilot.fr</a>.
+              Le responsable du traitement des données personnelles collectées via ChantierPV est Tom Romand Malaure, joignable à <a href="mailto:contact@mypvpilot.fr" className="text-orange-500 hover:underline">contact@mypvpilot.fr</a>.
             </p>
           </section>
 
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">2. Données collectées</h2>
-            <p className="text-slate-600 leading-relaxed">Dans le cadre de l'utilisation de PVPilot, les données suivantes peuvent être collectées :</p>
+            <p className="text-slate-600 leading-relaxed">Dans le cadre de l'utilisation de ChantierPV, les données suivantes peuvent être collectées :</p>
 
             <div className="mt-4 space-y-4">
               <div className="bg-slate-50 rounded-2xl p-5">
@@ -70,7 +70,7 @@ export default function ConfidentialitePage() {
             <p className="text-slate-600 leading-relaxed">Les données collectées sont utilisées exclusivement pour :</p>
             <ul className="mt-3 space-y-2">
               {[
-                'Fournir et améliorer le service PVPilot',
+                'Fournir et améliorer le service ChantierPV',
                 'Authentifier les utilisateurs et gérer les accès',
                 'Permettre la collaboration entre membres d\'une même équipe',
                 'Envoyer des notifications push selon les préférences choisies',
@@ -90,7 +90,7 @@ export default function ConfidentialitePage() {
 
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">4. Hébergement et sous-traitants</h2>
-            <p className="text-slate-600 leading-relaxed">PVPilot utilise les services tiers suivants :</p>
+            <p className="text-slate-600 leading-relaxed">ChantierPV utilise les services tiers suivants :</p>
             <div className="mt-4 space-y-3">
               {[
                 { name: 'Supabase', role: 'Base de données, authentification, stockage de fichiers', location: 'Europe (AWS Frankfurt)' },
@@ -146,7 +146,7 @@ export default function ConfidentialitePage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">8. Cookies et stockage local</h2>
             <p className="text-slate-600 leading-relaxed">
-              PVPilot utilise le stockage local du navigateur (localStorage) uniquement pour maintenir votre session d'authentification et vos préférences d'affichage. Aucun cookie publicitaire ou de traçage tiers n'est utilisé.
+              ChantierPV utilise le stockage local du navigateur (localStorage) uniquement pour maintenir votre session d'authentification et vos préférences d'affichage. Aucun cookie publicitaire ou de traçage tiers n'est utilisé.
             </p>
           </section>
 
@@ -169,7 +169,7 @@ export default function ConfidentialitePage() {
 
       <footer className="border-t border-slate-100 py-8 mt-8">
         <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
-          <p>© 2026 PVPilot. Tous droits réservés.</p>
+          <p>© 2026 ChantierPV. Tous droits réservés.</p>
           <div className="flex gap-6">
             <Link to="/cgu" className="hover:text-slate-600 transition-colors">CGU</Link>
             <Link to="/confidentialite" className="hover:text-slate-600 transition-colors">Confidentialité</Link>

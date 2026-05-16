@@ -45,9 +45,9 @@ self.addEventListener('push', (event) => {
   if (!event.data) return
 
   let data: { title?: string; body?: string; url?: string } = {}
-  try { data = event.data.json() } catch { data = { title: 'PVPilot', body: event.data.text() } }
+  try { data = event.data.json() } catch { data = { title: 'ChantierPV', body: event.data.text() } }
 
-  const title   = data.title ?? 'PVPilot'
+  const title   = data.title ?? 'ChantierPV'
   const options: NotificationOptions = {
     body: data.body ?? '',
     icon: '/pwa-192.png',

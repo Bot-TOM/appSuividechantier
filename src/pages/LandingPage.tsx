@@ -127,11 +127,11 @@ const PRICING = [
 ]
 
 const FAQS = [
-  { q: "Faut-il se former pour utiliser PVPilot ?", a: "Non, l'application a été conçue pour être la plus intuitive possible. Un technicien peut la prendre en main en moins de 5 minutes sur le terrain." },
+  { q: "Faut-il se former pour utiliser ChantierPV ?", a: "Non, l'application a été conçue pour être la plus intuitive possible. Un technicien peut la prendre en main en moins de 5 minutes sur le terrain." },
   { q: "Ça fonctionne sans connexion internet ?", a: "Oui, notre application mobile permet de saisir des données et des photos même en zone blanche. Tout se synchronise dès que le réseau revient." },
   { q: "Mes données sont-elles sécurisées ?", a: "Absolument. Toutes vos données (et celles de vos clients) sont hébergées sur des serveurs sécurisés en Europe, en conformité totale avec le RGPD." },
   { q: "Comment fonctionne l'import matériel par IA ?", a: "Il vous suffit de prendre en photo votre bon de livraison ou d'importer un fichier Excel. Notre intelligence artificielle reconnaît les articles et les quantités pour créer votre checklist instantanément." },
-  { q: "Puis-je gérer plusieurs entreprises ?", a: "Oui, si vous avez plusieurs entités, PVPilot permet une isolation totale des données avec un système multi-entreprise." },
+  { q: "Puis-je gérer plusieurs entreprises ?", a: "Oui, si vous avez plusieurs entités, ChantierPV permet une isolation totale des données avec un système multi-entreprise." },
 ]
 
 const MOBILES = [
@@ -160,7 +160,7 @@ export default function LandingPage() {
               <div className="w-10 h-10 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-md shadow-orange-500/20">
                 <Sun className="text-white w-6 h-6" />
               </div>
-              <span className="font-bold text-2xl tracking-tight text-slate-900">PVPilot</span>
+              <span className="font-bold text-2xl tracking-tight text-slate-900">ChantierPV</span>
             </Link>
 
             {/* Desktop nav */}
@@ -256,7 +256,7 @@ export default function LandingPage() {
                 <div className="absolute top-0 inset-x-0 h-6 bg-slate-900 rounded-b-3xl w-[140px] mx-auto z-30" />
                 <img
                   src="/screen-dashboard.png"
-                  alt="Dashboard PVPilot"
+                  alt="Dashboard ChantierPV"
                   className="w-full h-full object-cover object-top rounded-[2rem] bg-white relative z-20"
                 />
               </div>
@@ -362,7 +362,7 @@ export default function LandingPage() {
                   app.mypvpilot.fr — Planning équipe
                 </div>
               </div>
-              <img src="/screen-planning.png" alt="Planning équipe PVPilot" className="w-full h-auto object-cover" />
+              <img src="/screen-planning.png" alt="Planning équipe ChantierPV" className="w-full h-auto object-cover" />
             </div>
           </div>
 
@@ -528,7 +528,7 @@ export default function LandingPage() {
                 <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-lg flex items-center justify-center">
                   <Sun className="text-white w-5 h-5" />
                 </div>
-                <span className="font-bold text-xl tracking-tight text-white">PVPilot</span>
+                <span className="font-bold text-xl tracking-tight text-white">ChantierPV</span>
               </div>
               <p className="text-slate-400 text-sm leading-relaxed max-w-sm font-medium">
                 La solution de pilotage de chantiers photovoltaïques conçue par et pour les installateurs.
@@ -557,7 +557,7 @@ export default function LandingPage() {
           </div>
 
           <div className="border-t border-slate-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-            <p className="text-slate-500 text-sm font-medium">© 2026 PVPilot. Tous droits réservés.</p>
+            <p className="text-slate-500 text-sm font-medium">© 2026 ChantierPV. Tous droits réservés.</p>
             <p className="text-slate-500 text-sm font-medium flex items-center gap-1">
               Fait avec <Sun className="w-3.5 h-3.5 text-orange-500" /> pour les installateurs PV
             </p>

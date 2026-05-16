@@ -56,7 +56,7 @@ export default function SignupPage() {
             style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 8px 24px rgba(249,115,22,0.35)' }}>
             ☀️
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">PVPilot</h1>
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">ChantierPV</h1>
           <p className="text-gray-500 text-sm mt-1.5">Créez votre espace entreprise</p>
         </div>
 
@@ -69,13 +69,13 @@ export default function SignupPage() {
           <form onSubmit={handleSubmit} className="space-y-4">
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">Code d'accès PVPilot *</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">Code d'accès ChantierPV *</label>
               <input name="access_code" value={form.access_code} onChange={handleChange} required
                 placeholder="Ex : PVP-AB12C"
                 className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent font-mono tracking-widest uppercase"
                 style={{ letterSpacing: '0.08em' }}
                 onInput={e => { (e.target as HTMLInputElement).value = (e.target as HTMLInputElement).value.toUpperCase() }} />
-              <p className="text-xs text-gray-400 mt-1.5">Fourni par PVPilot lors de votre souscription</p>
+              <p className="text-xs text-gray-400 mt-1.5">Fourni par ChantierPV lors de votre souscription</p>
             </div>
 
             <div>

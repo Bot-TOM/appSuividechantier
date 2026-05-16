@@ -12,7 +12,7 @@ export default function CGUPage() {
             <div className="w-8 h-8 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center">
               <Sun className="text-white w-4 h-4" />
             </div>
-            <span className="font-bold text-lg tracking-tight">PVPilot</span>
+            <span className="font-bold text-lg tracking-tight">ChantierPV</span>
           </Link>
           <Link to="/" className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-900 transition-colors">
             <ArrowLeft className="w-4 h-4" />
@@ -31,9 +31,9 @@ export default function CGUPage() {
         <div className="prose prose-slate max-w-none space-y-10">
 
           <section>
-            <h2 className="text-xl font-bold text-slate-900 mb-4">1. Présentation de PVPilot</h2>
+            <h2 className="text-xl font-bold text-slate-900 mb-4">1. Présentation de ChantierPV</h2>
             <p className="text-slate-600 leading-relaxed">
-              PVPilot est une application web de gestion et de pilotage de chantiers photovoltaïques, éditée et exploitée par Tom Romand Malaure (ci-après « l'Éditeur »), joignable à l'adresse <a href="mailto:contact@mypvpilot.fr" className="text-orange-500 hover:underline">contact@mypvpilot.fr</a>.
+              ChantierPV est une application web de gestion et de pilotage de chantiers photovoltaïques, éditée et exploitée par Tom Romand Malaure (ci-après « l'Éditeur »), joignable à l'adresse <a href="mailto:contact@mypvpilot.fr" className="text-orange-500 hover:underline">contact@mypvpilot.fr</a>.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               L'application est accessible à l'adresse <span className="font-medium text-slate-800">app.mypvpilot.fr</span> et destinée exclusivement aux professionnels du secteur de l'installation photovoltaïque (managers, techniciens et administrateurs).
@@ -43,7 +43,7 @@ export default function CGUPage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">2. Acceptation des conditions</h2>
             <p className="text-slate-600 leading-relaxed">
-              L'utilisation de PVPilot implique l'acceptation pleine et entière des présentes Conditions Générales d'Utilisation (CGU). Si vous n'acceptez pas ces conditions, vous devez cesser d'utiliser l'application immédiatement.
+              L'utilisation de ChantierPV implique l'acceptation pleine et entière des présentes Conditions Générales d'Utilisation (CGU). Si vous n'acceptez pas ces conditions, vous devez cesser d'utiliser l'application immédiatement.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               L'Éditeur se réserve le droit de modifier les présentes CGU à tout moment. Les utilisateurs seront informés de toute modification substantielle par email ou via une notification dans l'application.
@@ -52,7 +52,7 @@ export default function CGUPage() {
 
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">3. Description du service</h2>
-            <p className="text-slate-600 leading-relaxed">PVPilot propose les fonctionnalités suivantes :</p>
+            <p className="text-slate-600 leading-relaxed">ChantierPV propose les fonctionnalités suivantes :</p>
             <ul className="mt-3 space-y-2">
               {[
                 'Gestion et suivi de chantiers photovoltaïques',
@@ -76,7 +76,7 @@ export default function CGUPage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">4. Accès et inscription</h2>
             <p className="text-slate-600 leading-relaxed">
-              L'accès à PVPilot nécessite la création d'un compte. Le compte manager est créé avec un code d'accès fourni par l'Éditeur. Les comptes techniciens sont créés par le manager de l'entreprise.
+              L'accès à ChantierPV nécessite la création d'un compte. Le compte manager est créé avec un code d'accès fourni par l'Éditeur. Les comptes techniciens sont créés par le manager de l'entreprise.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               L'utilisateur s'engage à fournir des informations exactes lors de son inscription et à maintenir la confidentialité de ses identifiants de connexion. Toute utilisation du compte par un tiers sous la responsabilité de l'utilisateur engage sa responsabilité.
@@ -105,7 +105,7 @@ export default function CGUPage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">6. Propriété intellectuelle</h2>
             <p className="text-slate-600 leading-relaxed">
-              L'ensemble des éléments constituant PVPilot (code source, design, logo, base de données, algorithmes, etc.) est protégé par les lois françaises et européennes en matière de propriété intellectuelle. Toute reproduction, modification ou exploitation sans autorisation expresse de l'Éditeur est interdite.
+              L'ensemble des éléments constituant ChantierPV (code source, design, logo, base de données, algorithmes, etc.) est protégé par les lois françaises et européennes en matière de propriété intellectuelle. Toute reproduction, modification ou exploitation sans autorisation expresse de l'Éditeur est interdite.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               Les données saisies par l'utilisateur (chantiers, photos, rapports, etc.) restent la propriété exclusive de l'utilisateur ou de son entreprise.
@@ -115,7 +115,7 @@ export default function CGUPage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">7. Disponibilité et maintenance</h2>
             <p className="text-slate-600 leading-relaxed">
-              L'Éditeur s'efforce d'assurer la disponibilité de PVPilot 24h/24 et 7j/7 mais ne peut garantir une disponibilité sans interruption. Des opérations de maintenance pourront être effectuées, avec ou sans préavis selon leur urgence.
+              L'Éditeur s'efforce d'assurer la disponibilité de ChantierPV 24h/24 et 7j/7 mais ne peut garantir une disponibilité sans interruption. Des opérations de maintenance pourront être effectuées, avec ou sans préavis selon leur urgence.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
               L'Éditeur ne saurait être tenu responsable des interruptions de service liées à des causes extérieures (pannes réseau, défaillances des services tiers, cas de force majeure, etc.).
@@ -125,7 +125,7 @@ export default function CGUPage() {
           <section>
             <h2 className="text-xl font-bold text-slate-900 mb-4">8. Limitation de responsabilité</h2>
             <p className="text-slate-600 leading-relaxed">
-              PVPilot est un outil d'aide à la gestion de chantiers. L'Éditeur ne saurait être tenu responsable des décisions prises par l'utilisateur sur la base des informations contenues dans l'application, ni des préjudices directs ou indirects résultant de l'utilisation ou de l'impossibilité d'utiliser le service.
+              ChantierPV est un outil d'aide à la gestion de chantiers. L'Éditeur ne saurait être tenu responsable des décisions prises par l'utilisateur sur la base des informations contenues dans l'application, ni des préjudices directs ou indirects résultant de l'utilisation ou de l'impossibilité d'utiliser le service.
             </p>
           </section>
 
@@ -155,7 +155,7 @@ export default function CGUPage() {
 
       <footer className="border-t border-slate-100 py-8 mt-8">
         <div className="max-w-4xl mx-auto px-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-sm text-slate-400">
-          <p>© 2026 PVPilot. Tous droits réservés.</p>
+          <p>© 2026 ChantierPV. Tous droits réservés.</p>
           <div className="flex gap-6">
             <Link to="/cgu" className="hover:text-slate-600 transition-colors">CGU</Link>
             <Link to="/confidentialite" className="hover:text-slate-600 transition-colors">Confidentialité</Link>

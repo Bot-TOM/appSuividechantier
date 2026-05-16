@@ -73,7 +73,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signUp(fullName: string, email: string, password: string, accessCode: string, entrepriseNom?: string) {
     // 1. Vérifier le code d'accès en base (obligatoire)
     if (!accessCode.trim()) {
-      return { error: 'Un code d\'accès PVPilot est requis pour créer un compte' }
+      return { error: 'Un code d\'accès ChantierPV est requis pour créer un compte' }
     }
 
     // Vérification préalable : le code existe-t-il et est-il disponible ?

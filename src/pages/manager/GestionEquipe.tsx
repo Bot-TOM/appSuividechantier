@@ -289,7 +289,7 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
                 style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 ☀️
               </div>
-              <span className="font-bold text-gray-900 text-lg tracking-tight">PVPilot</span>
+              <span className="font-bold text-gray-900 text-lg tracking-tight">ChantierPV</span>
             </div>
             <div className="flex items-center gap-3">
               <div className="text-right hidden sm:block">

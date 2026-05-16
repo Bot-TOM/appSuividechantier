@@ -340,7 +340,7 @@ export default function ManagerDashboard() {
               <div className="w-9 h-9 bg-gradient-to-br from-orange-400 to-orange-600 rounded-xl flex items-center justify-center shadow-lg shadow-orange-500/30">
                 <Sun className="text-white w-5 h-5" />
               </div>
-              <span className="font-bold text-xl tracking-tight text-slate-900">PVPilot</span>
+              <span className="font-bold text-xl tracking-tight text-slate-900">ChantierPV</span>
             </div>
 
             {/* Actions droite */}
