@@ -29,6 +29,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq('id', userId)
       .single()
     setProfile(data)
+    return data
+  }
+
+  // Envoie l'email de bienvenue une seule fois, après la 1ère connexion post-confirmation
+  async function maybeSendWelcomeEmail(profileData: UserProfile | null, session: Session | null) {
+    if (!profileData || !session) return
+    if (profileData.welcome_email_sent) return
+
+    try {
+      // Marque en base avant l'envoi pour éviter les doublons en cas de retry
+      await supabase
+        .from('profiles')
+        .update({ welcome_email_sent: true })
+        .eq('id', profileData.id)
+
+      await fetch('/api/send-welcome-email', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ full_name: profileData.full_name, email: profileData.email }),
+      })
+    } catch {
+      // Silencieux — l'email de bienvenue n'est pas critique
+    }
   }
 
   useEffect(() => {
@@ -43,11 +69,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user) fetchProfile(session.user.id)
-      else setProfile(null)
+      if (session?.user) {
+        const profileData = await fetchProfile(session.user.id)
+        // Envoie l'email de bienvenue à la 1ère connexion après confirmation
+        if (_event === 'SIGNED_IN') {
+          await maybeSendWelcomeEmail(profileData, session)
+        }
+      } else {
+        setProfile(null)
+      }
     })
 
     return () => subscription.unsubscribe()
