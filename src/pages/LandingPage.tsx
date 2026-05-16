@@ -17,6 +17,8 @@ import {
   ChevronDown,
   ArrowRight,
   Zap,
+  Mic,
+  FileSpreadsheet,
 } from 'lucide-react'
 
 // ── Données ───────────────────────────────────────────────────────────────────
@@ -59,10 +61,22 @@ const FEATURES = [
     color: 'text-amber-500', bg: 'bg-amber-50',
   },
   {
+    icon: Mic,
+    title: 'Rapport vocal assisté par IA',
+    desc: "Parlez 2 minutes depuis le terrain — l'IA transcrit et structure automatiquement votre compte-rendu d'intervention. Vocabulaire PV reconnu (onduleur, MC4, MPPT, Linky…).",
+    color: 'text-cyan-500', bg: 'bg-cyan-50',
+  },
+  {
+    icon: FileSpreadsheet,
+    title: 'Import planning Excel automatique',
+    desc: "Importez votre planning Excel existant en un clic. L'IA analyse le fichier et crée automatiquement tous les événements équipe dans l'application.",
+    color: 'text-fuchsia-500', bg: 'bg-fuchsia-50',
+  },
+  {
     icon: Bot,
     title: 'Import matériel par Excel ou photo',
-    desc: "Prenez en photo votre liste de matériel ou importez un fichier Excel — l'IA extrait automatiquement les noms et quantités pour pré-remplir la checklist.",
-    color: 'text-fuchsia-500', bg: 'bg-fuchsia-50',
+    desc: "Prenez en photo votre bon de livraison ou importez un fichier Excel — l'IA extrait automatiquement les noms et quantités pour pré-remplir la checklist.",
+    color: 'text-violet-500', bg: 'bg-violet-50',
   },
   {
     icon: Building2,
@@ -87,7 +101,7 @@ const STEPS = [
   {
     num: 2,
     title: 'Les techniciens suivent depuis le terrain',
-    desc: "Application mobile, validation des étapes avec photos, chat, signalement d'anomalies, saisie des heures — le tout en moins de 30 secondes par action.",
+    desc: "Application mobile, validation des étapes avec photos, chat, signalement d'anomalies, saisie des heures. Rapport d'intervention dicté à voix haute et structuré par l'IA en moins de 2 minutes.",
   },
   {
     num: 3,
@@ -111,7 +125,7 @@ const PRICING = [
     price: '49€',
     sub: '/mois · facturation mensuelle',
     highlight: true,
-    features: ["Chantiers illimités", "10 utilisateurs", "Planning équipe & feuille d'heures", "Export Excel & PDF avancé", "Notifications push", "Gestion des anomalies", "Auto-contrôle terrain", "Import matériel IA"],
+    features: ["Chantiers illimités", "10 utilisateurs", "Planning équipe & import Excel", "Rapport vocal assisté par IA", "Export Excel & PDF avancé", "Notifications push", "Gestion des anomalies", "Auto-contrôle terrain", "Import matériel IA"],
     cta: 'Essayer 14 jours gratuits',
     href: '/signup',
   },
@@ -227,8 +241,8 @@ export default function LandingPage() {
               </h1>
 
               <p className="text-lg text-slate-500 mb-10 leading-relaxed font-medium max-w-xl">
-                Planning équipe, suivi terrain en temps réel, rapports PDF, chat intégré,
-                gestion des anomalies et import matériel par IA. Tout en une seule application mobile.
+                Planning équipe, suivi terrain en temps réel, rapports PDF dictés à voix haute,
+                import Excel automatique et gestion des anomalies. Tout en une seule application mobile.
               </p>
 
               <div className="flex flex-col sm:flex-row items-center gap-4 mb-12">
