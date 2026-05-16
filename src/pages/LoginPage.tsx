@@ -1,10 +1,11 @@
 ﻿import { useState, FormEvent } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { isManagerRole } from '@/types'
 
 export default function LoginPage() {
   const { user, profile, loading, signIn } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
@@ -19,10 +20,13 @@ export default function LoginPage() {
     e.preventDefault()
     setError('')
     setSubmitting(true)
-    const { error } = await signIn(email, password)
+    const { error, role } = await signIn(email, password)
     if (error) {
       setError('Email ou mot de passe incorrect')
       setSubmitting(false)
+    } else {
+      // Redirection immédiate basée sur le rôle du token — sans attendre le chargement du profil
+      navigate(isManagerRole(role) ? '/manager' : '/technicien', { replace: true })
     }
   }
 
