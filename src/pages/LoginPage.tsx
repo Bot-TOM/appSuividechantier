@@ -22,11 +22,11 @@ export default function LoginPage() {
     setSubmitting(true)
     const { error, role } = await signIn(email, password)
     if (error) {
-      setError('Email ou mot de passe incorrect')
+      setError(error)
       setSubmitting(false)
     } else {
-      // Redirection immédiate basée sur le rôle du token — sans attendre le chargement du profil
-      navigate(isManagerRole(role) ? '/manager' : '/technicien', { replace: true })
+      // window.location pour forcer la redirection quel que soit l'état du routeur
+      window.location.replace(isManagerRole(role) ? '/manager' : '/technicien')
     }
   }
 
