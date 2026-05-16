@@ -373,7 +373,7 @@ export default function LandingPage() {
                   <div className="w-3 h-3 rounded-full bg-emerald-400" />
                 </div>
                 <div className="mx-auto bg-white px-4 py-1.5 rounded-md text-xs text-slate-400 font-medium flex items-center justify-center w-full max-w-md border border-slate-200 shadow-sm">
-                  app.chantierpv.fr — Planning équipe
+                  chantierpv.fr — Planning équipe
                 </div>
               </div>
               <img src="/screen-planning.png" alt="Planning équipe ChantierPV" className="w-full h-auto object-cover" />

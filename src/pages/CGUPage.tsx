@@ -36,7 +36,7 @@ export default function CGUPage() {
               ChantierPV est une application web de gestion et de pilotage de chantiers photovoltaïques, éditée et exploitée par Tom Romand Malaure (ci-après « l'Éditeur »), joignable à l'adresse <a href="mailto:contact@chantierpv.fr" className="text-orange-500 hover:underline">contact@chantierpv.fr</a>.
             </p>
             <p className="text-slate-600 leading-relaxed mt-3">
-              L'application est accessible à l'adresse <span className="font-medium text-slate-800">app.chantierpv.fr</span> et destinée exclusivement aux professionnels du secteur de l'installation photovoltaïque (managers, techniciens et administrateurs).
+              L'application est accessible à l'adresse <span className="font-medium text-slate-800">chantierpv.fr</span> et destinée exclusivement aux professionnels du secteur de l'installation photovoltaïque (managers, techniciens et administrateurs).
             </p>
           </section>
 
