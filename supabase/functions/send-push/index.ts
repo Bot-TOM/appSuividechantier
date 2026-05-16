@@ -132,6 +132,13 @@ Deno.serve(async (req) => {
     recipientIds = admins?.map((a: { id: string }) => a.id) ?? []
     url = '/'
 
+  } else if (table === 'weekly_recap') {
+    // Appelé depuis api/weekly-recap — title/body/userIds déjà calculés
+    title = record.title ?? '📊 Récap hebdo'
+    body  = record.body  ?? ''
+    recipientIds = record.userIds ?? []
+    url = '/'
+
   } else {
     return new Response(JSON.stringify({ ignored: true, table }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
