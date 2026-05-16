@@ -12,6 +12,7 @@ export default function SignupPage() {
     password: '',
     entreprise_nom: '',
   })
+  const [acceptCgu, setAcceptCgu] = useState(false)
   const [error, setError]           = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showPwd, setShowPwd]       = useState(false)
@@ -34,6 +35,10 @@ export default function SignupPage() {
     }
     if (!form.entreprise_nom.trim()) {
       setError('Le nom de votre entreprise est requis')
+      return
+    }
+    if (!acceptCgu) {
+      setError('Vous devez accepter les CGU et la politique de confidentialité')
       return
     }
 
@@ -105,6 +110,23 @@ export default function SignupPage() {
               </div>
               <p className="text-xs text-gray-400 mt-1.5">Minimum 6 caractères</p>
             </div>
+
+            {/* CGU + Confidentialité */}
+            <label className="flex items-start gap-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acceptCgu}
+                onChange={e => setAcceptCgu(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-gray-300 text-orange-500 focus:ring-orange-400 shrink-0"
+              />
+              <span className="text-xs text-gray-500 leading-relaxed">
+                J'accepte les{' '}
+                <Link to="/cgu" target="_blank" className="text-orange-500 hover:underline font-medium">CGU</Link>
+                {' '}et la{' '}
+                <Link to="/confidentialite" target="_blank" className="text-orange-500 hover:underline font-medium">politique de confidentialité</Link>
+                {' '}de ChantierPV
+              </span>
+            </label>
 
             {error && (
               <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl flex items-center gap-2">
