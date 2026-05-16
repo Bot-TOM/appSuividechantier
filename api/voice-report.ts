@@ -35,10 +35,22 @@ export default async function handler(req: Request) {
   }
 
   // ── ÉTAPE 1 : Transcription avec Whisper ────────────────────────────────────
+  // Le prompt aide Whisper à reconnaître le vocabulaire technique photovoltaïque
+  const whisperPrompt = [
+    'onduleur', 'micro-onduleur', 'optimiseur', 'panneau solaire', 'module photovoltaïque',
+    'câble solaire', 'DC', 'AC', 'coffret DC', 'coffret AC', 'parafoudre', 'disjoncteur',
+    'rail de fixation', 'lyre', 'presse-étoupe', 'connecteur MC4', 'tracker',
+    'toiture', 'bac acier', 'tuiles', 'ardoise', 'charpente', 'liteaux', 'écran sous-toiture',
+    'GTL', 'tableau général basse tension', 'TGBT', 'compteur Linky', 'injection', 'autoconsommation',
+    'puissance crête', 'Wc', 'kWc', 'kWh', 'MPP', 'MPPT', 'string', 'calepinage',
+    'pare-feu', 'ERP', 'mise à la terre', 'masse', 'chantier', 'consuel', 'Enedis',
+  ].join(', ')
+
   const whisperForm = new FormData()
   whisperForm.append('file', audioFile, 'audio.webm')
   whisperForm.append('model', 'whisper-1')
   whisperForm.append('language', 'fr')
+  whisperForm.append('prompt', whisperPrompt)
 
   const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',
