@@ -9,7 +9,7 @@ interface AuthContextType {
   session: Session | null
   loading: boolean
   signIn: (email: string, password: string) => Promise<{ error: string | null }>
-  signUp: (fullName: string, email: string, password: string, managerCode: string, entrepriseNom?: string) => Promise<{ error: string | null }>
+  signUp: (fullName: string, email: string, password: string, entrepriseNom?: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
 }
@@ -70,25 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: null }
   }
 
-  async function signUp(fullName: string, email: string, password: string, accessCode: string, entrepriseNom?: string) {
-    // 1. Vérifier le code d'accès en base (obligatoire)
-    if (!accessCode.trim()) {
-      return { error: 'Un code d\'accès ChantierPV est requis pour créer un compte' }
-    }
-
-    // Vérification préalable : le code existe-t-il et est-il disponible ?
-    const { data: codeCheck } = await supabase
-      .from('access_codes')
-      .select('id, status')
-      .eq('status', 'available')
-      .filter('code', 'ilike', accessCode.trim())
-      .maybeSingle()
-
-    if (!codeCheck) {
-      return { error: 'Code d\'accès invalide ou déjà utilisé' }
-    }
-
-    // 2. Créer le compte Supabase Auth
+  async function signUp(fullName: string, email: string, password: string, entrepriseNom?: string) {
     const role: UserRole = 'manager'
     const { data, error } = await supabase.auth.signUp({
       email,
@@ -98,17 +80,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (error) return { error: error.message }
     if (!data.user) return { error: 'Erreur lors de la création du compte' }
-
-    // 3. Consommer le code atomiquement (SECURITY DEFINER — pas de race condition)
-    const { data: result } = await supabase.rpc('verify_and_use_code', {
-      p_code: accessCode.trim(),
-      p_user_id: data.user.id,
-    })
-
-    if (result !== 'ok') {
-      // Cas rare : code consommé entre la vérification et l'inscription
-      return { error: 'Code d\'accès invalide ou déjà utilisé' }
-    }
 
     return { error: null }
   }
