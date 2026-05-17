@@ -1,7 +1,7 @@
 ﻿/// <reference lib="webworker" />
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
-import { NetworkFirst } from 'workbox-strategies'
+import { NetworkFirst, NetworkOnly } from 'workbox-strategies'
 import { ExpirationPlugin } from 'workbox-expiration'
 
 declare const self: ServiceWorkerGlobalScope
@@ -26,13 +26,11 @@ registerRoute(
   }),
 )
 
-// Supabase API — NetworkFirst
+// Supabase — NetworkOnly : jamais de cache pour l'auth et les données temps réel
+// Un token expiré en cache = page blanche après login
 registerRoute(
   /^https:\/\/.*\.supabase\.co\/.*/i,
-  new NetworkFirst({
-    cacheName: 'supabase-cache',
-    plugins: [new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 })],
-  }),
+  new NetworkOnly()
 )
 
 // Take control of all clients immediately when updated
