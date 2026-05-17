@@ -1,10 +1,11 @@
 ﻿import { useState, FormEvent } from 'react'
-import { Link, Navigate } from 'react-router-dom'
+import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { isManagerRole } from '@/types'
 
 export default function LoginPage() {
   const { user, profile, loading, signIn } = useAuth()
+  const navigate = useNavigate()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError]       = useState('')
@@ -24,8 +25,8 @@ export default function LoginPage() {
       setError(error)
       setSubmitting(false)
     } else {
-      // window.location pour forcer la redirection quel que soit l'état du routeur
-      window.location.replace(isManagerRole(role) ? '/manager' : '/technicien')
+      // Navigation client-side : évite le rechargement complet intercepté par le SW
+      navigate(isManagerRole(role) ? '/manager' : '/technicien', { replace: true })
     }
   }
 

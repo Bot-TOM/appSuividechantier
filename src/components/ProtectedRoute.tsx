@@ -19,7 +19,9 @@ export default function ProtectedRoute({ children, allowedRole, permissionKey }:
   // admin a accès à toutes les routes manager
   const roleMatch     = !allowedRole || profile?.role === allowedRole || (allowedRole === 'manager' && profile?.role === 'admin')
   const needsPermCheck = !roleMatch && !!permissionKey
-  const stillLoading   = loading || (needsPermCheck && permsLoading)
+  // Si user est connecté mais profil pas encore chargé → on attend (évite redirect prématuré)
+  const profilePending = !!user && !profile && !loading
+  const stillLoading   = loading || profilePending || (needsPermCheck && permsLoading)
 
   useEffect(() => {
     if (!stillLoading) return
