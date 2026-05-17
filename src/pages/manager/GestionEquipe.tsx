@@ -167,7 +167,13 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
     }
   }
 
-  useEffect(() => { if (profile?.id) fetchEquipe() }, [profile?.id, entrepriseId])
+  useEffect(() => {
+    if (profile?.id) {
+      fetchEquipe()
+    } else {
+      setLoading(false)
+    }
+  }, [profile?.id, entrepriseId])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))

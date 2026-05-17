@@ -8,7 +8,7 @@ export function useChantiers(entrepriseId?: string) {
   const { profile } = useAuth()
   const { can } = usePermissions()
   const [chantiers, setChantiers] = useState<Chantier[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   const fetchChantiers = useCallback(async () => {
     setLoading(true)

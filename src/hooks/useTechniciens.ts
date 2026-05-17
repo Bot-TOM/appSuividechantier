@@ -6,10 +6,15 @@ import { useAuth } from '@/contexts/AuthContext'
 export function useTechniciens() {
   const { profile } = useAuth()
   const [techniciens, setTechniciens] = useState<UserProfile[]>([])
-  const [loading, setLoading] = useState(true)
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    if (!profile?.entreprise_id) return
+    if (!profile?.entreprise_id) {
+      setTechniciens([])
+      setLoading(false)
+      return
+    }
+    setLoading(true)
     supabase
       .from('profiles')
       .select('*')
