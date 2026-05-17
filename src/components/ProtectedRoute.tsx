@@ -24,7 +24,7 @@ export default function ProtectedRoute({ children, allowedRole, permissionKey }:
 
   useEffect(() => {
     if (!stillLoading) return
-    const t = setTimeout(() => setSlow(true), 3000)
+    const t = setTimeout(() => setSlow(true), 8000)
     return () => clearTimeout(t)
   }, [stillLoading])
 
