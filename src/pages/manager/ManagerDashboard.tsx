@@ -158,7 +158,7 @@ export default function ManagerDashboard() {
   const [selectedEntreprise, setSelectedEntreprise] = useState<{ id: string; nom: string } | null>(null)
   const { isPro } = usePlan()
   const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const [upgradeReason] = useState<UpgradeReason>('chantiers')
+  const [upgradeReason] = useState<UpgradeReason>('general')
 
   const { chantiers, loading } = useChantiers(selectedEntreprise?.id)
   const { anomalies, updateStatut: updateAnomalieStatut, updateStatutBulk, deleteAnomalies } = useAnomalies(undefined, selectedEntreprise?.id)

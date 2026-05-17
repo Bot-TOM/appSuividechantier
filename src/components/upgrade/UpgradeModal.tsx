@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { useAuth } from '../../contexts/AuthContext'
 
-export type UpgradeReason = 'chantiers' | 'users' | 'voice' | 'excel'
+export type UpgradeReason = 'general' | 'chantiers' | 'users' | 'voice' | 'excel'
 
 interface UpgradeModalProps {
   open: boolean
@@ -10,12 +10,16 @@ interface UpgradeModalProps {
 }
 
 const REASON_MESSAGES: Record<UpgradeReason, { title: string; description: string }> = {
+  general: {
+    title: 'Passez à ChantierPV Pro',
+    description: 'Débloquez toutes les fonctionnalités — chantiers et utilisateurs illimités, rapport vocal IA, import Excel et bien plus.',
+  },
   chantiers: {
     title: 'Limite de chantiers atteinte',
     description: 'Limite de 3 chantiers atteinte sur le plan Starter. Passez au Pro pour créer des chantiers en illimité.',
   },
   users: {
-    title: 'Limite d\'utilisateurs atteinte',
+    title: "Limite d'utilisateurs atteinte",
     description: 'Limite de 3 utilisateurs atteinte sur le plan Starter. Passez au Pro pour inviter autant de techniciens que vous voulez.',
   },
   voice: {
