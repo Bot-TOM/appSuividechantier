@@ -142,38 +142,21 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
   async function fetchEquipe() {
     // Toujours filtrer par entreprise — jamais retourner des profils d'autres entreprises
     const targetEntrepriseId = entrepriseId ?? profile?.entreprise_id
-    if (!targetEntrepriseId) {
-      setTechniciens([])
-      setLoading(false)
-      return
-    }
+    if (!targetEntrepriseId) return
 
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .neq('id', profile?.id ?? '')
-        .eq('entreprise_id', targetEntrepriseId)
-        .order('role')
-        .order('full_name')
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .neq('id', profile?.id ?? '')
+      .eq('entreprise_id', targetEntrepriseId)
+      .order('role')
+      .order('full_name')
 
-      if (error) console.error('[fetchEquipe]', error.message)
-      setTechniciens(data ?? [])
-    } catch (e) {
-      console.error('[fetchEquipe] unexpected error:', e)
-      setTechniciens([])
-    } finally {
-      setLoading(false)
-    }
+    setTechniciens(data ?? [])
+    setLoading(false)
   }
 
-  useEffect(() => {
-    if (profile?.id) {
-      fetchEquipe()
-    } else {
-      setLoading(false)
-    }
-  }, [profile?.id, entrepriseId])
+  useEffect(() => { if (profile?.id) fetchEquipe() }, [profile?.id, entrepriseId])
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement>) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))

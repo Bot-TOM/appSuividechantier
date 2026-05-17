@@ -87,20 +87,13 @@ export function usePlanning(startDate: string, endDate: string) {
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    try {
-      const { data, error } = await supabase
-        .from('planning_entries')
-        .select('*')
-        .gte('date', startDate)
-        .lte('date', endDate)
-      if (error) console.error('[usePlanning] fetch error:', error.message)
-      setEntries(data ?? [])
-    } catch (e) {
-      console.error('[usePlanning] unexpected error:', e)
-      setEntries([])
-    } finally {
-      setLoading(false)
-    }
+    const { data } = await supabase
+      .from('planning_entries')
+      .select('*')
+      .gte('date', startDate)
+      .lte('date', endDate)
+    setEntries(data ?? [])
+    setLoading(false)
   }, [startDate, endDate])
 
   useEffect(() => {
@@ -119,15 +112,15 @@ export function usePlanning(startDate: string, endDate: string) {
 
     // 3. Refetch dès que l'onglet/app repasse au premier plan
     const onFocus = () => refetch()
-    const onVisibility = () => { if (document.visibilityState === 'visible') refetch() }
     window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', onVisibility)
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') refetch()
+    })
 
     return () => {
       supabase.removeChannel(channel)
       clearInterval(interval)
       window.removeEventListener('focus', onFocus)
-      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [refetch, startDate, endDate])
 
