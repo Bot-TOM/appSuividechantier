@@ -16,14 +16,11 @@ cleanupOutdatedCaches()
 // SPA fallback
 registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))
 
-// JS chunks — NetworkFirst to always serve latest after deploy
+// JS chunks — NetworkOnly : toujours depuis le réseau, jamais de cache stale
+// Le précache Workbox (lignes au-dessus) gère déjà les assets versionnés
 registerRoute(
   /\/assets\/.*\.js$/,
-  new NetworkFirst({
-    cacheName: 'js-chunks',
-    plugins: [new ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 7 })],
-    networkTimeoutSeconds: 10,
-  }),
+  new NetworkOnly(),
 )
 
 // Supabase — NetworkOnly : jamais de cache pour l'auth et les données temps réel
