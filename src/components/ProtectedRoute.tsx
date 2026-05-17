@@ -16,12 +16,11 @@ export default function ProtectedRoute({ children, allowedRole, permissionKey }:
   const { can, loading: permsLoading } = usePermissions()
   const [slow, setSlow] = useState(false)
 
-  // admin a accès à toutes les routes manager
-  const roleMatch     = !allowedRole || profile?.role === allowedRole || (allowedRole === 'manager' && profile?.role === 'admin')
+  // Rôle : depuis le profil si chargé, sinon depuis le token JWT (dispo immédiatement)
+  const effectiveRole  = profile?.role ?? (user?.user_metadata?.role as string | undefined)
+  const roleMatch      = !allowedRole || effectiveRole === allowedRole || (allowedRole === 'manager' && effectiveRole === 'admin')
   const needsPermCheck = !roleMatch && !!permissionKey
-  // Si user est connecté mais profil pas encore chargé → on attend (évite redirect prématuré)
-  const profilePending = !!user && !profile && !loading
-  const stillLoading   = loading || profilePending || (needsPermCheck && permsLoading)
+  const stillLoading   = loading || (needsPermCheck && permsLoading)
 
   useEffect(() => {
     if (!stillLoading) return
