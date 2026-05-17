@@ -58,33 +58,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Timeout de sécurité : si Supabase ne répond pas en 6s, on débloque le chargement
-    const timeout = setTimeout(() => setLoading(false), 6000)
-
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      clearTimeout(timeout)
-      setSession(session)
-      setUser(session?.user ?? null)
-      // On débloque le loading immédiatement — le profil charge en arrière-plan
-      setLoading(false)
-      if (session?.user) fetchProfile(session.user.id)
-    })
-
+    // onAuthStateChange émet INITIAL_SESSION au démarrage → remplace getSession()
+    // Cela évite la race condition : deux fetchProfile() en parallèle qui
+    // s'annulent mutuellement et laissent profile=null pour tous les hooks.
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       setSession(session)
       setUser(session?.user ?? null)
+
       if (session?.user) {
         const profileData = await fetchProfile(session.user.id)
-        // Envoie l'email de bienvenue à la 1ère connexion après confirmation
         if (_event === 'SIGNED_IN') {
           await maybeSendWelcomeEmail(profileData, session)
         }
       } else {
         setProfile(null)
       }
+
+      // Loading se lève une seule fois, après INITIAL_SESSION
+      setLoading(false)
     })
 
-    return () => subscription.unsubscribe()
+    // Filet de sécurité : si onAuthStateChange ne se déclenche jamais (> 8s)
+    const timeout = setTimeout(() => setLoading(false), 8000)
+
+    return () => {
+      subscription.unsubscribe()
+      clearTimeout(timeout)
+    }
   }, [])
 
   // Recharge le profil quand l'onglet redevient visible (ex: manager a modifié le poste)
