@@ -19,6 +19,8 @@ import AdminBugReportsTab from '@/components/admin/AdminBugReportsTab'
 import BugReportButton from '@/components/BugReportButton'
 import GlobalChatTab from '@/components/chat/GlobalChatTab'
 import { useGlobalMessages } from '@/hooks/useGlobalMessages'
+import { usePlan } from '@/hooks/usePlan'
+import UpgradeModal, { UpgradeReason } from '@/components/upgrade/UpgradeModal'
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
 type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat'
@@ -154,6 +156,9 @@ export default function ManagerDashboard() {
     }
   }
   const [selectedEntreprise, setSelectedEntreprise] = useState<{ id: string; nom: string } | null>(null)
+  const { isPro } = usePlan()
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
+  const [upgradeReason] = useState<UpgradeReason>('chantiers')
 
   const { chantiers, loading } = useChantiers(selectedEntreprise?.id)
   const { anomalies, updateStatut: updateAnomalieStatut, updateStatutBulk, deleteAnomalies } = useAnomalies(undefined, selectedEntreprise?.id)
@@ -345,6 +350,17 @@ export default function ManagerDashboard() {
 
             {/* Actions droite */}
             <div className="flex items-center gap-4">
+              {/* Bouton Passer Pro — masqué si déjà Pro ou compte admin */}
+              {!isPro && profile?.role !== 'admin' && (
+                <button
+                  onClick={() => setUpgradeOpen(true)}
+                  className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-white transition-all"
+                  style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 2px 8px rgba(249,115,22,0.4)' }}
+                >
+                  <Zap className="w-3.5 h-3.5" />
+                  Passer Pro
+                </button>
+              )}
               <div className="text-right hidden sm:block">
                 <div className="text-sm font-semibold text-slate-900">{profile?.full_name}</div>
                 <div className="text-xs text-slate-500 font-medium capitalize">{profile?.role}</div>
@@ -1265,6 +1281,12 @@ export default function ManagerDashboard() {
       </main>
 
       <BugReportButton />
+
+      <UpgradeModal
+        open={upgradeOpen}
+        onClose={() => setUpgradeOpen(false)}
+        reason={upgradeReason}
+      />
     </div>
   )
 }
