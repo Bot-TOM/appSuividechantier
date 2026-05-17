@@ -87,13 +87,18 @@ export function usePlanning(startDate: string, endDate: string) {
 
   const refetch = useCallback(async () => {
     setLoading(true)
-    const { data } = await supabase
-      .from('planning_entries')
-      .select('*')
-      .gte('date', startDate)
-      .lte('date', endDate)
-    setEntries(data ?? [])
-    setLoading(false)
+    try {
+      const { data } = await supabase
+        .from('planning_entries')
+        .select('*')
+        .gte('date', startDate)
+        .lte('date', endDate)
+      setEntries(data ?? [])
+    } catch {
+      // Silencieux — on garde les données précédentes en cas d'erreur réseau
+    } finally {
+      setLoading(false)
+    }
   }, [startDate, endDate])
 
   useEffect(() => {

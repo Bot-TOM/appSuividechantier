@@ -35,6 +35,7 @@ export function useChantiers(entrepriseId?: string) {
 
   useEffect(() => {
     if (profile) fetchChantiers()
+    else setLoading(false)
   }, [profile, fetchChantiers])
 
   return { chantiers, loading, refetch: fetchChantiers }

@@ -142,7 +142,7 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
   async function fetchEquipe() {
     // Toujours filtrer par entreprise — jamais retourner des profils d'autres entreprises
     const targetEntrepriseId = entrepriseId ?? profile?.entreprise_id
-    if (!targetEntrepriseId) return
+    if (!targetEntrepriseId) { setLoading(false); return }
 
     const { data } = await supabase
       .from('profiles')
