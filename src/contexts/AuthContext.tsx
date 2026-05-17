@@ -58,28 +58,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // onAuthStateChange émet INITIAL_SESSION au démarrage → remplace getSession()
-    // Cela évite la race condition : deux fetchProfile() en parallèle qui
-    // s'annulent mutuellement et laissent profile=null pour tous les hooks.
+    // Pattern correct Supabase :
+    // 1. getSession() lit la session depuis localStorage (instantané, pas de réseau)
+    //    → débloque l'UI immédiatement, fetchProfile en arrière-plan
+    // 2. onAuthStateChange gère les changements futurs (login, logout, token refresh)
+    //    → on ignore INITIAL_SESSION (déjà géré par getSession)
+
+    const timeout = setTimeout(() => setLoading(false), 8000)
+
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      clearTimeout(timeout)
+      setSession(session)
+      setUser(session?.user ?? null)
+      setLoading(false) // UI débloquée immédiatement
+      if (session?.user) fetchProfile(session.user.id) // profil en arrière-plan
+    })
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      // INITIAL_SESSION déjà géré par getSession() ci-dessus → on skip
+      if (_event === 'INITIAL_SESSION') return
+
       setSession(session)
       setUser(session?.user ?? null)
 
       if (session?.user) {
         const profileData = await fetchProfile(session.user.id)
         if (_event === 'SIGNED_IN') {
-          await maybeSendWelcomeEmail(profileData, session)
+          maybeSendWelcomeEmail(profileData, session) // sans await, non-bloquant
         }
       } else {
         setProfile(null)
       }
-
-      // Loading se lève une seule fois, après INITIAL_SESSION
-      setLoading(false)
     })
-
-    // Filet de sécurité : si onAuthStateChange ne se déclenche jamais (> 8s)
-    const timeout = setTimeout(() => setLoading(false), 8000)
 
     return () => {
       subscription.unsubscribe()
