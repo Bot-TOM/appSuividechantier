@@ -1,8 +1,7 @@
 ﻿/// <reference lib="webworker" />
 import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
 import { NavigationRoute, registerRoute } from 'workbox-routing'
-import { NetworkFirst, NetworkOnly } from 'workbox-strategies'
-import { ExpirationPlugin } from 'workbox-expiration'
+import { NetworkOnly } from 'workbox-strategies'
 
 declare const self: ServiceWorkerGlobalScope
 
@@ -16,14 +15,11 @@ cleanupOutdatedCaches()
 // SPA fallback
 registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))
 
-// JS chunks — NetworkFirst to always serve latest after deploy
+// JS chunks — NetworkOnly : toujours charger la dernière version après un déploiement
+// Les fichiers sont déjà précachés par Workbox via self.__WB_MANIFEST (hashes uniques)
 registerRoute(
   /\/assets\/.*\.js$/,
-  new NetworkFirst({
-    cacheName: 'js-chunks',
-    plugins: [new ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 7 })],
-    networkTimeoutSeconds: 10,
-  }),
+  new NetworkOnly()
 )
 
 // Supabase — NetworkOnly : jamais de cache pour l'auth et les données temps réel
@@ -34,8 +30,19 @@ registerRoute(
 )
 
 // Take control of all clients immediately when updated
+// + vide tous les anciens caches pour forcer le rechargement des assets frais
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
+  event.waitUntil(
+    caches.keys().then((keys) =>
+      Promise.all([
+        // Supprime tous les caches non liés au precache Workbox courant
+        ...keys
+          .filter((k) => !k.startsWith('workbox-precache'))
+          .map((k) => caches.delete(k)),
+        self.clients.claim(),
+      ])
+    )
+  )
 })
 
 // ── Push notifications ──────────────────────────────────────────────────────
