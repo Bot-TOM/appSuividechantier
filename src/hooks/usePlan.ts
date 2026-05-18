@@ -25,11 +25,11 @@ export function usePlan() {
     if (!profile?.entreprise_id) { setLoading(false); return }
     supabase
       .from('entreprises')
-      .select('plan')
+      .select('plan, pro_offert')
       .eq('id', profile.entreprise_id)
       .single()
       .then(({ data }) => {
-        if (data?.plan === 'pro') setPlan('pro')
+        if (data?.plan === 'pro' || data?.pro_offert === true) setPlan('pro')
         setLoading(false)
       })
   }, [profile?.entreprise_id])

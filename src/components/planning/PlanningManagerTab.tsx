@@ -17,6 +17,8 @@ import {
   fmtMonth,
 } from '@/hooks/usePlanning'
 import { useTeamTimeEntries, calcDuree } from '@/hooks/useTimeEntries'
+import { usePlan } from '@/hooks/usePlan'
+import UpgradeModal from '@/components/upgrade/UpgradeModal'
 import Avatar from '@/components/Avatar'
 import { Coffee, Clock, ArrowRight } from 'lucide-react'
 
@@ -111,6 +113,8 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
 
   // Import modal
   const [importModal, setImportModal] = useState(false)
+  const { limits: planLimits } = usePlan()
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   // Export modal
   const [exportModal, setExportModal] = useState<'xlsx' | 'csv' | null>(null)
@@ -376,13 +380,13 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
         {/* Importer */}
         {view === 'activite' && (
           <button
-            onClick={() => setImportModal(true)}
+            onClick={() => planLimits.excelImport ? setImportModal(true) : setUpgradeOpen(true)}
             className="flex items-center gap-2 text-sm font-semibold px-4 py-2.5 rounded-xl bg-white border border-gray-200 text-gray-700 hover:bg-gray-50 transition-colors"
             style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.07)' }}>
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
             </svg>
-            Importer
+            Importer {!planLimits.excelImport && <span className="text-orange-400 text-xs font-bold">Pro</span>}
           </button>
         )}
 
@@ -1333,6 +1337,8 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
           </div>
         </div>
       )}
+
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} reason="excel" />
     </div>
   )
 }

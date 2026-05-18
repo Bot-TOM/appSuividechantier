@@ -5,6 +5,8 @@ import { supabase } from '@/lib/supabase'
 import { supabaseAuth } from '@/lib/supabaseAuth'
 import { UserProfile, POSTES_OPTIONS, PERMISSION_LABELS, type PermissionKey } from '@/types'
 import { useRolePermissions } from '@/hooks/useRolePermissions'
+import { usePlan } from '@/hooks/usePlan'
+import UpgradeModal from '@/components/upgrade/UpgradeModal'
 import Avatar from '@/components/Avatar'
 
 interface EditModal {
@@ -122,6 +124,8 @@ function PermissionsSection() {
 export default function GestionEquipe({ embedded = false, entrepriseId }: { embedded?: boolean; entrepriseId?: string }) {
   const navigate = useNavigate()
   const { profile, session, signOut } = useAuth()
+  const { isPro, limits } = usePlan()
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [techniciens, setTechniciens] = useState<UserProfile[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
@@ -382,7 +386,13 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
             </form>
           </div>
         ) : (
-          <button onClick={() => { setShowForm(true); setError(''); setSuccess('') }}
+          <button onClick={() => {
+              if (!isPro && techniciens.length >= limits.maxUsers) {
+                setUpgradeOpen(true)
+              } else {
+                setShowForm(true); setError(''); setSuccess('')
+              }
+            }}
             className="w-full text-white font-semibold py-3.5 rounded-xl transition-all hover:opacity-90 text-sm"
             style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}>
             + Ajouter un technicien
@@ -569,6 +579,7 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
         </div>
       )}
 
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} reason="users" />
     </div>
   )
 }

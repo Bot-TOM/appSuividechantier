@@ -156,9 +156,9 @@ export default function ManagerDashboard() {
     }
   }
   const [selectedEntreprise, setSelectedEntreprise] = useState<{ id: string; nom: string } | null>(null)
-  const { isPro } = usePlan()
+  const { isPro, limits } = usePlan()
   const [upgradeOpen, setUpgradeOpen] = useState(false)
-  const [upgradeReason] = useState<UpgradeReason>('general')
+  const [upgradeReason, setUpgradeReason] = useState<UpgradeReason>('general')
 
   const { chantiers, loading } = useChantiers(selectedEntreprise?.id)
   const { anomalies, updateStatut: updateAnomalieStatut, updateStatutBulk, deleteAnomalies } = useAnomalies(undefined, selectedEntreprise?.id)
@@ -1217,7 +1217,13 @@ export default function ManagerDashboard() {
             {chantiersFiltres.length} chantier{chantiersFiltres.length !== 1 ? 's' : ''}
           </h2>
           <button
-            onClick={() => navigate('/manager/nouveau-chantier')}
+            onClick={() => {
+              if (!isPro && chantiers.length >= limits.maxChantiers) {
+                setUpgradeReason('chantiers'); setUpgradeOpen(true)
+              } else {
+                navigate('/manager/nouveau-chantier')
+              }
+            }}
             className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all hover:opacity-90"
             style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}
           >

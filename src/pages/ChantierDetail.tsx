@@ -15,6 +15,8 @@ import ChatTab from '@/components/chat/ChatTab'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 import VoiceReportButton from '@/components/rapport/VoiceReportButton'
 import { usePermissions } from '@/hooks/usePermissions'
+import { usePlan } from '@/hooks/usePlan'
+import UpgradeModal from '@/components/upgrade/UpgradeModal'
 
 type InnerTab = 'etapes' | 'rapport' | 'chat' | 'docs' | 'notes' | 'materiel' | 'anomalies' | 'autocontrole' | 'infos'
 
@@ -368,6 +370,9 @@ export default function ChantierDetail() {
   const [acSaving, setAcSaving]           = useState(false)
   const [acSigning, setAcSigning]         = useState(false)
   const [acExpandedId, setAcExpandedId]   = useState<string | null>(null)
+
+  const { limits: planLimits } = usePlan()
+  const [upgradeOpen, setUpgradeOpen] = useState(false)
 
   const [rapportMessage, setRapportMessage] = useState('')
   const [rapportPhotos, setRapportPhotos]   = useState<File[]>([])
@@ -1103,10 +1108,19 @@ export default function ChantierDetail() {
             <section className="bg-white rounded-2xl p-5 space-y-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
               <div className="flex items-center justify-between">
                 <h2 className="font-semibold text-gray-900 text-sm">Ajouter une entrée</h2>
-                <VoiceReportButton
-                  chantierContext={chantier ? `${chantier.nom} — client : ${chantier.client_nom}, adresse : ${chantier.client_adresse}` : undefined}
-                  onGenerated={(text) => setRapportMessage(text)}
-                />
+                {planLimits.voiceReport ? (
+                  <VoiceReportButton
+                    chantierContext={chantier ? `${chantier.nom} — client : ${chantier.client_nom}, adresse : ${chantier.client_adresse}` : undefined}
+                    onGenerated={(text) => setRapportMessage(text)}
+                  />
+                ) : (
+                  <button
+                    onClick={() => setUpgradeOpen(true)}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-orange-600 bg-orange-50 border border-orange-200 hover:bg-orange-100 transition-colors"
+                  >
+                    🎙️ Rapport vocal IA <span className="text-orange-400">· Pro</span>
+                  </button>
+                )}
               </div>
 
               <textarea
@@ -1605,6 +1619,8 @@ export default function ChantierDetail() {
           }
         />
       )}
+
+      <UpgradeModal open={upgradeOpen} onClose={() => setUpgradeOpen(false)} reason="voice" />
     </div>
   )
 }
