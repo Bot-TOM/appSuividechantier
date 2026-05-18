@@ -68,6 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Un seul point d'entrée pour l'auth — onAuthStateChange gère tout :
     // INITIAL_SESSION (chargement initial), SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
+      console.log('[AUTH]', _event, session?.user?.email ?? 'no user')
       clearTimeout(timeout)
       setSession(session)
       setUser(session?.user ?? null)
@@ -75,15 +76,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       try {
         if (session?.user) {
           const profileData = await fetchProfile(session.user.id)
+          console.log('[AUTH] profile loaded:', profileData?.role ?? 'NULL')
           if (_event === 'SIGNED_IN') {
             await maybeSendWelcomeEmail(profileData, session)
           }
         } else {
           setProfile(null)
+          console.log('[AUTH] no session → profile null')
         }
+      } catch (e) {
+        console.error('[AUTH] fetchProfile error:', e)
       } finally {
-        // Toujours débloquer le chargement, même si fetchProfile échoue
         setLoading(false)
+        console.log('[AUTH] loading done')
       }
     })
 
