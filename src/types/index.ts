@@ -15,6 +15,7 @@ export interface UserProfile {
   created_at: string
   avatar_url?: string | null
   entreprise_id?: string | null
+  onboarding_done?: boolean
 }
 
 // Clés de permissions gérables par le manager

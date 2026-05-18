@@ -22,6 +22,7 @@ import { useGlobalMessages } from '@/hooks/useGlobalMessages'
 import { usePlan } from '@/hooks/usePlan'
 import UpgradeModal, { UpgradeReason } from '@/components/upgrade/UpgradeModal'
 import PlanSection from '@/components/upgrade/PlanSection'
+import OnboardingModal from '@/components/onboarding/OnboardingModal'
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
 type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat'
@@ -160,6 +161,9 @@ export default function ManagerDashboard() {
   const { isPro, limits } = usePlan()
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [upgradeReason, setUpgradeReason] = useState<UpgradeReason>('general')
+
+  // Onboarding — affiché une seule fois au premier login (managers uniquement)
+  const showOnboarding = !!(profile && !profile.onboarding_done && profile.role !== 'admin')
 
   const { chantiers, loading } = useChantiers(selectedEntreprise?.id)
   const { anomalies, updateStatut: updateAnomalieStatut, updateStatutBulk, deleteAnomalies } = useAnomalies(undefined, selectedEntreprise?.id)
@@ -1298,6 +1302,14 @@ export default function ManagerDashboard() {
         onClose={() => setUpgradeOpen(false)}
         reason={upgradeReason}
       />
+
+      {showOnboarding && (
+        <OnboardingModal
+          onClose={(tab) => {
+            if (tab) setActiveTab(tab as 'equipe' | 'planning')
+          }}
+        />
+      )}
     </div>
   )
 }
