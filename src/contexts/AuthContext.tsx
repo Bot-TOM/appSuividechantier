@@ -23,13 +23,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   async function fetchProfile(userId: string) {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    setProfile(data)
-    return data
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', userId)
+        .single()
+      setProfile(data)
+      return data
+    } catch {
+      setProfile(null)
+      return null
+    }
   }
 
   // Envoie l'email de bienvenue une seule fois, après la 1ère connexion post-confirmation
@@ -38,7 +43,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (profileData.welcome_email_sent) return
 
     try {
-      // Marque en base avant l'envoi pour éviter les doublons en cas de retry
       await supabase
         .from('profiles')
         .update({ welcome_email_sent: true })
@@ -58,35 +62,38 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   useEffect(() => {
-    // Timeout de sécurité : si Supabase ne répond pas en 6s, on débloque le chargement
-    const timeout = setTimeout(() => setLoading(false), 6000)
+    // Timeout de sécurité : si Supabase ne répond pas en 8s, on débloque quand même
+    const timeout = setTimeout(() => setLoading(false), 8000)
 
-    supabase.auth.getSession().then(async ({ data: { session } }) => {
+    // Un seul point d'entrée pour l'auth — onAuthStateChange gère tout :
+    // INITIAL_SESSION (chargement initial), SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
       clearTimeout(timeout)
       setSession(session)
       setUser(session?.user ?? null)
-      if (session?.user) await fetchProfile(session.user.id)
-      setLoading(false)
-    })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      setSession(session)
-      setUser(session?.user ?? null)
-      if (session?.user) {
-        const profileData = await fetchProfile(session.user.id)
-        // Envoie l'email de bienvenue à la 1ère connexion après confirmation
-        if (_event === 'SIGNED_IN') {
-          await maybeSendWelcomeEmail(profileData, session)
+      try {
+        if (session?.user) {
+          const profileData = await fetchProfile(session.user.id)
+          if (_event === 'SIGNED_IN') {
+            await maybeSendWelcomeEmail(profileData, session)
+          }
+        } else {
+          setProfile(null)
         }
-      } else {
-        setProfile(null)
+      } finally {
+        // Toujours débloquer le chargement, même si fetchProfile échoue
+        setLoading(false)
       }
     })
 
-    return () => subscription.unsubscribe()
+    return () => {
+      clearTimeout(timeout)
+      subscription.unsubscribe()
+    }
   }, [])
 
-  // Recharge le profil quand l'onglet redevient visible (ex: manager a modifié le poste)
+  // Recharge le profil quand l'onglet redevient visible
   useEffect(() => {
     if (!user) return
     const onVisible = () => {
@@ -124,11 +131,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Déconnexion forcée même en cas d'erreur réseau
     }
-    // Vider tout le stockage local pour garantir la déconnexion
-    // (Supabase peut stocker la session sous plusieurs clés selon la version)
     localStorage.clear()
     sessionStorage.clear()
-    // Redirection forcée — remplace l'historique pour empêcher le retour arrière
     window.location.replace('/login')
   }
 

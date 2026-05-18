@@ -17,14 +17,10 @@ registerRoute(
   new NetworkOnly(),
 )
 
-// À chaque mise à jour du SW : vide tous les caches et force le rechargement
+// Prend le contrôle de tous les clients dès activation
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys()
-      .then(keys => Promise.all(keys.map(key => caches.delete(key))))
-      .then(() => self.clients.claim())
-      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
-      .then(clients => clients.forEach(client => client.navigate(client.url)))
+    cleanupOutdatedCaches().then(() => self.clients.claim())
   )
 })
 
