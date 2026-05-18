@@ -1,38 +1,31 @@
-﻿/// <reference lib="webworker" />
-import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
-import { NavigationRoute, registerRoute } from 'workbox-routing'
-import { NetworkFirst, NetworkOnly } from 'workbox-strategies'
-import { ExpirationPlugin } from 'workbox-expiration'
+/// <reference lib="webworker" />
+import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
+import { registerRoute } from 'workbox-routing'
+import { NetworkOnly } from 'workbox-strategies'
 
 declare const self: ServiceWorkerGlobalScope
 
-// Prend le contrôle immédiatement après installation (évite l'écran blanc)
 self.addEventListener('install', () => self.skipWaiting())
 
-// Injected by VitePWA at build time
+// Précache uniquement les assets statiques (pas le JS — toujours depuis le réseau)
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-// SPA fallback
-registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))
-
-// JS chunks — NetworkOnly : toujours depuis le réseau, jamais de cache stale
-// Le précache Workbox (lignes au-dessus) gère déjà les assets versionnés
+// Supabase — jamais de cache (auth + données temps réel)
 registerRoute(
-  /\/assets\/.*\.js$/,
+  /^https:\/\/.*\.supabase\.co\/.*/i,
   new NetworkOnly(),
 )
 
-// Supabase — NetworkOnly : jamais de cache pour l'auth et les données temps réel
-// Un token expiré en cache = page blanche après login
-registerRoute(
-  /^https:\/\/.*\.supabase\.co\/.*/i,
-  new NetworkOnly()
-)
-
-// Take control of all clients immediately when updated
+// À chaque mise à jour du SW : vide tous les caches et force le rechargement
 self.addEventListener('activate', (event) => {
-  event.waitUntil(self.clients.claim())
+  event.waitUntil(
+    caches.keys()
+      .then(keys => Promise.all(keys.map(key => caches.delete(key))))
+      .then(() => self.clients.claim())
+      .then(() => self.clients.matchAll({ type: 'window', includeUncontrolled: true }))
+      .then(clients => clients.forEach(client => client.navigate(client.url)))
+  )
 })
 
 // ── Push notifications ──────────────────────────────────────────────────────
@@ -52,7 +45,6 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     self.registration.showNotification(title, options).then(() => {
-      // Badge API — incrémente le compteur sur l'icône PWA (Chrome/Android)
       if ('setAppBadge' in self.registration) {
         (self.registration as any).setAppBadge?.().catch?.(() => {})
       }
@@ -62,7 +54,6 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
-  // Efface le badge quand l'utilisateur interagit avec la notification
   if ('clearAppBadge' in self.registration) {
     (self.registration as any).clearAppBadge?.().catch?.(() => {})
   }
