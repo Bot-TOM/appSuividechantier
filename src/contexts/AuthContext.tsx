@@ -8,7 +8,7 @@ interface AuthContextType {
   profile: UserProfile | null
   session: Session | null
   loading: boolean
-  signIn: (email: string, password: string) => Promise<{ error: string | null; role: string | null }>
+  signIn: (email: string, password: string) => Promise<{ error: string | null }>
   signUp: (fullName: string, email: string, password: string, entrepriseNom?: string) => Promise<{ error: string | null }>
   signOut: () => Promise<void>
   refreshProfile: () => Promise<void>
@@ -23,82 +23,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   async function fetchProfile(userId: string) {
-    try {
-      const { data } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .single()
-      setProfile(data)
-      return data
-    } catch {
-      setProfile(null)
-      return null
-    }
-  }
-
-  // Envoie l'email de bienvenue une seule fois, après la 1ère connexion post-confirmation
-  async function maybeSendWelcomeEmail(profileData: UserProfile | null, session: Session | null) {
-    if (!profileData || !session) return
-    if (profileData.welcome_email_sent) return
-
-    try {
-      await supabase
-        .from('profiles')
-        .update({ welcome_email_sent: true })
-        .eq('id', profileData.id)
-
-      await fetch('/api/send-welcome-email', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({ full_name: profileData.full_name, email: profileData.email }),
-      })
-    } catch {
-      // Silencieux — l'email de bienvenue n'est pas critique
-    }
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single()
+    setProfile(data)
   }
 
   useEffect(() => {
-    // Timeout de sécurité : si Supabase ne répond pas en 8s, on débloque quand même
-    const timeout = setTimeout(() => setLoading(false), 8000)
+    // Timeout de sécurité : si Supabase ne répond pas en 6s, on débloque le chargement
+    const timeout = setTimeout(() => setLoading(false), 6000)
 
-    // Un seul point d'entrée pour l'auth — onAuthStateChange gère tout :
-    // INITIAL_SESSION (chargement initial), SIGNED_IN, SIGNED_OUT, TOKEN_REFRESHED
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      console.log('[AUTH]', _event, session?.user?.email ?? 'no user')
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
       clearTimeout(timeout)
       setSession(session)
       setUser(session?.user ?? null)
-
-      try {
-        if (session?.user) {
-          const profileData = await fetchProfile(session.user.id)
-          console.log('[AUTH] profile loaded:', profileData?.role ?? 'NULL')
-          if (_event === 'SIGNED_IN') {
-            await maybeSendWelcomeEmail(profileData, session)
-          }
-        } else {
-          setProfile(null)
-          console.log('[AUTH] no session → profile null')
-        }
-      } catch (e) {
-        console.error('[AUTH] fetchProfile error:', e)
-      } finally {
-        setLoading(false)
-        console.log('[AUTH] loading done')
-      }
+      if (session?.user) await fetchProfile(session.user.id)
+      setLoading(false)
     })
 
-    return () => {
-      clearTimeout(timeout)
-      subscription.unsubscribe()
-    }
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session)
+      setUser(session?.user ?? null)
+      if (session?.user) fetchProfile(session.user.id)
+      else setProfile(null)
+    })
+
+    return () => subscription.unsubscribe()
   }, [])
 
-  // Recharge le profil quand l'onglet redevient visible
+  // Recharge le profil quand l'onglet redevient visible (ex: manager a modifié le poste)
   useEffect(() => {
     if (!user) return
     const onVisible = () => {
@@ -110,10 +65,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [user?.id])
 
   async function signIn(email: string, password: string) {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) return { error: 'Email ou mot de passe incorrect', role: null }
-    const role = (data.user?.user_metadata?.role ?? null) as string | null
-    return { error: null, role }
+    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) return { error: 'Email ou mot de passe incorrect' }
+    return { error: null }
   }
 
   async function signUp(fullName: string, email: string, password: string, entrepriseNom?: string) {
@@ -136,8 +90,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } catch {
       // Déconnexion forcée même en cas d'erreur réseau
     }
+    // Vider tout le stockage local pour garantir la déconnexion
+    // (Supabase peut stocker la session sous plusieurs clés selon la version)
     localStorage.clear()
     sessionStorage.clear()
+    // Redirection forcée — remplace l'historique pour empêcher le retour arrière
     window.location.replace('/login')
   }
 

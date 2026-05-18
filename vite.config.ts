@@ -12,14 +12,14 @@ export default defineConfig({
       srcDir: 'src',
       filename: 'sw.ts',
       injectManifest: {
-        globPatterns: ['**/*.{css,html,ico,png,svg,woff2}'],
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         maximumFileSizeToCacheInBytes: 3 * 1024 * 1024,
       },
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Suivi Chantier PV',
-        short_name: 'Chantier PV',
-        description: 'Suivi de chantiers photovoltaïques',
+        name: 'PVPilot',
+        short_name: 'PVPilot',
+        description: 'Pilotage de chantiers photovoltaïques',
         theme_color: '#f97316',
         background_color: '#f9fafb',
         display: 'standalone',

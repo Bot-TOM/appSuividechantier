@@ -1,27 +1,43 @@
-/// <reference lib="webworker" />
-import { cleanupOutdatedCaches, precacheAndRoute } from 'workbox-precaching'
-import { registerRoute } from 'workbox-routing'
-import { NetworkOnly } from 'workbox-strategies'
+﻿/// <reference lib="webworker" />
+import { cleanupOutdatedCaches, createHandlerBoundToURL, precacheAndRoute } from 'workbox-precaching'
+import { NavigationRoute, registerRoute } from 'workbox-routing'
+import { NetworkFirst } from 'workbox-strategies'
+import { ExpirationPlugin } from 'workbox-expiration'
 
 declare const self: ServiceWorkerGlobalScope
 
+// Prend le contrôle immédiatement après installation (évite l'écran blanc)
 self.addEventListener('install', () => self.skipWaiting())
 
-// Précache uniquement les assets statiques (pas le JS — toujours depuis le réseau)
+// Injected by VitePWA at build time
 precacheAndRoute(self.__WB_MANIFEST)
 cleanupOutdatedCaches()
 
-// Supabase — jamais de cache (auth + données temps réel)
+// SPA fallback
+registerRoute(new NavigationRoute(createHandlerBoundToURL('index.html')))
+
+// JS chunks — NetworkFirst to always serve latest after deploy
 registerRoute(
-  /^https:\/\/.*\.supabase\.co\/.*/i,
-  new NetworkOnly(),
+  /\/assets\/.*\.js$/,
+  new NetworkFirst({
+    cacheName: 'js-chunks',
+    plugins: [new ExpirationPlugin({ maxEntries: 30, maxAgeSeconds: 60 * 60 * 24 * 7 })],
+    networkTimeoutSeconds: 10,
+  }),
 )
 
-// Prend le contrôle de tous les clients dès activation
+// Supabase API — NetworkFirst
+registerRoute(
+  /^https:\/\/.*\.supabase\.co\/.*/i,
+  new NetworkFirst({
+    cacheName: 'supabase-cache',
+    plugins: [new ExpirationPlugin({ maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 })],
+  }),
+)
+
+// Take control of all clients immediately when updated
 self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    cleanupOutdatedCaches().then(() => self.clients.claim())
-  )
+  event.waitUntil(self.clients.claim())
 })
 
 // ── Push notifications ──────────────────────────────────────────────────────
@@ -41,6 +57,7 @@ self.addEventListener('push', (event) => {
 
   event.waitUntil(
     self.registration.showNotification(title, options).then(() => {
+      // Badge API — incrémente le compteur sur l'icône PWA (Chrome/Android)
       if ('setAppBadge' in self.registration) {
         (self.registration as any).setAppBadge?.().catch?.(() => {})
       }
@@ -50,6 +67,7 @@ self.addEventListener('push', (event) => {
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
+  // Efface le badge quand l'utilisateur interagit avec la notification
   if ('clearAppBadge' in self.registration) {
     (self.registration as any).clearAppBadge?.().catch?.(() => {})
   }

@@ -16,9 +16,8 @@ export default function ProtectedRoute({ children, allowedRole, permissionKey }:
   const { can, loading: permsLoading } = usePermissions()
   const [slow, setSlow] = useState(false)
 
-  // Rôle : depuis le profil si chargé, sinon depuis le token JWT (dispo immédiatement)
-  const effectiveRole  = profile?.role ?? (user?.user_metadata?.role as string | undefined)
-  const roleMatch      = !allowedRole || effectiveRole === allowedRole || (allowedRole === 'manager' && effectiveRole === 'admin')
+  // admin a accès à toutes les routes manager
+  const roleMatch     = !allowedRole || profile?.role === allowedRole || (allowedRole === 'manager' && profile?.role === 'admin')
   const needsPermCheck = !roleMatch && !!permissionKey
   const stillLoading   = loading || (needsPermCheck && permsLoading)
 

@@ -9,8 +9,7 @@ export function useTechniciens() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!profile) { setLoading(false); return }
-    if (!profile.entreprise_id) { setLoading(false); return }
+    if (!profile?.entreprise_id) return
     supabase
       .from('profiles')
       .select('*')

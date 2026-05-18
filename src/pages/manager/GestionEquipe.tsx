@@ -2,6 +2,7 @@ import { useState, useEffect, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
+import { supabaseAuth } from '@/lib/supabaseAuth'
 import { UserProfile, POSTES_OPTIONS, PERMISSION_LABELS, type PermissionKey } from '@/types'
 import { useRolePermissions } from '@/hooks/useRolePermissions'
 import Avatar from '@/components/Avatar'
@@ -142,7 +143,7 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
   async function fetchEquipe() {
     // Toujours filtrer par entreprise — jamais retourner des profils d'autres entreprises
     const targetEntrepriseId = entrepriseId ?? profile?.entreprise_id
-    if (!targetEntrepriseId) { setLoading(false); return }
+    if (!targetEntrepriseId) return
 
     const { data } = await supabase
       .from('profiles')
@@ -168,29 +169,28 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
     setSuccess('')
     setSubmitting(true)
 
-    const res = await fetch('/api/create-technician', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${session?.access_token ?? ''}`,
-      },
-      body: JSON.stringify({
-        email:      form.email,
-        password:   form.password,
-        full_name:  form.full_name,
-        poste:      form.poste || 'Technicien',
-      }),
+    const { data, error: errAuth } = await supabaseAuth.auth.signUp({
+      email: form.email,
+      password: form.password,
+      options: { data: { full_name: form.full_name, role: 'technicien', entreprise_id: profile?.entreprise_id ?? null } },
     })
 
-    const data = await res.json() as { ok?: boolean; error?: string }
-
-    if (!res.ok || !data.ok) {
-      setError(data.error ?? 'Erreur lors de la création du compte')
+    if (errAuth || !data.user) {
+      setError(errAuth?.message ?? 'Erreur lors de la création du compte')
       setSubmitting(false)
       return
     }
 
-    setSuccess(`Compte créé pour ${form.full_name} — il peut se connecter immédiatement`)
+    await supabase.from('profiles').upsert({
+      id: data.user.id,
+      email: form.email,
+      full_name: form.full_name,
+      role: 'technicien',
+      poste: form.poste || 'Technicien',
+      entreprise_id: profile?.entreprise_id,
+    })
+
+    setSuccess(`Compte créé pour ${form.full_name}`)
     setForm({ full_name: '', email: '', password: '', poste: 'Technicien' })
     setShowForm(false)
     fetchEquipe()
