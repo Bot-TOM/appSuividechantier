@@ -19,20 +19,22 @@ const PLAN_LIMITS: Record<Plan, PlanLimits> = {
 export function usePlan() {
   const { profile } = useAuth()
   const [plan, setPlan] = useState<Plan>('starter')
+  const [hasStripeSubscription, setHasStripeSubscription] = useState(false)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!profile?.entreprise_id) { setLoading(false); return }
     supabase
       .from('entreprises')
-      .select('plan, pro_offert')
+      .select('plan, pro_offert, stripe_subscription_id')
       .eq('id', profile.entreprise_id)
       .single()
       .then(({ data }) => {
         if (data?.plan === 'pro' || data?.pro_offert === true) setPlan('pro')
+        setHasStripeSubscription(!!data?.stripe_subscription_id)
         setLoading(false)
       })
   }, [profile?.entreprise_id])
 
-  return { plan, limits: PLAN_LIMITS[plan], isPro: plan === 'pro', loading }
+  return { plan, limits: PLAN_LIMITS[plan], isPro: plan === 'pro', hasStripeSubscription, loading }
 }

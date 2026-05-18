@@ -21,6 +21,7 @@ import GlobalChatTab from '@/components/chat/GlobalChatTab'
 import { useGlobalMessages } from '@/hooks/useGlobalMessages'
 import { usePlan } from '@/hooks/usePlan'
 import UpgradeModal, { UpgradeReason } from '@/components/upgrade/UpgradeModal'
+import PlanSection from '@/components/upgrade/PlanSection'
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
 type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat'
@@ -974,8 +975,12 @@ export default function ManagerDashboard() {
                 </button>
               </div>
 
-              {/* ── Colonne droite — Préférences notifications ───────────── */}
-              <div className="md:col-span-2">
+              {/* ── Colonne droite — Plan + Préférences notifications ───── */}
+              <div className="md:col-span-2 space-y-4">
+
+                {/* Carte abonnement — masquée pour les admins globaux */}
+                {profile?.role !== 'admin' && <PlanSection />}
+
                 <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                   <div className="px-5 py-4 sm:px-8 sm:py-6 border-b border-slate-100">
                     <h2 className="text-base sm:text-lg font-semibold text-slate-800">Préférences de notifications</h2>
