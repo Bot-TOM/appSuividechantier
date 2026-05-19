@@ -892,6 +892,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                                   ? 'bg-orange-50/50 border-orange-200 hover:border-orange-400 hover:shadow-md hover:shadow-orange-500/10'
                                   : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-md'
                               }`}>
+                                {/* Ligne heures + durée */}
                                 <div className="flex justify-between items-start">
                                   <div className="flex items-center text-[11px] font-medium text-slate-600 group-hover:text-slate-900 transition-colors">
                                     {e.arrivee}
@@ -908,19 +909,21 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                                     </div>
                                   )}
                                 </div>
-                                {/* Nom du chantier */}
-                                {chantierName && (
-                                  <div className="text-[10px] font-medium text-slate-500 truncate leading-tight px-0.5">
-                                    {chantierName}
-                                  </div>
-                                )}
-                                {pauseStr && (
-                                  <div className="flex items-center text-[10px] font-medium text-slate-400">
-                                    <span className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
-                                      <Coffee className="w-3 h-3 mr-1 text-slate-400" />{pauseStr}
-                                    </span>
-                                  </div>
-                                )}
+                                {/* Chantier + pause — toujours en bas */}
+                                <div className="flex flex-col gap-0.5">
+                                  {chantierName && (
+                                    <div className="text-[10px] font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded border border-blue-100 truncate">
+                                      {chantierName}
+                                    </div>
+                                  )}
+                                  {pauseStr && (
+                                    <div className="flex items-center text-[10px] font-medium text-slate-400">
+                                      <span className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
+                                        <Coffee className="w-3 h-3 mr-1 text-slate-400" />{pauseStr}
+                                      </span>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </td>
                           )
