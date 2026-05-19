@@ -9,6 +9,7 @@ interface BugReport {
   description: string
   severite: 'mineur' | 'bloquant'
   statut: 'ouvert' | 'en_cours' | 'resolu'
+  photo_url: string | null
   created_at: string
   profiles?: { full_name?: string; email?: string } | null
   entreprises?: { nom?: string } | null
@@ -120,6 +121,17 @@ export default function AdminBugReportsTab() {
 
                     {/* Description */}
                     <p className="text-sm text-gray-800 leading-relaxed">{r.description}</p>
+
+                    {/* Photo jointe */}
+                    {r.photo_url && (
+                      <a href={r.photo_url} target="_blank" rel="noreferrer" className="block mt-1">
+                        <img
+                          src={r.photo_url}
+                          alt="Capture bug"
+                          className="w-full max-w-xs h-36 object-cover rounded-xl border border-gray-100 hover:opacity-90 transition-opacity"
+                        />
+                      </a>
+                    )}
 
                     {/* Meta */}
                     <div className="flex items-center gap-3 text-xs text-gray-400">
