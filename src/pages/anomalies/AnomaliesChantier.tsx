@@ -107,9 +107,9 @@ export default function AnomaliesChantier() {
     if (photoFile) {
       const ext = photoFile.name.split('.').pop()
       const path = `${chantierId}/${Date.now()}.${ext}`
-      const { error } = await supabase.storage.from('anomalies').upload(path, photoFile)
+      const { error } = await supabase.storage.from('Anomalies').upload(path, photoFile)
       if (!error) {
-        const { data } = supabase.storage.from('anomalies').getPublicUrl(path)
+        const { data } = supabase.storage.from('Anomalies').getPublicUrl(path)
         photo_url = data.publicUrl
       }
     }

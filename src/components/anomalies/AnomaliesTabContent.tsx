@@ -77,8 +77,8 @@ export default function AnomaliesTabContent({ chantierId, canResolve = true }: {
     if (photoFile) {
       const ext  = photoFile.name.split('.').pop()
       const path = `${chantierId}/${Date.now()}.${ext}`
-      const { error } = await supabase.storage.from('anomalies').upload(path, photoFile)
-      if (!error) photo_url = supabase.storage.from('anomalies').getPublicUrl(path).data.publicUrl
+      const { error } = await supabase.storage.from('Anomalies').upload(path, photoFile)
+      if (!error) photo_url = supabase.storage.from('Anomalies').getPublicUrl(path).data.publicUrl
     }
     const fullDescription = form.titre.trim()
       ? `${form.titre.trim()}\n\n${form.description.trim()}`
