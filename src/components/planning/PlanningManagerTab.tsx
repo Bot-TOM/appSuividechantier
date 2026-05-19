@@ -881,6 +881,10 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                           }
 
                           // Time Card avec données
+                          const chantierName = e.chantier_id && chantiersLoaded
+                            ? chantiers.find(c => c.id === e.chantier_id)?.nom ?? null
+                            : null
+
                           return (
                             <td key={date} className="p-2 align-middle">
                               <div className={`h-[84px] w-full rounded-xl border p-3 flex flex-col justify-between transition-all group ${
@@ -904,6 +908,12 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                                     </div>
                                   )}
                                 </div>
+                                {/* Nom du chantier */}
+                                {chantierName && (
+                                  <div className="text-[10px] font-medium text-slate-500 truncate leading-tight px-0.5">
+                                    {chantierName}
+                                  </div>
+                                )}
                                 {pauseStr && (
                                   <div className="flex items-center text-[10px] font-medium text-slate-400">
                                     <span className="flex items-center bg-slate-50 px-1.5 py-0.5 rounded border border-slate-100">
