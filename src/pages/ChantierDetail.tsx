@@ -290,34 +290,42 @@ function EtapeLine({
               <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{etape.consigne}</p>
             )}
 
-            {/* ── Avancement % (étape en cours uniquement) ── */}
-            {isEnCours && (
+            {/* ── Avancement % (toutes les étapes non terminées) ── */}
+            {!isFait && (
               <div className="mt-2 space-y-1.5">
-                {/* Barre de progression */}
-                <div className="flex items-center gap-2">
-                  <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
-                    <div
-                      className="bg-orange-400 h-1.5 rounded-full transition-all duration-300"
-                      style={{ width: `${localPct}%` }}
+                {canEditPourcentage ? (
+                  /* Chefs / managers : slider interactif */
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="range"
+                      min={0}
+                      max={100}
+                      step={5}
+                      value={localPct}
+                      onChange={e => setLocalPct(Number(e.target.value))}
+                      onMouseUp={() => onUpdatePourcentage?.(etape.id, localPct)}
+                      onTouchEnd={() => onUpdatePourcentage?.(etape.id, localPct)}
+                      className="flex-1 accent-orange-500 cursor-pointer"
                     />
+                    <span className="text-xs font-bold text-orange-500 w-8 text-right shrink-0">
+                      {localPct}%
+                    </span>
                   </div>
-                  <span className="text-xs font-bold text-orange-500 w-8 text-right shrink-0">
-                    {localPct}%
-                  </span>
-                </div>
-                {/* Slider — visible uniquement pour chefs/managers */}
-                {canEditPourcentage && (
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={localPct}
-                    onChange={e => setLocalPct(Number(e.target.value))}
-                    onMouseUp={() => onUpdatePourcentage?.(etape.id, localPct)}
-                    onTouchEnd={() => onUpdatePourcentage?.(etape.id, localPct)}
-                    className="w-full accent-orange-500 cursor-pointer"
-                  />
+                ) : (
+                  /* Techniciens : barre lecture seule (masquée si 0%) */
+                  localPct > 0 && (
+                    <div className="flex items-center gap-2">
+                      <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-orange-400 h-1.5 rounded-full transition-all duration-300"
+                          style={{ width: `${localPct}%` }}
+                        />
+                      </div>
+                      <span className="text-xs font-semibold text-orange-500 w-8 text-right shrink-0">
+                        {localPct}%
+                      </span>
+                    </div>
+                  )
                 )}
               </div>
             )}
@@ -905,7 +913,14 @@ export default function ChantierDetail() {
                         canValidate={canValidateEtapes}
                         canEditPourcentage={canEditPourcentage}
                         onUpdateConsigne={updateConsigne}
-                        onUpdatePourcentage={updatePourcentage}
+                        onUpdatePourcentage={async (etapeId, pct) => {
+                          // Si l'étape est non_fait et qu'on met un % > 0 → la passer en_cours
+                          const etape = etapes.find(e => e.id === etapeId)
+                          if (etape && etape.statut === 'non_fait' && pct > 0) {
+                            await advanceEtape(etape)
+                          }
+                          await updatePourcentage(etapeId, pct)
+                        }}
                         onUploadPhoto={uploadEtapePhoto}
                         onDeletePhoto={p => deleteEtapePhoto(p.id, new URL(p.url).pathname.replace(/^\/storage\/v1\/object\/public\/chantier-photos\//, ''))}
                       />
