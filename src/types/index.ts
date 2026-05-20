@@ -128,6 +128,7 @@ export interface Etape {
   finished_at: string | null
   photo_url: string | null   // legacy — remplacé par etape_photos
   updated_at: string
+  pourcentage: number        // 0–100 — avancement partiel d'une étape en_cours
 }
 
 export interface EtapePhoto {

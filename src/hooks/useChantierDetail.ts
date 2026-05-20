@@ -54,7 +54,9 @@ export function useChantierDetail(chantierId: string) {
     const next: EtapeStatut =
       etape.statut === 'non_fait' ? 'en_cours' :
       etape.statut === 'en_cours' ? 'fait' : 'non_fait'
-    const updates = { statut: next, updated_at: now }
+    // Sync le pourcentage avec le statut
+    const pourcentage = next === 'fait' ? 100 : next === 'non_fait' ? 0 : etape.pourcentage
+    const updates = { statut: next, pourcentage, updated_at: now }
     setEtapes(prev => prev.map(e => e.id === etape.id ? { ...e, ...updates } : e))
     await supabase.from('etapes').update(updates).eq('id', etape.id)
     fetchAll()
@@ -64,6 +66,11 @@ export function useChantierDetail(chantierId: string) {
     setEtapes(prev => prev.map(e => e.id === etapeId ? { ...e, consigne: consigne.trim() || null } : e))
     await supabase.from('etapes').update({ consigne: consigne.trim() || null, updated_at: new Date().toISOString() }).eq('id', etapeId)
     fetchAll()
+  }
+
+  async function updatePourcentage(etapeId: string, pourcentage: number) {
+    setEtapes(prev => prev.map(e => e.id === etapeId ? { ...e, pourcentage } : e))
+    await supabase.from('etapes').update({ pourcentage, updated_at: new Date().toISOString() }).eq('id', etapeId)
   }
 
   async function addNote(contenu: string, technicienId: string) {
@@ -127,7 +134,7 @@ export function useChantierDetail(chantierId: string) {
 
   return {
     chantier, etapes, notes, photos, loading,
-    updateStatut, advanceEtape, updateConsigne, addNote, deleteNote,
+    updateStatut, advanceEtape, updateConsigne, updatePourcentage, addNote, deleteNote,
     uploadEtapePhoto, deleteEtapePhoto, deleteChantier,
     refetch: fetchAll,
   }

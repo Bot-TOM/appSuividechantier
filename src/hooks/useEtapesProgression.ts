@@ -18,7 +18,7 @@ export function useEtapesProgression(chantierIds: string[]) {
 
     supabase
       .from('etapes')
-      .select('chantier_id, statut, nom, ordre')
+      .select('chantier_id, statut, nom, ordre, pourcentage')
       .in('chantier_id', chantierIds)
       .then(({ data }) => {
         if (!data) return
@@ -34,7 +34,14 @@ export function useEtapesProgression(chantierIds: string[]) {
           const etapes = groups[id]
           const total  = etapes.length
           const faites = etapes.filter(e => e.statut === 'fait').length
-          const pct    = total === 0 ? 0 : Math.round((faites / total) * 100)
+          // Calcul pondéré : fait=100%, en_cours=pourcentage%, non_fait=0%
+          const pct    = total === 0 ? 0 : Math.round(
+            etapes.reduce((acc, e) => {
+              if (e.statut === 'fait') return acc + 100
+              if (e.statut === 'en_cours') return acc + (e.pourcentage ?? 0)
+              return acc
+            }, 0) / total
+          )
 
           const enCours = etapes.find(e => e.statut === 'en_cours')
           const prochaine = etapes

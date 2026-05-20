@@ -197,25 +197,31 @@ function RapportLightbox({ photos, initialIndex, onClose, onDelete }: {
 
 // ─── Ligne d'étape ────────────────────────────────────────────────────────────
 function EtapeLine({
-  etape, photos, onAdvance, isManager = false, canValidate = true, onUpdateConsigne, onUploadPhoto, onDeletePhoto,
+  etape, photos, onAdvance, isManager = false, canValidate = true,
+  canEditPourcentage = false,
+  onUpdateConsigne, onUploadPhoto, onDeletePhoto, onUpdatePourcentage,
 }: {
   etape: Etape
   photos: EtapePhoto[]
   onAdvance: (e: Etape) => void
   isManager?: boolean
   canValidate?: boolean
+  canEditPourcentage?: boolean
   onUpdateConsigne?: (etapeId: string, consigne: string) => void
   onUploadPhoto?: (etapeId: string, file: File) => Promise<{ error: string | null }>
   onDeletePhoto?: (photo: EtapePhoto) => void
+  onUpdatePourcentage?: (etapeId: string, pourcentage: number) => void
 }) {
   const [localStatut, setLocalStatut] = useState(etape.statut)
   const [consigneValue, setConsigneValue] = useState(etape.consigne ?? '')
+  const [localPct, setLocalPct]       = useState(etape.pourcentage ?? 0)
   const [uploading, setUploading]     = useState(false)
   const [uploadError, setUploadError] = useState('')
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
 
   useEffect(() => { setLocalStatut(etape.statut) }, [etape.statut])
   useEffect(() => { setConsigneValue(etape.consigne ?? '') }, [etape.consigne])
+  useEffect(() => { setLocalPct(etape.pourcentage ?? 0) }, [etape.pourcentage])
 
   const isFait    = localStatut === 'fait'
   const isEnCours = localStatut === 'en_cours'
@@ -283,6 +289,38 @@ function EtapeLine({
             {!isManager && etape.consigne && !isFait && (
               <p className="text-xs text-gray-400 mt-0.5 leading-relaxed">{etape.consigne}</p>
             )}
+
+            {/* ── Avancement % (étape en cours uniquement) ── */}
+            {isEnCours && (
+              <div className="mt-2 space-y-1.5">
+                {/* Barre de progression */}
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                    <div
+                      className="bg-orange-400 h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${localPct}%` }}
+                    />
+                  </div>
+                  <span className="text-xs font-bold text-orange-500 w-8 text-right shrink-0">
+                    {localPct}%
+                  </span>
+                </div>
+                {/* Slider — visible uniquement pour chefs/managers */}
+                {canEditPourcentage && (
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    step={5}
+                    value={localPct}
+                    onChange={e => setLocalPct(Number(e.target.value))}
+                    onMouseUp={() => onUpdatePourcentage?.(etape.id, localPct)}
+                    onTouchEnd={() => onUpdatePourcentage?.(etape.id, localPct)}
+                    className="w-full accent-orange-500 cursor-pointer"
+                  />
+                )}
+              </div>
+            )}
           </div>
 
           {/* Droite : état + bouton photo */}
@@ -341,7 +379,7 @@ export default function ChantierDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { profile, session } = useAuth()
-  const { chantier, etapes, notes, photos, loading, updateStatut, advanceEtape, updateConsigne, addNote, deleteNote, uploadEtapePhoto, deleteEtapePhoto, deleteChantier } = useChantierDetail(id!)
+  const { chantier, etapes, notes, photos, loading, updateStatut, advanceEtape, updateConsigne, updatePourcentage, addNote, deleteNote, uploadEtapePhoto, deleteEtapePhoto, deleteChantier } = useChantierDetail(id!)
   const { anomalies }   = useAnomalies(id!)
   const { items: matItems, total: matTotal, checked: matChecked, toggleItem: toggleMat, addItem: addMat, deleteItem: deleteMat } = useChecklistMateriel(id!)
   const { autocontrole, save: saveAC, signer: signerAC } = useAutoControle(id!)
@@ -398,8 +436,17 @@ export default function ChantierDetail() {
   const isManager              = isManagerRole(profile?.role)
   const { can }                = usePermissions()
   const canValidateEtapes      = isManager || can('creer_chantier')
+  const CHEF_POSTES            = ["Chef d'équipe", 'Chef de chantier', 'Conducteur de travaux']
+  const canEditPourcentage     = isManager || CHEF_POSTES.includes(profile?.poste ?? '')
   const faites                 = etapes.filter(e => e.statut === 'fait').length
-  const pct               = etapes.length === 0 ? 0 : Math.round((faites / etapes.length) * 100)
+  // Calcul pondéré : fait=100%, en_cours=pourcentage%, non_fait=0%
+  const pct = etapes.length === 0 ? 0 : Math.round(
+    etapes.reduce((acc, e) => {
+      if (e.statut === 'fait') return acc + 100
+      if (e.statut === 'en_cours') return acc + (e.pourcentage ?? 0)
+      return acc
+    }, 0) / etapes.length
+  )
 
   async function handleDownloadPDF() {
     if (!chantier) return
@@ -856,7 +903,9 @@ export default function ChantierDetail() {
                         onAdvance={advanceEtape}
                         isManager={isManager}
                         canValidate={canValidateEtapes}
+                        canEditPourcentage={canEditPourcentage}
                         onUpdateConsigne={updateConsigne}
+                        onUpdatePourcentage={updatePourcentage}
                         onUploadPhoto={uploadEtapePhoto}
                         onDeletePhoto={p => deleteEtapePhoto(p.id, new URL(p.url).pathname.replace(/^\/storage\/v1\/object\/public\/chantier-photos\//, ''))}
                       />
