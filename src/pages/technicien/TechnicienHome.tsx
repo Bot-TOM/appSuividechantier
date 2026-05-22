@@ -9,6 +9,7 @@ import { supabase } from '@/lib/supabase'
 import { Chantier, ChantierStatut, UserProfile } from '@/types'
 import { usePermissions } from '@/hooks/usePermissions'
 import PlanningTechTab from '@/components/planning/PlanningTechTab'
+import VTListTab from '@/components/vt/VTListTab'
 import BugReportButton from '@/components/BugReportButton'
 import GlobalChatTab from '@/components/chat/GlobalChatTab'
 import { useGlobalMessages } from '@/hooks/useGlobalMessages'
@@ -361,7 +362,7 @@ export default function TechnicienHome() {
   const { chantiers, loading } = useChantiers()
   const { can } = usePermissions()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'chantiers' | 'planning' | 'equipe' | 'chat' | 'profil'>('chantiers')
+  const [activeTab, setActiveTab] = useState<'chantiers' | 'vt' | 'planning' | 'equipe' | 'chat' | 'profil'>('chantiers')
   const { unreadCount: chatUnread } = useGlobalMessages(profile?.id ?? '', profile?.entreprise_id ?? '')
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([])
 
@@ -445,6 +446,11 @@ export default function TechnicienHome() {
                 </div>
               )}
             </>
+          ) : activeTab === 'vt' ? (
+            <div className="mt-4">
+              <h1 className="text-white font-bold text-2xl">Visites Techniques</h1>
+              <p className="text-orange-100 text-sm mt-0.5">Mes visites terrain</p>
+            </div>
           ) : activeTab === 'planning' ? (
             <div className="mt-4">
               <h1 className="text-white font-bold text-2xl">Planning</h1>
@@ -577,6 +583,10 @@ export default function TechnicienHome() {
           )
         })()}
 
+        {activeTab === 'vt' && (
+          <VTListTab userId={profile?.id ?? ''} isManager={false} />
+        )}
+
         {activeTab === 'planning' && (
           <PlanningTechTab />
         )}
@@ -604,6 +614,17 @@ export default function TechnicienHome() {
             </svg>
             <span className="text-[11px] font-semibold">Chantiers</span>
             {activeTab === 'chantiers' && <span className="w-1 h-1 rounded-full bg-orange-500 mt-0.5" />}
+          </button>
+
+          <button
+            onClick={() => setActiveTab('vt')}
+            className={`flex-1 flex flex-col items-center py-3 gap-0.5 transition-colors ${activeTab === 'vt' ? 'text-orange-500' : 'text-gray-400'}`}
+          >
+            <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={activeTab === 'vt' ? 2.5 : 1.8}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+            </svg>
+            <span className="text-[11px] font-semibold">VT</span>
+            {activeTab === 'vt' && <span className="w-1 h-1 rounded-full bg-orange-500 mt-0.5" />}
           </button>
 
           <button
