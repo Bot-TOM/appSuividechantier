@@ -264,54 +264,155 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
       XLSX.writeFile(wb, `planning-${exportStart}_${exportEnd}.xlsx`)
 
     } else {
-      // Fetch time entries for range
-      const { data } = await supabase
+      // ─── Export Heures — XLSX professionnel ──────────────────────────────
+      const { data: rawData } = await supabase
         .from('time_entries')
         .select('*')
         .gte('date', exportStart)
         .lte('date', exportEnd)
-      // Mapper les colonnes DB (heure_arrivee → arrivee, etc.)
-      type RawTime = { technicien_id: string; date: string; heure_arrivee?: string; arrivee?: string; heure_depart?: string; depart?: string; pause_minutes?: number; pause?: number }
-      const rangeTime = (data ?? [] as RawTime[]).map((r: RawTime) => ({
+
+      type RawTime = {
+        technicien_id: string; date: string
+        heure_arrivee?: string; arrivee?: string
+        heure_depart?: string;  depart?: string
+        pause_minutes?: number; pause?: number
+        chantier_id?: string | null
+      }
+      const rangeTime = (rawData ?? [] as RawTime[]).map((r: RawTime) => ({
         technicien_id: r.technicien_id,
         date:          r.date,
         arrivee:       r.heure_arrivee ?? r.arrivee ?? null,
         depart:        r.heure_depart  ?? r.depart  ?? null,
         pause:         r.pause_minutes ?? r.pause   ?? null,
+        chantier_id:   r.chantier_id   ?? null,
       }))
 
-      const bom = '﻿'
-      const header = [
-        'Nom',
-        ...rangeDays.map(d =>
-          new Date(d + 'T00:00:00').toLocaleDateString('fr-FR', {
-            weekday: 'short', day: 'numeric', month: 'numeric',
-          }),
-        ),
-        'Total période',
-      ]
-      const rows = sorted.map(p => {
-        let totalMins = 0
-        const cols = rangeDays.map(date => {
-          const e = rangeTime.find(t => t.technicien_id === p.id && t.date === date)
-          if (!e?.arrivee || !e?.depart) return ''
-          const [ah, am] = e.arrivee.split(':').map(Number)
-          const [dh, dm] = e.depart.split(':').map(Number)
-          const mins = dh * 60 + dm - (ah * 60 + am) - (e.pause ?? 0)
-          if (mins > 0) totalMins += mins
-          return `${e.arrivee}-${e.depart}${e.pause ? ` (${e.pause}mn pause)` : ''}`
-        })
-        const h = Math.floor(totalMins / 60), m = totalMins % 60
-        return [
-          p.full_name, ...cols,
-          totalMins > 0 ? (m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`) : '—',
-        ]
+      // Import dynamique (évite les problèmes de bundle Vite)
+      const ExcelJS = (await import('exceljs')).default
+      const wb = new ExcelJS.Workbook()
+      wb.creator = 'PVPilot'
+      wb.created = new Date()
+      const ws = wb.addWorksheet('Relevé des heures')
+
+      // ── Largeurs colonnes ────────────────────────────────────────────────
+      ws.getColumn(1).width = 24  // Nom
+      ws.getColumn(2).width = 14  // Date
+      ws.getColumn(3).width = 12  // Jour
+      ws.getColumn(4).width = 10  // Arrivée
+      ws.getColumn(5).width = 10  // Départ
+      ws.getColumn(6).width = 10  // Pause
+      ws.getColumn(7).width = 13  // Heures
+      ws.getColumn(8).width = 32  // Chantier
+
+      // ── Ligne titre ──────────────────────────────────────────────────────
+      const dateDebut = new Date(exportStart + 'T00:00:00').toLocaleDateString('fr-FR')
+      const dateFin   = new Date(exportEnd   + 'T00:00:00').toLocaleDateString('fr-FR')
+      ws.mergeCells('A1:H1')
+      const titleCell = ws.getCell('A1')
+      titleCell.value = `Relevé des heures — ${dateDebut} au ${dateFin}`
+      titleCell.font  = { bold: true, size: 13, color: { argb: 'FF1E293B' } }
+      titleCell.fill  = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF1F5F9' } }
+      titleCell.alignment = { horizontal: 'center', vertical: 'middle' }
+      ws.getRow(1).height = 30
+
+      ws.addRow([])  // ligne vide
+
+      // ── En-tête ──────────────────────────────────────────────────────────
+      const headerRow = ws.addRow(['Nom', 'Date', 'Jour', 'Arrivée', 'Départ', 'Pause', 'Heures', 'Chantier / Lieu'])
+      headerRow.height = 22
+      headerRow.eachCell(cell => {
+        cell.font      = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 }
+        cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } }
+        cell.alignment = { horizontal: 'center', vertical: 'middle' }
+        cell.border    = { bottom: { style: 'medium', color: { argb: 'FF1E293B' } } }
       })
-      const csv  = [header, ...rows].map(r => r.map(c => `"${c}"`).join(',')).join('\n')
-      const blob = new Blob([bom + csv], { type: 'text/csv;charset=utf-8' })
-      const url  = URL.createObjectURL(blob)
-      const a    = document.createElement('a')
-      a.href = url; a.download = `heures-${exportStart}_${exportEnd}.csv`; a.click()
+
+      // Figer titre + vide + en-tête (3 premières lignes)
+      ws.views = [{ state: 'frozen', ySplit: 3, topLeftCell: 'A4' }]
+
+      // ── Données ──────────────────────────────────────────────────────────
+      let grandTotalMins = 0
+
+      for (const person of sorted) {
+        let personTotalMins = 0
+        let hasRows = false
+
+        for (const date of rangeDays) {
+          const dayOfWeek = new Date(date + 'T00:00:00').getDay()
+          if ([0, 6].includes(dayOfWeek)) continue  // skip week-end
+
+          const entry = rangeTime.find(t => t.technicien_id === person.id && t.date === date)
+          if (!entry?.arrivee || !entry?.depart) continue
+
+          hasRows = true
+          const [ah, am] = entry.arrivee.split(':').map(Number)
+          const [dh, dm] = entry.depart.split(':').map(Number)
+          const mins = Math.max(0, dh * 60 + dm - (ah * 60 + am) - (entry.pause ?? 0))
+          personTotalMins += mins
+
+          const h = Math.floor(mins / 60), m = mins % 60
+          const heuresStr = mins > 0 ? (m > 0 ? `${h}h${m.toString().padStart(2, '0')}` : `${h}h`) : '—'
+          const pauseStr  = entry.pause ? `${entry.pause} min` : '—'
+
+          const dateObj  = new Date(date + 'T00:00:00')
+          const dateStr  = dateObj.toLocaleDateString('fr-FR')
+          const jourFull = dateObj.toLocaleDateString('fr-FR', { weekday: 'long' })
+          const jourStr  = jourFull.charAt(0).toUpperCase() + jourFull.slice(1)
+
+          const chantierName = entry.chantier_id
+            ? (chantiers.find(c => c.id === entry.chantier_id)?.nom ?? '—')
+            : '—'
+
+          const dataRow = ws.addRow([
+            person.full_name, dateStr, jourStr,
+            entry.arrivee, entry.depart, pauseStr, heuresStr, chantierName,
+          ])
+          dataRow.height = 20
+          dataRow.eachCell((cell, col) => {
+            cell.alignment = { vertical: 'middle', horizontal: col >= 4 && col <= 7 ? 'center' : 'left' }
+            cell.border    = { bottom: { style: 'hair', color: { argb: 'FFE2E8F0' } } }
+          })
+        }
+
+        if (!hasRows) continue
+
+        grandTotalMins += personTotalMins
+        const ph = Math.floor(personTotalMins / 60), pm = personTotalMins % 60
+        const totalStr = pm > 0 ? `${ph}h${pm.toString().padStart(2, '0')}` : `${ph}h`
+
+        const totalRow = ws.addRow([`${person.full_name} — Total`, '', '', '', '', '', totalStr, ''])
+        totalRow.height = 22
+        totalRow.eachCell(cell => {
+          cell.font      = { bold: true, color: { argb: 'FF1E40AF' }, size: 11 }
+          cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDBEAFE' } }
+          cell.alignment = { vertical: 'middle' }
+          cell.border    = {
+            top:    { style: 'thin', color: { argb: 'FF93C5FD' } },
+            bottom: { style: 'thin', color: { argb: 'FF93C5FD' } },
+          }
+        })
+        ws.addRow([])  // séparateur entre personnes
+      }
+
+      // ── Total général ────────────────────────────────────────────────────
+      const gh = Math.floor(grandTotalMins / 60), gm = grandTotalMins % 60
+      const grandStr = gm > 0 ? `${gh}h${gm.toString().padStart(2, '0')}` : `${gh}h`
+      const grandRow = ws.addRow(['TOTAL GÉNÉRAL', '', '', '', '', '', grandStr, ''])
+      grandRow.height = 26
+      grandRow.eachCell(cell => {
+        cell.font      = { bold: true, size: 12, color: { argb: 'FFFFFFFF' } }
+        cell.fill      = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF1E293B' } }
+        cell.alignment = { vertical: 'middle' }
+      })
+
+      // ── Téléchargement ───────────────────────────────────────────────────
+      const buffer = await wb.xlsx.writeBuffer()
+      const blob   = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' })
+      const url    = URL.createObjectURL(blob)
+      const a      = document.createElement('a')
+      a.href = url
+      a.download = `heures-${exportStart}_${exportEnd}.xlsx`
+      a.click()
       URL.revokeObjectURL(url)
     }
 
