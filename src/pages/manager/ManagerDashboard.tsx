@@ -461,9 +461,9 @@ export default function ManagerDashboard() {
           <nav className="flex gap-0 overflow-x-auto no-scrollbar -mb-px">
             {([
               { key: 'chantiers', label: 'Chantiers' },
+              { key: 'vt',        label: 'VT' },
               { key: 'anomalies', label: 'Anomalies', badge: anomaliesOuvertes.length || undefined },
               { key: 'stats',     label: 'Stats' },
-              { key: 'vt',        label: 'VT' },
               { key: 'planning',  label: 'Planning' },
               { key: 'equipe',    label: 'Équipe' },
               { key: 'chat',      label: 'Chat', badge: activeTab !== 'chat' ? (chatUnread || undefined) : undefined },
