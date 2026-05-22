@@ -11,13 +11,14 @@ import { useNotifPreferences } from '@/hooks/useNotifPreferences'
 import GraviteBadge from '@/components/anomalies/GraviteBadge'
 import Avatar from '@/components/Avatar'
 import { supabase } from '@/lib/supabase'
-import { Chantier, ChantierStatut, Anomalie } from '@/types'
+import { Chantier, ChantierStatut, Anomalie, isManagerRole } from '@/types'
 import PlanningManagerTab from '@/components/planning/PlanningManagerTab'
 import GestionEquipe from '@/pages/manager/GestionEquipe'
 import AdminEntreprisesTab from '@/components/admin/AdminEntreprisesTab'
 import AdminBugReportsTab from '@/components/admin/AdminBugReportsTab'
 import BugReportButton from '@/components/BugReportButton'
 import GlobalChatTab from '@/components/chat/GlobalChatTab'
+import VTListTab from '@/components/vt/VTListTab'
 import { useGlobalMessages } from '@/hooks/useGlobalMessages'
 import { usePlan } from '@/hooks/usePlan'
 import UpgradeModal, { UpgradeReason } from '@/components/upgrade/UpgradeModal'
@@ -25,7 +26,7 @@ import PlanSection from '@/components/upgrade/PlanSection'
 import OnboardingModal from '@/components/onboarding/OnboardingModal'
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
-type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat'
+type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat' | 'vt'
 
 type AnomalieWithRelations = Anomalie & {
   profiles?: { full_name?: string } | null
@@ -462,6 +463,7 @@ export default function ManagerDashboard() {
               { key: 'chantiers', label: 'Chantiers' },
               { key: 'anomalies', label: 'Anomalies', badge: anomaliesOuvertes.length || undefined },
               { key: 'stats',     label: 'Stats' },
+              { key: 'vt',        label: 'VT' },
               { key: 'planning',  label: 'Planning' },
               { key: 'equipe',    label: 'Équipe' },
               { key: 'chat',      label: 'Chat', badge: activeTab !== 'chat' ? (chatUnread || undefined) : undefined },
@@ -1268,6 +1270,11 @@ export default function ManagerDashboard() {
           </div>
         )}
         </>)}
+
+        {/* ── Onglet VT ────────────────────────────────────────────────────── */}
+        {activeTab === 'vt' && (
+          <VTListTab userId={profile?.id ?? ''} isManager={isManagerRole(profile?.role)} />
+        )}
 
         {/* ── Onglet Planning ───────────────────────────────────────────────── */}
         {activeTab === 'planning' && (

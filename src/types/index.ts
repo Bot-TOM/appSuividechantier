@@ -219,3 +219,23 @@ export interface Anomalie {
   updated_at: string
   resolved_at?: string | null
 }
+
+// Visites Techniques
+export type VTType = 'btoc' | 'btob'
+export type VTStatut = 'brouillon' | 'complete' | 'valide'
+
+export interface VisiteTechnique {
+  id: string
+  technicien_id: string
+  type: VTType
+  statut: VTStatut
+  client_nom: string | null
+  client_adresse: string | null
+  data: Record<string, unknown>
+  valide_par: string | null
+  valide_le: string | null
+  created_at: string
+  updated_at: string
+  profiles?: { full_name: string; avatar_url?: string | null } | null
+  valideur?: { full_name: string } | null
+}

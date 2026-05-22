@@ -13,6 +13,8 @@ import ChecklistMateriel from '@/pages/chantier/ChecklistMateriel'
 import AutoControle from '@/pages/chantier/AutoControle'
 import EditChantier from '@/pages/manager/EditChantier'
 import LandingPage from '@/pages/LandingPage'
+import VTCreate from '@/pages/VTCreate'
+import VTDetail from '@/pages/VTDetail'
 import CGUPage from '@/pages/CGUPage'
 import ConfidentialitePage from '@/pages/ConfidentialitePage'
 import UpgradeSuccessPage from '@/pages/UpgradeSuccessPage'
@@ -52,6 +54,10 @@ export default function App() {
           <Route path="/chantier/:id/autocontrole" element={
             <ProtectedRoute><AutoControle /></ProtectedRoute>
           } />
+
+          {/* Visites Techniques */}
+          <Route path="/vt/nouvelle" element={<ProtectedRoute><VTCreate /></ProtectedRoute>} />
+          <Route path="/vt/:id" element={<ProtectedRoute><VTDetail /></ProtectedRoute>} />
 
           {/* Technicien */}
           <Route path="/technicien" element={
