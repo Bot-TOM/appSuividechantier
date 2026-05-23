@@ -2,17 +2,46 @@ import { useEffect, useState, useCallback } from 'react'
 import { supabase } from '@/lib/supabase'
 import { VisiteTechnique, VTType } from '@/types'
 
-// Hook liste
+type ProfileRow = { id: string; full_name: string; avatar_url?: string | null }
+
+// Récupère les profiles pour une liste d'IDs (sans join SQL pour éviter
+// l'ambiguïté PostgREST quand plusieurs FK pointent vers la même table)
+async function fetchProfiles(ids: string[]): Promise<Record<string, ProfileRow>> {
+  if (ids.length === 0) return {}
+  const { data } = await supabase
+    .from('profiles')
+    .select('id, full_name, avatar_url')
+    .in('id', ids)
+  if (!data) return {}
+  return Object.fromEntries(data.map(p => [p.id, p as ProfileRow]))
+}
+
+// ─── Hook liste ───────────────────────────────────────────────────────────────
 export function useVisitesTechniques() {
   const [vts, setVts] = useState<VisiteTechnique[]>([])
   const [loading, setLoading] = useState(true)
 
   const fetchAll = useCallback(async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('visites_techniques')
-      .select('*, profiles!visites_techniques_technicien_id_fkey(full_name, avatar_url)')
+      .select('*')
       .order('created_at', { ascending: false })
-    setVts((data ?? []) as VisiteTechnique[])
+
+    if (error || !data) {
+      setLoading(false)
+      return
+    }
+
+    // Récupérer les profils séparément (évite l'ambiguïté FK PostgREST)
+    const techIds = [...new Set(data.map(v => v.technicien_id).filter(Boolean))]
+    const profilesMap = await fetchProfiles(techIds)
+
+    const merged: VisiteTechnique[] = data.map(vt => ({
+      ...(vt as VisiteTechnique),
+      profiles: profilesMap[vt.technicien_id] ?? null,
+    }))
+
+    setVts(merged)
     setLoading(false)
   }, [])
 
@@ -21,26 +50,38 @@ export function useVisitesTechniques() {
   return { vts, loading, refetch: fetchAll }
 }
 
-// Hook détail
+// ─── Hook détail ──────────────────────────────────────────────────────────────
 export function useVisiteTechnique(id: string) {
   const [vt, setVt] = useState<VisiteTechnique | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const fetch = useCallback(async () => {
-    const { data } = await supabase
+  const fetchOne = useCallback(async () => {
+    const { data, error } = await supabase
       .from('visites_techniques')
-      .select('*, profiles!visites_techniques_technicien_id_fkey(full_name, avatar_url)')
+      .select('*')
       .eq('id', id)
       .single()
-    setVt(data as VisiteTechnique | null)
+
+    if (error || !data) {
+      setVt(null)
+      setLoading(false)
+      return
+    }
+
+    const vt = data as VisiteTechnique
+
+    // Récupérer le profil du technicien séparément
+    const profilesMap = await fetchProfiles([vt.technicien_id])
+
+    setVt({ ...vt, profiles: profilesMap[vt.technicien_id] ?? null })
     setLoading(false)
   }, [id])
 
-  useEffect(() => { fetch() }, [fetch])
+  useEffect(() => { fetchOne() }, [fetchOne])
 
   async function updateData(updates: Partial<VisiteTechnique> & { data?: Record<string, unknown> }) {
     await supabase.from('visites_techniques').update({ ...updates, updated_at: new Date().toISOString() }).eq('id', id)
-    fetch()
+    fetchOne()
   }
 
   async function valider(valideurId: string) {
@@ -50,17 +91,17 @@ export function useVisiteTechnique(id: string) {
       valide_le: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     }).eq('id', id)
-    fetch()
+    fetchOne()
   }
 
   async function deleteVT() {
     return supabase.from('visites_techniques').delete().eq('id', id)
   }
 
-  return { vt, loading, updateData, valider, deleteVT, refetch: fetch }
+  return { vt, loading, updateData, valider, deleteVT, refetch: fetchOne }
 }
 
-// Créer une VT
+// ─── Créer une VT ─────────────────────────────────────────────────────────────
 export async function createVisiteTechnique(type: VTType, technicienId: string): Promise<string | null> {
   const { data, error } = await supabase
     .from('visites_techniques')
