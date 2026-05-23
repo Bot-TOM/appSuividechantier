@@ -189,9 +189,9 @@ export default function ImportChantierModal({ onClose, userId, entrepriseId }: P
       if (rapportsSelected.length) {
         await supabase.from('rapports').insert(
           rapportsSelected.map(r => ({
-            chantier_id:   chantierId,
-            technicien_id: userId,
-            message:       r.message,
+            chantier_id: chantierId,
+            auteur_id:   userId,
+            message:     r.message,
           }))
         )
       }
