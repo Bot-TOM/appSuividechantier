@@ -370,6 +370,7 @@ export default function TechnicienHome() {
     if (!profile?.entreprise_id) return
     supabase.from('profiles').select('*')
       .eq('entreprise_id', profile.entreprise_id)
+      .neq('role', 'admin')
       .order('role')
       .then(({ data }) => {
         if (data) setTeamMembers(data)

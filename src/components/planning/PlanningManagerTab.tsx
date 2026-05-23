@@ -125,7 +125,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
   // Charger profils + chantiers (filtrés par entreprise si sélecteur admin actif)
   useEffect(() => {
     setChantiersLoaded(false)
-    let profilesQuery = supabase.from('profiles').select('*')
+    let profilesQuery = supabase.from('profiles').select('*').neq('role', 'admin')
     if (entrepriseId) profilesQuery = profilesQuery.eq('entreprise_id', entrepriseId)
     profilesQuery.then(({ data }) => {
       if (data) setProfiles(data as UserProfile[])

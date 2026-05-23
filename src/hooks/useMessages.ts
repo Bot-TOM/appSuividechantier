@@ -35,13 +35,16 @@ export function useMessages(chantierId: string, userId: string) {
   }, [chantierId, fetchMessages])
 
   const sendMessage = useCallback(async (content: string, replyToId?: string) => {
-    const { error } = await supabase.from('messages').insert({
+    const { data, error } = await supabase.from('messages').insert({
       chantier_id: chantierId,
       user_id: userId,
       content,
       reply_to_id: replyToId ?? null,
-    })
-    if (error) console.error('[chat] sendMessage:', error)
+    }).select().single()
+    if (error) { console.error('[chat] sendMessage:', error); return }
+    supabase.functions.invoke('send-push', {
+      body: { table: 'messages', record: data },
+    }).catch(() => {})
   }, [chantierId, userId])
 
   const sendFile = useCallback(async (file: File, replyToId?: string) => {
@@ -52,15 +55,20 @@ export function useMessages(chantierId: string, userId: string) {
       const { data: upload, error } = await supabase.storage.from('chat-files').upload(path, file)
       if (error) throw error
       const { data: { publicUrl } } = supabase.storage.from('chat-files').getPublicUrl(upload.path)
-      const { error: insertErr } = await supabase.from('messages').insert({
+      const { data: fileData, error: insertErr } = await supabase.from('messages').insert({
         chantier_id: chantierId,
         user_id: userId,
         file_url: publicUrl,
         file_name: file.name,
         file_type: file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'audio' : 'document',
         reply_to_id: replyToId ?? null,
-      })
-      if (insertErr) console.error('[chat] sendFile insert:', insertErr)
+      }).select().single()
+      if (insertErr) { console.error('[chat] sendFile insert:', insertErr) }
+      else {
+        supabase.functions.invoke('send-push', {
+          body: { table: 'messages', record: fileData },
+        }).catch(() => {})
+      }
     } finally {
       setUploading(false)
     }

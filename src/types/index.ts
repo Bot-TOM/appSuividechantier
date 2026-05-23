@@ -80,9 +80,15 @@ export interface TimeEntry {
 
 // Liste des postes disponibles
 export const POSTES_OPTIONS = [
+  'Apprenti',
+  'Poseur',
   'Technicien',
+  'Électricien',
+  'Couvreur',
+  'Technicien SAV',
   "Chef d'équipe",
   'Chef de chantier',
+  "Chargé d'affaires",
   'Conducteur de travaux',
 ] as const
 

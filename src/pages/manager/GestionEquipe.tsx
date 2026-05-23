@@ -153,6 +153,7 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
       .from('profiles')
       .select('*')
       .neq('id', profile?.id ?? '')
+      .neq('role', 'admin')
       .eq('entreprise_id', targetEntrepriseId)
       .order('role')
       .order('full_name')
