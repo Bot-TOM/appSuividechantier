@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useVisiteTechnique } from '@/hooks/useVisitesTechniques'
 import { isManagerRole } from '@/types'
-import { ChevronLeft, CheckCircle, FileDown, X } from 'lucide-react'
+import { ChevronLeft, CheckCircle, FileDown, X, Pencil } from 'lucide-react'
 import Avatar from '@/components/Avatar'
 import { pdf } from '@react-pdf/renderer'
 import { VTPdfDocument } from '@/components/vt/VTPdf'
@@ -59,6 +59,7 @@ export default function VTDetail() {
 
   const isManager = isManagerRole(profile?.role)
   const canValidate = isManager && vt?.statut === 'complete'
+  const canEdit = vt?.statut !== 'valide' && (isManager || profile?.id === vt?.technicien_id)
 
   async function handleValider() {
     if (!profile?.id || !id) return
@@ -139,6 +140,15 @@ export default function VTDetail() {
 
             {/* Actions */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {canEdit && (
+                <button
+                  onClick={() => navigate(`/vt/${vt.id}/modifier`)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-orange-200 text-orange-600 text-sm font-medium hover:bg-orange-50 transition-colors"
+                >
+                  <Pencil className="w-4 h-4" />
+                  <span className="hidden sm:inline">{vt.statut === 'brouillon' ? 'Reprendre' : 'Modifier'}</span>
+                </button>
+              )}
               <button
                 onClick={handleExportPdf}
                 disabled={exporting}

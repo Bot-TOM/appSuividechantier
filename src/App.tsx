@@ -15,6 +15,7 @@ import EditChantier from '@/pages/manager/EditChantier'
 import LandingPage from '@/pages/LandingPage'
 import VTCreate from '@/pages/VTCreate'
 import VTDetail from '@/pages/VTDetail'
+import VTEdit from '@/pages/VTEdit'
 import CGUPage from '@/pages/CGUPage'
 import ConfidentialitePage from '@/pages/ConfidentialitePage'
 import UpgradeSuccessPage from '@/pages/UpgradeSuccessPage'
@@ -57,6 +58,7 @@ export default function App() {
 
           {/* Visites Techniques */}
           <Route path="/vt/nouvelle" element={<ProtectedRoute><VTCreate /></ProtectedRoute>} />
+          <Route path="/vt/:id/modifier" element={<ProtectedRoute><VTEdit /></ProtectedRoute>} />
           <Route path="/vt/:id" element={<ProtectedRoute><VTDetail /></ProtectedRoute>} />
 
           {/* Technicien */}
