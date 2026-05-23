@@ -17,8 +17,8 @@ export default defineConfig({
       },
       includeAssets: ['favicon.svg', 'apple-touch-icon.png'],
       manifest: {
-        name: 'PVPilot',
-        short_name: 'PVPilot',
+        name: 'ChantierPV',
+        short_name: 'ChantierPV',
         description: 'Pilotage de chantiers photovoltaïques',
         theme_color: '#f97316',
         background_color: '#f9fafb',

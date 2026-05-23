@@ -290,7 +290,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
       // Import dynamique (évite les problèmes de bundle Vite)
       const ExcelJS = (await import('exceljs')).default
       const wb = new ExcelJS.Workbook()
-      wb.creator = 'PVPilot'
+      wb.creator = 'ChantierPV'
       wb.created = new Date()
       const ws = wb.addWorksheet('Relevé des heures')
 
