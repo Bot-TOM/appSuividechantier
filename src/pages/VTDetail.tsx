@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useVisiteTechnique } from '@/hooks/useVisitesTechniques'
 import { isManagerRole } from '@/types'
-import { ChevronLeft, CheckCircle, FileDown, X, Pencil } from 'lucide-react'
+import { ChevronLeft, CheckCircle, FileDown, X, Pencil, Trash2 } from 'lucide-react'
 import Avatar from '@/components/Avatar'
 import { pdf } from '@react-pdf/renderer'
 import { VTPdfDocument } from '@/components/vt/VTPdf'
@@ -51,15 +51,24 @@ export default function VTDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { profile } = useAuth()
-  const { vt, loading, valider } = useVisiteTechnique(id ?? '')
+  const { vt, loading, valider, deleteVT } = useVisiteTechnique(id ?? '')
 
   const [validating, setValidating] = useState(false)
   const [exporting, setExporting] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
   const isManager = isManagerRole(profile?.role)
   const canValidate = isManager && vt?.statut === 'complete'
   const canEdit = vt?.statut !== 'valide' && (isManager || profile?.id === vt?.technicien_id)
+  const canDelete = isManager
+
+  async function handleDelete() {
+    setDeleting(true)
+    await deleteVT()
+    navigate(-1)
+  }
 
   async function handleValider() {
     if (!profile?.id || !id) return
@@ -140,6 +149,14 @@ export default function VTDetail() {
 
             {/* Actions */}
             <div className="flex items-center gap-2 flex-shrink-0">
+              {canDelete && (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl border border-red-200 text-red-500 text-sm font-medium hover:bg-red-50 transition-colors"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
               {canEdit && (
                 <button
                   onClick={() => navigate(`/vt/${vt.id}/modifier`)}
@@ -400,6 +417,41 @@ export default function VTDetail() {
           </div>
         )}
       </main>
+
+      {/* Confirmation suppression */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-full bg-red-100 flex items-center justify-center flex-shrink-0">
+                <Trash2 className="w-5 h-5 text-red-500" />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-900">Supprimer cette VT ?</h3>
+                <p className="text-sm text-slate-500 mt-0.5">
+                  {vt.client_nom ?? 'VT sans titre'} — {vt.type === 'btoc' ? 'BtoC' : 'BtoB'}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-slate-600">Cette action est irréversible. Toutes les données et photos seront supprimées.</p>
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setConfirmDelete(false)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-700 text-sm font-medium hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={handleDelete}
+                disabled={deleting}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white text-sm font-semibold hover:bg-red-600 transition-colors disabled:opacity-60"
+              >
+                {deleting ? 'Suppression...' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Lightbox */}
       {lightboxUrl && (

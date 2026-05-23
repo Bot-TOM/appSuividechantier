@@ -130,25 +130,47 @@ export function PhotosStep({
             </div>
           )}
           {errors[key] && <p className="text-xs text-red-500">{errors[key]}</p>}
-          <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium cursor-pointer hover:bg-gray-50 transition-colors w-fit">
-            {uploading[key] ? (
-              <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <span>📷 Ajouter une photo</span>
-            )}
-            <input
-              type="file"
-              accept="image/*"
-              capture="environment"
-              className="hidden"
-              disabled={uploading[key]}
-              onChange={e => {
-                const file = e.target.files?.[0]
-                if (file) handleUpload(key, file)
-                e.target.value = ''
-              }}
-            />
-          </label>
+          <div className="flex gap-2 flex-wrap">
+            {/* Bouton appareil photo */}
+            <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium cursor-pointer hover:bg-gray-50 transition-colors">
+              {uploading[key] ? (
+                <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span>📷 Prendre une photo</span>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                capture="environment"
+                className="hidden"
+                disabled={uploading[key]}
+                onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (file) handleUpload(key, file)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+            {/* Bouton galerie */}
+            <label className="flex items-center gap-2 px-4 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 font-medium cursor-pointer hover:bg-gray-50 transition-colors">
+              {uploading[key] ? (
+                <div className="w-4 h-4 border-2 border-orange-500 border-t-transparent rounded-full animate-spin" />
+              ) : (
+                <span>🖼️ Depuis la galerie</span>
+              )}
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                disabled={uploading[key]}
+                onChange={e => {
+                  const file = e.target.files?.[0]
+                  if (file) handleUpload(key, file)
+                  e.target.value = ''
+                }}
+              />
+            </label>
+          </div>
         </div>
       ))}
     </div>
