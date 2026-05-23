@@ -604,12 +604,12 @@ export default function ChantierDetail() {
 
   const acIsSigne = !!autocontrole?.signe_le
   const acCategories = [...new Set(acChecks.map(c => c.categorie))]
-  const acTotalChecked = acChecks.filter(c => c.checked).length
+  const acTotalChecked = acChecks.filter(c => c.result !== null).length
   const acPct = Math.round((acTotalChecked / acChecks.length) * 100)
 
-  function toggleAcCheck(id: string) {
+  function setAcCheckResult(id: string, value: import('@/types').AutoControleResult) {
     if (acIsSigne) return
-    setAcChecks(prev => prev.map(c => c.id === id ? { ...c, checked: !c.checked } : c))
+    setAcChecks(prev => prev.map(c => c.id === id ? { ...c, result: c.result === value ? null : value } : c))
   }
 
   async function handleAcSave() {
@@ -1377,46 +1377,66 @@ export default function ChantierDetail() {
             {/* Sections par catégorie */}
             {acCategories.map(categorie => {
               const items = acChecks.filter(c => c.categorie === categorie)
-              const catChecked = items.filter(c => c.checked).length
+              const catAnswered = items.filter(c => c.result !== null).length
+              const catNc = items.filter(c => c.result === 'NC').length
+              const AC_RESULTS = [
+                { value: 'C'  as const, activeBg: 'bg-green-500' },
+                { value: 'NC' as const, activeBg: 'bg-red-500'   },
+                { value: 'NV' as const, activeBg: 'bg-gray-400'  },
+                { value: 'SO' as const, activeBg: 'bg-blue-400'  },
+              ]
               return (
                 <section key={categorie} className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                   <div className="px-4 py-3.5 border-b border-gray-50 flex items-center justify-between">
                     <h2 className="font-semibold text-gray-900 text-sm">{categorie}</h2>
-                    <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                      catChecked === items.length ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
-                    }`}>{catChecked}/{items.length}</span>
+                    <div className="flex items-center gap-2">
+                      {catNc > 0 && <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{catNc} NC</span>}
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        catAnswered === items.length ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
+                      }`}>{catAnswered}/{items.length}</span>
+                    </div>
                   </div>
                   <div className="divide-y divide-gray-50">
                     {items.map(check => (
                       <div key={check.id}>
-                        <div
-                          className={`px-4 py-3.5 flex items-center gap-3 ${!acIsSigne ? 'cursor-pointer active:bg-gray-50' : ''}`}
-                          onClick={() => toggleAcCheck(check.id)}
-                        >
-                          <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
-                            check.checked ? 'bg-orange-500' : 'border-2 border-gray-200'
-                          }`}>
-                            {check.checked && (
-                              <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                              </svg>
-                            )}
+                        <div className="px-4 py-3 flex items-start gap-3">
+                          <span className="text-xs text-gray-400 font-mono mt-0.5 w-8 flex-shrink-0">{check.num}</span>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-gray-800 leading-snug">{check.label}</p>
+                            {check.exigence && <p className="text-xs text-gray-400 mt-0.5 leading-snug">{check.exigence}</p>}
                           </div>
-                          <span className={`flex-1 text-sm ${check.checked ? 'text-gray-400 line-through' : 'text-gray-800 font-medium'}`}>
-                            {check.label}
-                          </span>
-                          {!acIsSigne && (
-                            <button
-                              onClick={e => { e.stopPropagation(); setAcExpandedId(acExpandedId === check.id ? null : check.id) }}
-                              className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
-                                check.commentaire ? 'text-orange-400 bg-orange-50' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
-                              }`}
-                            >
-                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                                <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                              </svg>
-                            </button>
-                          )}
+                          {acIsSigne
+                            ? (check.result
+                                ? <span className={`text-xs font-bold px-2 py-0.5 rounded text-white ${
+                                    check.result === 'C' ? 'bg-green-500' : check.result === 'NC' ? 'bg-red-500' : check.result === 'NV' ? 'bg-gray-400' : 'bg-blue-400'
+                                  }`}>{check.result}</span>
+                                : <span className="text-xs text-gray-300">—</span>)
+                            : (
+                              <div className="flex items-center gap-1 flex-shrink-0">
+                                {AC_RESULTS.map(opt => (
+                                  <button
+                                    key={opt.value}
+                                    onClick={() => setAcCheckResult(check.id, opt.value)}
+                                    className={`text-[11px] font-bold px-2 py-1 rounded transition-all ${
+                                      check.result === opt.value
+                                        ? `${opt.activeBg} text-white`
+                                        : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                    }`}
+                                  >{opt.value}</button>
+                                ))}
+                                <button
+                                  onClick={() => setAcExpandedId(acExpandedId === check.id ? null : check.id)}
+                                  className={`ml-1 w-7 h-7 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
+                                    check.commentaire ? 'text-orange-400 bg-orange-50' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
+                                  }`}
+                                >
+                                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                    <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                                  </svg>
+                                </button>
+                              </div>
+                            )
+                          }
                         </div>
                         {(acExpandedId === check.id || (acIsSigne && check.commentaire)) && (
                           <div className="px-4 pb-3 pl-[52px]">

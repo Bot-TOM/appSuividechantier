@@ -285,24 +285,24 @@ export default function ChantierPDF({ chantier, etapes, photos, notes, anomalies
             <View style={S.divider} />
             <View style={S.section}>
               <Text style={S.sectionTitle}>
-                Auto-controle ({acChecks.filter(c => c.checked).length}/{acChecks.length} points)
+                Auto-controle ({acChecks.filter(c => c.result !== null).length}/{acChecks.length} points)
                 {acSigne ? ` — Signe le ${safeDate(acSigne)}` : ''}
               </Text>
               {acCategories.map(cat => (
                 <View key={cat}>
                   <Text style={S.acCat}>{cat}</Text>
-                  {acChecks.filter(c => c.categorie === cat).map(check => (
-                    <View key={check.id} style={S.acRow}>
-                      <View style={[S.acCheck, {
-                        borderColor: check.checked ? '#f97316' : '#d1d5db',
-                        backgroundColor: check.checked ? '#f97316' : 'transparent',
-                      }]}>
-                        {check.checked && <Text style={{ fontSize: 5, color: 'white' }}>OK</Text>}
+                  {acChecks.filter(c => c.categorie === cat).map(check => {
+                    const resultColor = check.result === 'C' ? '#22c55e' : check.result === 'NC' ? '#ef4444' : check.result === 'NV' ? '#9ca3af' : check.result === 'SO' ? '#60a5fa' : '#d1d5db'
+                    return (
+                      <View key={check.id} style={S.acRow}>
+                        <View style={[S.acCheck, { borderColor: resultColor, backgroundColor: check.result ? resultColor : 'transparent' }]}>
+                          {check.result && <Text style={{ fontSize: 5, color: 'white' }}>{check.result}</Text>}
+                        </View>
+                        <Text style={[S.acLabel, { color: check.result ? '#6b7280' : '#111827' }]}>{check.num ? `${check.num} ` : ''}{check.label}</Text>
+                        {check.commentaire ? <Text style={{ fontSize: 8, color: '#9ca3af', maxWidth: 120 }}>{check.commentaire}</Text> : null}
                       </View>
-                      <Text style={[S.acLabel, { color: check.checked ? '#9ca3af' : '#111827' }]}>{check.label}</Text>
-                      {check.commentaire ? <Text style={{ fontSize: 8, color: '#9ca3af', maxWidth: 120 }}>{check.commentaire}</Text> : null}
-                    </View>
-                  ))}
+                    )
+                  })}
                 </View>
               ))}
             </View>
