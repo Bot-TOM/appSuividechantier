@@ -388,7 +388,7 @@ export default function ChantierDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { profile, session } = useAuth()
-  const { chantier, etapes, notes, photos, loading, updateStatut, advanceEtape, updateConsigne, updatePourcentage, addNote, deleteNote, uploadEtapePhoto, deleteEtapePhoto, deleteChantier } = useChantierDetail(id!)
+  const { chantier, etapes, notes, photos, loading, updateStatut, advanceEtape, updateConsigne, updatePourcentage, addNote, deleteNote, uploadEtapePhoto, deleteEtapePhoto, deleteChantier, refetch: refetchChantier } = useChantierDetail(id!)
   const { anomalies }   = useAnomalies(id!)
   const { items: matItems, total: matTotal, checked: matChecked, toggleItem: toggleMat, addItem: addMat, deleteItem: deleteMat } = useChecklistMateriel(id!)
   const { autocontrole, save: saveAC, signer: signerAC } = useAutoControle(id!)
@@ -472,11 +472,13 @@ export default function ChantierDetail() {
     await supabase.from('chantiers').update({ vt_id: vtId }).eq('id', id!)
     setShowVTModal(false)
     setSavingVT(false)
-  }, [id])
+    refetchChantier()
+  }, [id, refetchChantier])
 
   const handleUnlinkVT = useCallback(async () => {
     await supabase.from('chantiers').update({ vt_id: null }).eq('id', id!)
-  }, [id])
+    refetchChantier()
+  }, [id, refetchChantier])
 
   useEffect(() => {
     if (autocontrole) {
