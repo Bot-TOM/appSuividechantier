@@ -1374,6 +1374,22 @@ export default function ChantierDetail() {
               )}
             </section>
 
+            {/* Légende */}
+            <div className="bg-white rounded-2xl px-4 py-3 flex flex-wrap gap-x-5 gap-y-2" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+              <span className="text-xs text-gray-400 font-medium self-center">Légende :</span>
+              {[
+                { code: 'C',  label: 'Conforme',       bg: 'bg-green-500' },
+                { code: 'NC', label: 'Non-conformité', bg: 'bg-red-500'   },
+                { code: 'NV', label: 'Non vérifié',    bg: 'bg-gray-400'  },
+                { code: 'SO', label: 'Sans objet',     bg: 'bg-blue-400'  },
+              ].map(({ code, label, bg }) => (
+                <span key={code} className="inline-flex items-center gap-1.5 text-xs text-gray-600">
+                  <span className={`${bg} text-white text-[10px] font-bold w-6 h-6 rounded flex items-center justify-center flex-shrink-0`}>{code}</span>
+                  {label}
+                </span>
+              ))}
+            </div>
+
             {/* Sections par catégorie */}
             {acCategories.map(categorie => {
               const items = acChecks.filter(c => c.categorie === categorie)
