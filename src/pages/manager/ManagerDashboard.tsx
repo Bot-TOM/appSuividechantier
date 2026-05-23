@@ -19,6 +19,7 @@ import AdminBugReportsTab from '@/components/admin/AdminBugReportsTab'
 import BugReportButton from '@/components/BugReportButton'
 import GlobalChatTab from '@/components/chat/GlobalChatTab'
 import VTListTab from '@/components/vt/VTListTab'
+import ImportChantierModal from '@/components/chantier/ImportChantierModal'
 import { useGlobalMessages } from '@/hooks/useGlobalMessages'
 import { usePlan } from '@/hooks/usePlan'
 import UpgradeModal, { UpgradeReason } from '@/components/upgrade/UpgradeModal'
@@ -162,6 +163,7 @@ export default function ManagerDashboard() {
   const { isPro, limits } = usePlan()
   const [upgradeOpen, setUpgradeOpen] = useState(false)
   const [upgradeReason, setUpgradeReason] = useState<UpgradeReason>('general')
+  const [showImportChantier, setShowImportChantier] = useState(false)
 
   // Onboarding — affiché une seule fois au premier login (managers uniquement)
   const showOnboarding = !!(profile && !profile.onboarding_done && profile.role !== 'admin')
@@ -1227,19 +1229,30 @@ export default function ManagerDashboard() {
           <h2 className="text-sm font-semibold text-gray-500 uppercase tracking-wide">
             {chantiersFiltres.length} chantier{chantiersFiltres.length !== 1 ? 's' : ''}
           </h2>
-          <button
-            onClick={() => {
-              if (!isPro && chantiers.length >= limits.maxChantiers) {
-                setUpgradeReason('chantiers'); setUpgradeOpen(true)
-              } else {
-                navigate('/manager/nouveau-chantier')
-              }
-            }}
-            className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all hover:opacity-90"
-            style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}
-          >
-            + Nouveau chantier
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowImportChantier(true)}
+              className="text-gray-600 text-sm font-semibold px-4 py-2.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-all flex items-center gap-1.5"
+            >
+              <svg className="w-4 h-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
+              </svg>
+              Importer
+            </button>
+            <button
+              onClick={() => {
+                if (!isPro && chantiers.length >= limits.maxChantiers) {
+                  setUpgradeReason('chantiers'); setUpgradeOpen(true)
+                } else {
+                  navigate('/manager/nouveau-chantier')
+                }
+              }}
+              className="text-white text-sm font-semibold px-4 py-2.5 rounded-xl transition-all hover:opacity-90"
+              style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}
+            >
+              + Nouveau chantier
+            </button>
+          </div>
         </div>
 
         {/* ── Liste chantiers ───────────────────────────────────────────────── */}
@@ -1303,6 +1316,14 @@ export default function ManagerDashboard() {
       </main>
 
       <BugReportButton />
+
+      {showImportChantier && profile && (
+        <ImportChantierModal
+          onClose={() => setShowImportChantier(false)}
+          userId={profile.id}
+          entrepriseId={profile.entreprise_id ?? ''}
+        />
+      )}
 
       <UpgradeModal
         open={upgradeOpen}
