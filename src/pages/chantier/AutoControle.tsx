@@ -2,7 +2,25 @@ import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useAutoControle, initChecks } from '@/hooks/useAutoControle'
-import { AutoControleCheck } from '@/types'
+import { AutoControleCheck, AutoControleResult } from '@/types'
+
+const RESULT_OPTIONS: { value: AutoControleResult; label: string; bg: string; text: string; activeBg: string; activeText: string }[] = [
+  { value: 'C',  label: 'C',  bg: 'bg-gray-100', text: 'text-gray-400', activeBg: 'bg-green-500',  activeText: 'text-white' },
+  { value: 'NC', label: 'NC', bg: 'bg-gray-100', text: 'text-gray-400', activeBg: 'bg-red-500',    activeText: 'text-white' },
+  { value: 'NV', label: 'NV', bg: 'bg-gray-100', text: 'text-gray-400', activeBg: 'bg-gray-400',   activeText: 'text-white' },
+  { value: 'SO', label: 'SO', bg: 'bg-gray-100', text: 'text-gray-400', activeBg: 'bg-blue-400',   activeText: 'text-white' },
+]
+
+function ResultBadge({ result }: { result: AutoControleResult }) {
+  if (!result) return <span className="text-xs text-gray-300">—</span>
+  const opt = RESULT_OPTIONS.find(o => o.value === result)
+  if (!opt) return null
+  return (
+    <span className={`text-xs font-bold px-2 py-0.5 rounded ${opt.activeBg} ${opt.activeText}`}>
+      {opt.label}
+    </span>
+  )
+}
 
 export default function AutoControlePage() {
   const { id: chantierId } = useParams<{ id: string }>()
@@ -25,12 +43,16 @@ export default function AutoControlePage() {
 
   const isSigne = !!autocontrole?.signe_le
   const categories = useMemo(() => [...new Set(checks.map(c => c.categorie))], [checks])
-  const totalChecked = checks.filter(c => c.checked).length
-  const pct = Math.round((totalChecked / checks.length) * 100)
+  const totalAnswered = checks.filter(c => c.result !== null).length
+  const pct = Math.round((totalAnswered / checks.length) * 100)
 
-  function toggleCheck(id: string) {
+  function setCheckResult(id: string, value: AutoControleResult) {
     if (isSigne) return
-    setChecks(prev => prev.map(c => c.id === id ? { ...c, checked: !c.checked } : c))
+    setChecks(prev => prev.map(c => c.id === id
+      // toggle off if same value clicked again
+      ? { ...c, result: c.result === value ? null : value }
+      : c
+    ))
   }
 
   function setCheckCommentaire(id: string, value: string) {
@@ -88,7 +110,7 @@ export default function AutoControlePage() {
         {/* Barre de progression */}
         <div className="max-w-2xl md:max-w-5xl mx-auto px-4 pb-3">
           <div className="flex justify-between text-xs text-gray-400 mb-1.5">
-            <span>{totalChecked}/{checks.length} points validés</span>
+            <span>{totalAnswered}/{checks.length} points renseignés</span>
             <span className={`font-bold ${pct === 100 ? 'text-green-600' : 'text-orange-500'}`}>{pct}%</span>
           </div>
           <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
@@ -98,6 +120,17 @@ export default function AutoControlePage() {
             />
           </div>
         </div>
+
+        {/* Légende */}
+        {!isSigne && (
+          <div className="max-w-2xl md:max-w-5xl mx-auto px-4 pb-3 flex items-center gap-3 flex-wrap">
+            <span className="text-xs text-gray-400">Résultats :</span>
+            <span className="inline-flex items-center gap-1 text-xs"><span className="w-5 h-5 rounded bg-green-500 text-white text-[10px] font-bold flex items-center justify-center">C</span> Conforme</span>
+            <span className="inline-flex items-center gap-1 text-xs"><span className="w-5 h-5 rounded bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">NC</span> Non-conformité</span>
+            <span className="inline-flex items-center gap-1 text-xs"><span className="w-5 h-5 rounded bg-gray-400 text-white text-[10px] font-bold flex items-center justify-center">NV</span> Non vérifié</span>
+            <span className="inline-flex items-center gap-1 text-xs"><span className="w-5 h-5 rounded bg-blue-400 text-white text-[10px] font-bold flex items-center justify-center">SO</span> Sans objet</span>
+          </div>
+        )}
       </header>
 
       <main className="max-w-2xl md:max-w-5xl mx-auto px-4 py-4 space-y-3" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
@@ -105,53 +138,70 @@ export default function AutoControlePage() {
         {/* Sections par catégorie */}
         {categories.map(categorie => {
           const items = checks.filter(c => c.categorie === categorie)
-          const catChecked = items.filter(c => c.checked).length
+          const catAnswered = items.filter(c => c.result !== null).length
+          const catNc = items.filter(c => c.result === 'NC').length
           return (
             <section key={categorie} className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
               <div className="px-4 py-3.5 border-b border-gray-50 flex items-center justify-between">
                 <h2 className="font-semibold text-gray-900 text-sm">{categorie}</h2>
-                <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                  catChecked === items.length ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
-                }`}>{catChecked}/{items.length}</span>
+                <div className="flex items-center gap-2">
+                  {catNc > 0 && (
+                    <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-red-50 text-red-600">{catNc} NC</span>
+                  )}
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    catAnswered === items.length ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
+                  }`}>{catAnswered}/{items.length}</span>
+                </div>
               </div>
 
               <div className="divide-y divide-gray-50">
                 {items.map(check => (
                   <div key={check.id}>
-                    <div
-                      className={`px-4 py-3.5 flex items-center gap-3 ${!isSigne ? 'cursor-pointer active:bg-gray-50' : ''}`}
-                      onClick={() => !isSigne && toggleCheck(check.id)}
-                    >
-                      {/* Checkbox */}
-                      <div className={`w-6 h-6 rounded-full flex-shrink-0 flex items-center justify-center transition-all ${
-                        check.checked
-                          ? 'bg-orange-500'
-                          : 'border-2 border-gray-200'
-                      }`}>
-                        {check.checked && (
-                          <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                          </svg>
+                    <div className="px-4 py-3 flex items-start gap-3">
+                      {/* Numéro */}
+                      <span className="text-xs text-gray-400 font-mono mt-0.5 w-8 flex-shrink-0">{check.num}</span>
+
+                      {/* Label + exigence */}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-800 leading-snug">{check.label}</p>
+                        {check.exigence && (
+                          <p className="text-xs text-gray-400 mt-0.5 leading-snug">{check.exigence}</p>
                         )}
                       </div>
 
-                      <span className={`flex-1 text-sm ${check.checked ? 'text-gray-400 line-through' : 'text-gray-800 font-medium'}`}>
-                        {check.label}
-                      </span>
+                      {/* Boutons résultat ou badge en lecture seule */}
+                      {isSigne
+                        ? <ResultBadge result={check.result} />
+                        : (
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {RESULT_OPTIONS.map(opt => (
+                              <button
+                                key={opt.value}
+                                onClick={() => setCheckResult(check.id, opt.value)}
+                                className={`text-[11px] font-bold px-2 py-1 rounded transition-all ${
+                                  check.result === opt.value
+                                    ? `${opt.activeBg} ${opt.activeText}`
+                                    : `${opt.bg} ${opt.text} hover:bg-gray-200`
+                                }`}
+                              >
+                                {opt.label}
+                              </button>
+                            ))}
 
-                      {/* Toggle commentaire */}
-                      {!isSigne && (
-                        <button
-                          onClick={e => { e.stopPropagation(); setExpandedId(expandedId === check.id ? null : check.id) }}
-                          className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
-                            check.commentaire ? 'text-orange-400 bg-orange-50' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
-                          }`}
-                        >
-                          <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
-                          </svg>
-                        </button>
-                      )}
+                            {/* Commentaire toggle */}
+                            <button
+                              onClick={() => setExpandedId(expandedId === check.id ? null : check.id)}
+                              className={`ml-1 w-7 h-7 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
+                                check.commentaire ? 'text-orange-400 bg-orange-50' : 'text-gray-300 hover:text-gray-500 hover:bg-gray-100'
+                              }`}
+                            >
+                              <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M7 8h10M7 12h4m1 8l-4-4H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-3l-4 4z" />
+                              </svg>
+                            </button>
+                          </div>
+                        )
+                      }
                     </div>
 
                     {/* Commentaire inline */}
@@ -163,7 +213,6 @@ export default function AutoControlePage() {
                               autoFocus
                               value={check.commentaire}
                               onChange={e => setCheckCommentaire(check.id, e.target.value)}
-                              onClick={e => e.stopPropagation()}
                               placeholder="Commentaire (optionnel)..."
                               className="w-full text-xs px-3 py-2 rounded-lg border border-gray-200 focus:outline-none focus:ring-2 focus:ring-orange-400 text-gray-600 placeholder-gray-300 bg-gray-50"
                             />
@@ -205,13 +254,13 @@ export default function AutoControlePage() {
 
             <button
               onClick={handleSigner}
-              disabled={signing || totalChecked === 0}
+              disabled={signing || totalAnswered === 0}
               className="w-full text-white font-semibold py-4 rounded-2xl transition-all disabled:opacity-50 text-sm"
               style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}
             >
               {signing
                 ? 'Signature en cours...'
-                : `Signer la fiche (${totalChecked}/${checks.length} points)`
+                : `Signer la fiche (${totalAnswered}/${checks.length} points)`
               }
             </button>
           </div>

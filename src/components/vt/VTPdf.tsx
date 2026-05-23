@@ -1,4 +1,4 @@
-import { Document, Page, Text, View, StyleSheet } from '@react-pdf/renderer'
+import { Document, Page, Text, View, StyleSheet, Image } from '@react-pdf/renderer'
 import { VisiteTechnique } from '@/types'
 
 const styles = StyleSheet.create({
@@ -82,6 +82,24 @@ const styles = StyleSheet.create({
     fontSize: 9,
     fontFamily: 'Helvetica-Bold',
     alignSelf: 'flex-start',
+  },
+  photosZoneTitle: {
+    fontSize: 10,
+    fontFamily: 'Helvetica-Bold',
+    color: '#475569',
+    marginBottom: 6,
+    marginTop: 12,
+  },
+  photosGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  photo: {
+    width: 160,
+    height: 120,
+    objectFit: 'cover',
+    borderRadius: 4,
   },
 })
 
@@ -286,6 +304,38 @@ export function VTPdfDocument({ vt }: { vt: VisiteTechnique }) {
           </>
         )}
       </Page>
+
+      {/* Page photos */}
+      {(() => {
+        const ZONE_LABELS: Record<string, string> = {
+          electrique: 'Électrique',
+          couverture: 'Couverture',
+          general: 'Général',
+          toiture: 'Toiture',
+          structure: 'Structure',
+        }
+        const photos = (data['photos'] ?? {}) as Record<string, string[]>
+        const zones = Object.entries(photos).filter(([, urls]) => urls && urls.length > 0)
+        if (zones.length === 0) return null
+        return (
+          <Page size="A4" style={styles.page}>
+            <View style={styles.header}>
+              <Text style={styles.title}>Photos — {isBtoc ? 'BtoC (Résidentiel)' : 'BtoB (Professionnel)'}</Text>
+              <Text style={styles.subtitle}>{vt.client_nom ?? 'Sans titre'}</Text>
+            </View>
+            {zones.map(([zone, urls]) => (
+              <View key={zone}>
+                <Text style={styles.photosZoneTitle}>{ZONE_LABELS[zone] ?? zone}</Text>
+                <View style={styles.photosGrid}>
+                  {urls.map((url, i) => (
+                    <Image key={i} src={url} style={styles.photo} />
+                  ))}
+                </View>
+              </View>
+            ))}
+          </Page>
+        )
+      })()}
     </Document>
   )
 }

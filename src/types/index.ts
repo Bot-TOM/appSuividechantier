@@ -149,11 +149,15 @@ export interface Note {
 }
 
 // Auto-contrôle
+export type AutoControleResult = 'C' | 'NC' | 'NV' | 'SO' | null
+
 export interface AutoControleCheck {
   id: string
+  num: string
   categorie: string
   label: string
-  checked: boolean
+  exigence?: string
+  result: AutoControleResult
   commentaire: string
 }
 
