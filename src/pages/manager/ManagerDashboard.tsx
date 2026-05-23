@@ -137,7 +137,7 @@ const STATUT_ANOMALIE: Record<string, { label: string; next: string; dot: string
 
 // ─── Dashboard principal ─────────────────────────────────────────────────────
 export default function ManagerDashboard() {
-  const { profile, signOut, refreshProfile } = useAuth()
+  const { profile, signOut, refreshProfile, session } = useAuth()
   const [avatarLoading, setAvatarLoading] = useState(false)
 
   async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -204,6 +204,9 @@ export default function ManagerDashboard() {
   const [showPwdConfirm, setShowPwdConfirm] = useState(false)
   const [pwdLoading, setPwdLoading]     = useState(false)
   const [pwdMsg, setPwdMsg]             = useState<{ type: 'ok' | 'err'; text: string } | null>(null)
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
+  const [deleteLoading, setDeleteLoading]     = useState(false)
+  const [deleteError, setDeleteError]         = useState<string | null>(null)
   const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
   const { prefs: notifPrefs, toggle: toggleNotifPref } = useNotifPreferences(pushStatus === 'subscribed')
   const { notifications, unreadCount, markAllRead, markRead, clearAll } = useNotifications()
@@ -981,6 +984,18 @@ export default function ManagerDashboard() {
                 >
                   Se déconnecter
                 </button>
+
+                {/* Zone dangereuse — desktop */}
+                <div className="hidden md:block border border-red-100 rounded-2xl p-4 space-y-2">
+                  <p className="text-xs font-bold text-red-400 uppercase tracking-widest">Zone dangereuse</p>
+                  <p className="text-xs text-slate-400">La suppression est définitive. Toutes vos données seront effacées.</p>
+                  <button
+                    onClick={() => { setShowDeleteModal(true); setDeleteError(null) }}
+                    className="w-full py-3 rounded-xl border border-red-200 text-red-600 font-semibold text-sm hover:bg-red-50 transition-colors"
+                  >
+                    Supprimer mon compte
+                  </button>
+                </div>
               </div>
 
               {/* ── Colonne droite — Plan + Préférences notifications ───── */}
@@ -1043,6 +1058,73 @@ export default function ManagerDashboard() {
             >
               Se déconnecter
             </button>
+
+            {/* Zone dangereuse — mobile */}
+            <div className="md:hidden border border-red-100 rounded-2xl p-4 space-y-2">
+              <p className="text-xs font-bold text-red-400 uppercase tracking-widest">Zone dangereuse</p>
+              <p className="text-xs text-slate-400">La suppression est définitive. Toutes vos données seront effacées.</p>
+              <button
+                onClick={() => { setShowDeleteModal(true); setDeleteError(null) }}
+                className="w-full py-3 rounded-xl border border-red-200 text-red-600 font-semibold text-sm hover:bg-red-50 transition-colors"
+              >
+                Supprimer mon compte
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Modal : suppression compte ────────────────────────────────────── */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm px-4"
+            onClick={e => e.target === e.currentTarget && setShowDeleteModal(false)}
+          >
+            <div className="bg-white rounded-2xl w-full max-w-sm p-6 space-y-4" style={{ boxShadow: '0 20px 60px rgba(0,0,0,0.20)' }}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-50 rounded-xl">
+                  <svg className="w-5 h-5 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                </div>
+                <p className="font-bold text-slate-900">Supprimer mon compte</p>
+              </div>
+              <p className="text-sm text-slate-600 leading-relaxed">
+                Cette action est <strong>irréversible</strong>. Votre profil, vos chantiers, vos rapports et toutes vos données personnelles seront définitivement supprimés.
+              </p>
+              {deleteError && <p className="text-sm text-red-600 bg-red-50 rounded-xl px-3 py-2">{deleteError}</p>}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowDeleteModal(false)}
+                  disabled={deleteLoading}
+                  className="flex-1 py-3 rounded-xl border border-slate-200 text-slate-600 font-semibold text-sm hover:bg-slate-50 transition-colors"
+                >
+                  Annuler
+                </button>
+                <button
+                  onClick={async () => {
+                    setDeleteLoading(true)
+                    setDeleteError(null)
+                    try {
+                      const res = await fetch('/api/delete-account', {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${session?.access_token ?? ''}` },
+                      })
+                      if (!res.ok) {
+                        const d = await res.json() as { error?: string }
+                        setDeleteError(d.error ?? 'Erreur inconnue')
+                        setDeleteLoading(false)
+                        return
+                      }
+                      signOut()
+                    } catch {
+                      setDeleteError('Impossible de contacter le serveur.')
+                      setDeleteLoading(false)
+                    }
+                  }}
+                  disabled={deleteLoading}
+                  className="flex-1 py-3 rounded-xl bg-red-600 text-white font-semibold text-sm hover:bg-red-700 transition-colors disabled:opacity-60"
+                >
+                  {deleteLoading ? 'Suppression...' : 'Confirmer'}
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
