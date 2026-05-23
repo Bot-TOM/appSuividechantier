@@ -93,7 +93,11 @@ export default function CreateChantier() {
       .single()
 
     if (errChantier || !chantier) {
-      setError('Erreur lors de la création du chantier')
+      if (errChantier?.message === 'plan_limit_chantiers') {
+        setError('Limite du plan Starter atteinte (3 chantiers max). Passez au plan Pro depuis votre tableau de bord.')
+      } else {
+        setError('Erreur lors de la création du chantier')
+      }
       setSubmitting(false)
       return
     }

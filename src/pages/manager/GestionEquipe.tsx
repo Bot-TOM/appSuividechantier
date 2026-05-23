@@ -186,7 +186,7 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
       return
     }
 
-    await supabase.from('profiles').upsert({
+    const { error: errProfile } = await supabase.from('profiles').upsert({
       id: data.user.id,
       email: form.email,
       full_name: form.full_name,
@@ -194,6 +194,16 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
       poste: form.poste || 'Technicien',
       entreprise_id: profile?.entreprise_id,
     })
+
+    if (errProfile) {
+      if (errProfile.message === 'plan_limit_users') {
+        setUpgradeOpen(true)
+      } else {
+        setError('Erreur lors de la création du profil')
+      }
+      setSubmitting(false)
+      return
+    }
 
     setSuccess(`Compte créé pour ${form.full_name}`)
     setForm({ full_name: '', email: '', password: '', poste: 'Technicien' })
