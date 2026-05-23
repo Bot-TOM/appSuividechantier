@@ -110,6 +110,7 @@ export interface Chantier {
   date_prevue: string
   date_fin_prevue?: string | null
   statut: ChantierStatut
+  vt_id?: string | null
   created_at: string
   updated_at: string
 }

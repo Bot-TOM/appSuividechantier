@@ -1,5 +1,6 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
+import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantierDetail } from '@/hooks/useChantierDetail'
 import { useAnomalies } from '@/hooks/useAnomalies'
@@ -8,7 +9,7 @@ import { useAutoControle, initChecks } from '@/hooks/useAutoControle'
 import { useDocuments } from '@/hooks/useDocuments'
 import { useRapports } from '@/hooks/useRapports'
 import type { RapportPhoto } from '@/hooks/useRapports'
-import { ChantierStatut, Etape, EtapePhoto, Note, AutoControleCheck, isManagerRole } from '@/types'
+import { ChantierStatut, Etape, EtapePhoto, Note, AutoControleCheck, isManagerRole, VisiteTechnique } from '@/types'
 import { PdfOptions, PDF_OPTIONS_DEFAULT } from '@/components/pdf/ChantierPDF'
 import AnomaliesTabContent from '@/components/anomalies/AnomaliesTabContent'
 import ChatTab from '@/components/chat/ChatTab'
@@ -18,7 +19,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { usePlan } from '@/hooks/usePlan'
 import UpgradeModal from '@/components/upgrade/UpgradeModal'
 
-type InnerTab = 'etapes' | 'rapport' | 'chat' | 'docs' | 'notes' | 'materiel' | 'anomalies' | 'autocontrole' | 'infos'
+type InnerTab = 'etapes' | 'rapport' | 'chat' | 'docs' | 'notes' | 'materiel' | 'anomalies' | 'autocontrole' | 'vt' | 'infos'
 
 // ─── Sélecteur statut chantier ────────────────────────────────────────────────
 const STATUTS_CHANTIER: { value: ChantierStatut; label: string; dot: string; bg: string }[] = [
@@ -399,7 +400,7 @@ export default function ChantierDetail() {
   const [searchParams] = useSearchParams()
   const [activeTab, setActiveTab] = useState<InnerTab>(() => {
     const t = searchParams.get('tab')
-    return (t && ['etapes','rapport','chat','docs','notes','materiel','anomalies','autocontrole','infos'].includes(t))
+    return (t && ['etapes','rapport','chat','docs','notes','materiel','anomalies','autocontrole','vt','infos'].includes(t))
       ? t as InnerTab
       : 'etapes'
   })
@@ -433,6 +434,49 @@ export default function ChantierDetail() {
   const [pdfOptions, setPdfOptions]         = useState<PdfOptions>(PDF_OPTIONS_DEFAULT)
   const [confirmDelete, setConfirmDelete]   = useState(false)
   const [deleting, setDeleting]         = useState(false)
+
+  // ── VT liée ─────────────────────────────────────────────────────────────────
+  const [linkedVT, setLinkedVT]         = useState<VisiteTechnique | null>(null)
+  const [vtLoading, setVtLoading]       = useState(false)
+  const [showVTModal, setShowVTModal]   = useState(false)
+  const [availableVTs, setAvailableVTs] = useState<VisiteTechnique[]>([])
+  const [loadingVTs, setLoadingVTs]     = useState(false)
+  const [savingVT, setSavingVT]         = useState(false)
+
+  useEffect(() => {
+    if (!chantier?.vt_id) { setLinkedVT(null); return }
+    setVtLoading(true)
+    supabase.from('visites_techniques').select('*').eq('id', chantier.vt_id).single()
+      .then(async ({ data }) => {
+        if (!data) { setLinkedVT(null); setVtLoading(false); return }
+        const { data: p } = await supabase.from('profiles').select('id, full_name').eq('id', (data as VisiteTechnique).technicien_id).single()
+        setLinkedVT({ ...(data as VisiteTechnique), profiles: p ?? null })
+        setVtLoading(false)
+      })
+  }, [chantier?.vt_id])
+
+  const handleOpenVTModal = useCallback(async () => {
+    setLoadingVTs(true)
+    setShowVTModal(true)
+    const { data } = await supabase
+      .from('visites_techniques')
+      .select('*')
+      .in('statut', ['complete', 'valide'])
+      .order('created_at', { ascending: false })
+    setAvailableVTs((data ?? []) as VisiteTechnique[])
+    setLoadingVTs(false)
+  }, [])
+
+  const handleSelectVT = useCallback(async (vtId: string) => {
+    setSavingVT(true)
+    await supabase.from('chantiers').update({ vt_id: vtId }).eq('id', id!)
+    setShowVTModal(false)
+    setSavingVT(false)
+  }, [id])
+
+  const handleUnlinkVT = useCallback(async () => {
+    await supabase.from('chantiers').update({ vt_id: null }).eq('id', id!)
+  }, [id])
 
   useEffect(() => {
     if (autocontrole) {
@@ -823,6 +867,7 @@ export default function ChantierDetail() {
               { key: 'materiel',    label: 'Matériel',    badge: matTotal > 0 ? matChecked === matTotal ? undefined : matTotal - matChecked : undefined },
               { key: 'anomalies',   label: 'Anomalies',   badge: anomalies.filter(a => a.statut !== 'resolu').length || undefined },
               { key: 'autocontrole', label: 'Contrôle',   badge: acIsSigne ? undefined : acTotalChecked > 0 ? acTotalChecked : undefined },
+              { key: 'vt',          label: 'VT',          badge: chantier?.vt_id ? undefined : undefined },
               { key: 'infos',       label: 'Infos' },
             ].filter(Boolean) as { key: InnerTab; label: string; badge?: number }[]).map(tab => (
               <button
@@ -1499,6 +1544,136 @@ export default function ChantierDetail() {
                   style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}>
                   {acSigning ? 'Signature...' : `Signer la fiche (${acTotalChecked}/${acChecks.length} points)`}
                 </button>
+              </div>
+            )}
+          </>
+        )}
+
+        {/* ── VT ────────────────────────────────────────────────────────────── */}
+        {activeTab === 'vt' && (
+          <>
+            {vtLoading ? (
+              <div className="flex justify-center py-12">
+                <svg className="w-6 h-6 text-orange-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                </svg>
+              </div>
+            ) : linkedVT ? (
+              <section className="bg-white rounded-2xl p-4 space-y-4" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                <div className="flex items-center justify-between">
+                  <h2 className="font-semibold text-gray-900 text-sm">Visite Technique associée</h2>
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${
+                    linkedVT.statut === 'valide'   ? 'bg-green-50 text-green-600' :
+                    linkedVT.statut === 'complete' ? 'bg-blue-50 text-blue-600'   :
+                    'bg-gray-100 text-gray-500'
+                  }`}>
+                    {linkedVT.statut === 'valide' ? '✓ Validée' : linkedVT.statut === 'complete' ? 'Complète' : 'Brouillon'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  {[
+                    { label: 'Type', value: linkedVT.type === 'btoc' ? 'Particulier (BtoC)' : 'Professionnel (BtoB)' },
+                    { label: 'Date', value: new Date(linkedVT.created_at).toLocaleDateString('fr-FR') },
+                    ...(linkedVT.client_nom     ? [{ label: 'Client',  value: linkedVT.client_nom }]     : []),
+                    ...(linkedVT.client_adresse ? [{ label: 'Adresse', value: linkedVT.client_adresse }] : []),
+                    ...(linkedVT.profiles?.full_name ? [{ label: 'Technicien', value: linkedVT.profiles.full_name }] : []),
+                  ].map(({ label, value }) => (
+                    <div key={label} className="bg-gray-50 rounded-xl px-3 py-2.5">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide mb-0.5">{label}</p>
+                      <p className="text-sm font-semibold text-gray-800 leading-snug">{value}</p>
+                    </div>
+                  ))}
+                </div>
+                <button
+                  onClick={() => navigate(`/vt/${linkedVT.id}`)}
+                  className="w-full flex items-center justify-center gap-2 text-white font-semibold py-3.5 rounded-2xl text-sm transition-all"
+                  style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.25)' }}
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Voir la fiche complète
+                </button>
+                {isManager && (
+                  <button
+                    onClick={handleUnlinkVT}
+                    className="w-full flex items-center justify-center gap-2 border border-gray-200 text-gray-500 font-medium py-3 rounded-2xl text-sm hover:bg-red-50 hover:text-red-500 hover:border-red-200 transition-colors"
+                  >
+                    Dissocier la VT
+                  </button>
+                )}
+              </section>
+            ) : (
+              <section className="bg-white rounded-2xl p-8 flex flex-col items-center gap-4 text-center" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                <div className="w-14 h-14 rounded-2xl bg-orange-50 flex items-center justify-center">
+                  <svg className="w-7 h-7 text-orange-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-semibold text-gray-800 text-sm">Aucune VT associée</p>
+                  <p className="text-xs text-gray-400 mt-1">Associez la visite technique réalisée avant ce chantier</p>
+                </div>
+                {isManager && (
+                  <button
+                    onClick={handleOpenVTModal}
+                    className="flex items-center gap-2 text-white font-semibold px-5 py-3 rounded-2xl text-sm transition-all"
+                    style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.25)' }}
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1" />
+                    </svg>
+                    Associer une VT
+                  </button>
+                )}
+              </section>
+            )}
+
+            {/* ── Modale sélection VT ──────────────────────────────────────── */}
+            {showVTModal && (
+              <div className="fixed inset-0 z-50 bg-black/50 flex items-end justify-center" onClick={() => setShowVTModal(false)}>
+                <div className="bg-white rounded-t-3xl w-full max-w-lg p-6 space-y-4" onClick={e => e.stopPropagation()}
+                  style={{ maxHeight: '75vh', display: 'flex', flexDirection: 'column', paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}>
+                  <div className="flex items-center justify-between flex-shrink-0">
+                    <h3 className="font-bold text-gray-900">Choisir une VT</h3>
+                    <button onClick={() => setShowVTModal(false)} className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100">✕</button>
+                  </div>
+                  {loadingVTs ? (
+                    <div className="flex justify-center py-8">
+                      <svg className="w-6 h-6 text-orange-400 animate-spin" fill="none" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z"/>
+                      </svg>
+                    </div>
+                  ) : availableVTs.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center py-8">Aucune VT complète ou validée disponible</p>
+                  ) : (
+                    <div className="overflow-y-auto flex-1 space-y-2 pr-1">
+                      {availableVTs.map(vt => (
+                        <button
+                          key={vt.id}
+                          disabled={savingVT}
+                          onClick={() => handleSelectVT(vt.id)}
+                          className="w-full text-left p-4 rounded-2xl border border-gray-100 hover:border-orange-300 hover:bg-orange-50 transition-all disabled:opacity-50"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <p className="font-semibold text-gray-900 text-sm">
+                              {vt.client_nom ?? (vt.type === 'btoc' ? 'Particulier' : 'Professionnel')}
+                            </p>
+                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                              vt.statut === 'valide' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'
+                            }`}>
+                              {vt.statut === 'valide' ? '✓ Validée' : 'Complète'}
+                            </span>
+                          </div>
+                          {vt.client_adresse && <p className="text-xs text-gray-400">{vt.client_adresse}</p>}
+                          <p className="text-xs text-gray-400 mt-0.5">{new Date(vt.created_at).toLocaleDateString('fr-FR')}</p>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </>
