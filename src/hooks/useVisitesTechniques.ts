@@ -10,7 +10,7 @@ export function useVisitesTechniques() {
   const fetchAll = useCallback(async () => {
     const { data } = await supabase
       .from('visites_techniques')
-      .select('*, profiles(full_name, avatar_url)')
+      .select('*, profiles!visites_techniques_technicien_id_fkey(full_name, avatar_url)')
       .order('created_at', { ascending: false })
     setVts((data ?? []) as VisiteTechnique[])
     setLoading(false)
@@ -29,7 +29,7 @@ export function useVisiteTechnique(id: string) {
   const fetch = useCallback(async () => {
     const { data } = await supabase
       .from('visites_techniques')
-      .select('*, profiles(full_name, avatar_url)')
+      .select('*, profiles!visites_techniques_technicien_id_fkey(full_name, avatar_url)')
       .eq('id', id)
       .single()
     setVt(data as VisiteTechnique | null)
