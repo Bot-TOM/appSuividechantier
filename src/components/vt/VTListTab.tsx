@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import React, { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { ClipboardList, Plus } from 'lucide-react'
+import { ClipboardList, Plus, FileEdit, FileCheck, CheckCircle2, Search } from 'lucide-react'
 import { useVisitesTechniques } from '@/hooks/useVisitesTechniques'
 import Avatar from '@/components/Avatar'
 import { VTType, VTStatut } from '@/types'
@@ -12,8 +12,8 @@ const TYPE_COLOR: Record<VTType, string> = {
 }
 const STATUT_LABEL: Record<VTStatut, string> = {
   brouillon: 'Brouillon',
-  complete: 'Complété',
-  valide: 'Validé',
+  complete: 'Complète',
+  valide: 'Validée',
 }
 const STATUT_COLOR: Record<VTStatut, string> = {
   brouillon: 'bg-gray-100 text-gray-600',
@@ -24,31 +24,99 @@ const STATUT_COLOR: Record<VTStatut, string> = {
 export default function VTListTab({ userId: _userId, isManager: _isManager }: { userId: string; isManager: boolean }) {
   const { vts, loading } = useVisitesTechniques()
   const navigate = useNavigate()
-  const [filterType, setFilterType] = useState<VTType | 'tous'>('tous')
+  const [search, setSearch]           = useState('')
+  const [filterType, setFilterType]   = useState<VTType | 'tous'>('tous')
   const [filterStatut, setFilterStatut] = useState<VTStatut | 'tous'>('tous')
+
+  const kpis = [
+    {
+      label: 'Total VT',
+      value: vts.length,
+      sub: 'Sur la période',
+      border: 'border-l-slate-800',
+      icon: <ClipboardList className="w-5 h-5 text-slate-700" />,
+      iconBg: 'bg-slate-100',
+    },
+    {
+      label: 'Brouillons',
+      value: vts.filter(v => v.statut === 'brouillon').length,
+      sub: 'En cours de rédaction',
+      border: 'border-l-amber-400',
+      icon: <FileEdit className="w-5 h-5 text-amber-600" />,
+      iconBg: 'bg-amber-50',
+    },
+    {
+      label: 'Complètes',
+      value: vts.filter(v => v.statut === 'complete').length,
+      sub: 'En attente de validation',
+      border: 'border-l-blue-500',
+      icon: <FileCheck className="w-5 h-5 text-blue-600" />,
+      iconBg: 'bg-blue-50',
+    },
+    {
+      label: 'Validées',
+      value: vts.filter(v => v.statut === 'valide').length,
+      sub: 'Prêtes pour chantier',
+      border: 'border-l-emerald-500',
+      icon: <CheckCircle2 className="w-5 h-5 text-emerald-600" />,
+      iconBg: 'bg-emerald-50',
+    },
+  ]
 
   const filtered = vts.filter(v => {
     if (filterType !== 'tous' && v.type !== filterType) return false
     if (filterStatut !== 'tous' && v.statut !== filterStatut) return false
+    if (search.trim()) {
+      const q = search.toLowerCase()
+      if (
+        !v.client_nom?.toLowerCase().includes(q) &&
+        !v.client_adresse?.toLowerCase().includes(q) &&
+        !v.profiles?.full_name?.toLowerCase().includes(q)
+      ) return false
+    }
     return true
   })
 
   return (
     <div className="space-y-6 pb-8">
-      {/* En-tête */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-orange-50 rounded-xl">
-            <ClipboardList className="w-5 h-5 text-orange-600" />
+
+      {/* ── KPI Cards ────────────────────────────────────────────────────────── */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        {kpis.map((kpi, i) => (
+          <div
+            key={i}
+            className={`bg-white rounded-2xl p-6 shadow-sm border border-slate-100 border-l-4 ${kpi.border} hover:shadow-md hover:-translate-y-0.5 transition-all cursor-default relative overflow-hidden group`}
+          >
+            <div className="absolute -right-3 -bottom-3 opacity-[0.04] group-hover:scale-110 group-hover:-rotate-12 transition-all duration-500 pointer-events-none">
+              {React.cloneElement(kpi.icon as React.ReactElement, { className: 'w-28 h-28' })}
+            </div>
+            <div className="flex justify-between items-start mb-5 relative z-10">
+              <div className={`p-2.5 rounded-xl ${kpi.iconBg}`}>{kpi.icon}</div>
+            </div>
+            <div className="relative z-10">
+              <p className="text-4xl font-black text-slate-800 tracking-tight">{kpi.value}</p>
+              <h3 className="text-sm font-bold text-slate-700 mt-1">{kpi.label}</h3>
+              <p className="text-xs text-slate-400 font-medium mt-0.5">{kpi.sub}</p>
+            </div>
           </div>
-          <div>
-            <h2 className="font-bold text-lg text-slate-900">Visites Techniques</h2>
-            <p className="text-sm text-slate-500">{vts.length} visite{vts.length !== 1 ? 's' : ''} au total</p>
-          </div>
+        ))}
+      </div>
+
+      {/* ── Barre de recherche + bouton nouvelle VT ──────────────────────────── */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          <input
+            type="text"
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="Rechercher une VT (client, adresse, technicien)..."
+            className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-slate-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 placeholder-slate-400"
+          />
         </div>
         <button
           onClick={() => navigate('/vt/nouvelle')}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all"
+          className="flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl text-white text-sm font-semibold transition-all flex-shrink-0"
           style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 16px rgba(249,115,22,0.35)' }}
         >
           <Plus className="w-4 h-4" />
@@ -56,9 +124,8 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
         </button>
       </div>
 
-      {/* Filtres */}
+      {/* ── Filtres ──────────────────────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-3">
-        {/* Filtre type */}
         <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
           {(['tous', 'btoc', 'btob'] as const).map(t => (
             <button
@@ -72,8 +139,6 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
             </button>
           ))}
         </div>
-
-        {/* Filtre statut */}
         <div className="flex bg-slate-100 p-1 rounded-xl gap-1">
           {(['tous', 'brouillon', 'complete', 'valide'] as const).map(s => (
             <button
@@ -89,7 +154,7 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
         </div>
       </div>
 
-      {/* Liste */}
+      {/* ── Liste ────────────────────────────────────────────────────────────── */}
       {loading ? (
         <div className="flex items-center justify-center py-16 text-slate-400">
           <div className="w-6 h-6 border-2 border-orange-500 border-t-transparent rounded-full animate-spin mr-3" />
@@ -113,15 +178,12 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
               onClick={() => navigate(`/vt/${vt.id}`)}
               className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md hover:-translate-y-0.5 transition-all text-left relative overflow-hidden group"
             >
-              {/* Barre colorée en haut */}
               <div className={`absolute top-0 left-0 w-full h-1 ${
-                vt.statut === 'valide' ? 'bg-emerald-400' :
+                vt.statut === 'valide'   ? 'bg-emerald-400' :
                 vt.statut === 'complete' ? 'bg-blue-400' :
                 'bg-slate-200'
               }`} />
-
               <div className="p-5 pt-6">
-                {/* En-tête de la card */}
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-slate-900 text-base truncate group-hover:text-orange-600 transition-colors">
@@ -135,29 +197,19 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
                     {TYPE_LABEL[vt.type]}
                   </span>
                 </div>
-
-                {/* Méta */}
                 <div className="flex items-center justify-between mt-4 pt-3 border-t border-slate-50">
-                  {/* Technicien */}
                   {vt.profiles && (
                     <div className="flex items-center gap-2">
-                      <Avatar
-                        name={vt.profiles.full_name}
-                        avatarUrl={vt.profiles.avatar_url}
-                        size="sm"
-                      />
+                      <Avatar name={vt.profiles.full_name} avatarUrl={vt.profiles.avatar_url} size="sm" />
                       <span className="text-xs text-slate-600 font-medium truncate max-w-[100px]">
                         {vt.profiles.full_name}
                       </span>
                     </div>
                   )}
-
                   <div className="flex items-center gap-2 ml-auto">
-                    {/* Date */}
                     <span className="text-xs text-slate-400">
                       {new Date(vt.created_at).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: '2-digit' })}
                     </span>
-                    {/* Badge statut */}
                     <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${STATUT_COLOR[vt.statut]}`}>
                       {STATUT_LABEL[vt.statut]}
                     </span>
