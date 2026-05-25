@@ -94,7 +94,12 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
   const days = displayMode === 'semaine' ? getWeekDays(weekStart) : monthDays
 
   const { entries, loading, upsert, upsertBulk } = usePlanning(planStart, planEnd)
-  const { entries: timeEntries, loading: timeLoading } = useTeamTimeEntries(weekStart, entrepriseId)
+  const { entries: timeEntries, loading: timeLoading, upsertForTech } = useTeamTimeEntries(weekStart, entrepriseId)
+
+  // Modale édition heures (manager)
+  type EditTimeModal = { techId: string; techName: string; date: string; arrivee: string; depart: string; pause: string; chantier_id: string | null }
+  const [editTimeModal, setEditTimeModal] = useState<EditTimeModal | null>(null)
+  const [savingTime, setSavingTime]       = useState(false)
 
   const [editCell, setEditCell]         = useState<{ techId: string; techName: string; date: string } | null>(null)
   const [editType, setEditType]         = useState<PlanningType>('libre')
@@ -988,7 +993,17 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
 
                           return (
                             <td key={date} className="p-2 align-middle">
-                              <div className={`h-[84px] w-full rounded-xl border p-3 flex flex-col justify-between transition-all group ${
+                              <div
+                                onClick={() => setEditTimeModal({
+                                  techId: person.id,
+                                  techName: person.full_name,
+                                  date,
+                                  arrivee: e.arrivee ?? '',
+                                  depart:  e.depart  ?? '',
+                                  pause:   e.pause != null ? String(e.pause) : '',
+                                  chantier_id: e.chantier_id ?? null,
+                                })}
+                                className={`h-[84px] w-full rounded-xl border p-3 flex flex-col justify-between transition-all group cursor-pointer ${
                                 isToday
                                   ? 'bg-orange-50/50 border-orange-200 hover:border-orange-400 hover:shadow-md hover:shadow-orange-500/10'
                                   : 'bg-white border-slate-200 hover:border-slate-300 hover:shadow-md'
@@ -1446,6 +1461,98 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                 className="flex-1 text-white font-semibold py-3 rounded-xl text-sm transition-all"
                 style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 Appliquer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale édition heures (manager) ──────────────────────────────── */}
+      {editTimeModal && (
+        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center bg-black/40 backdrop-blur-sm"
+          onClick={e => e.target === e.currentTarget && setEditTimeModal(null)}>
+          <div className="bg-white rounded-t-3xl md:rounded-2xl w-full md:max-w-sm p-6 space-y-4"
+            style={{ boxShadow: '0 -8px 40px rgba(0,0,0,0.15)' }}>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="font-bold text-gray-900">{editTimeModal.techName}</p>
+                <p className="text-sm text-gray-400">
+                  {new Date(editTimeModal.date + 'T00:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' })}
+                </p>
+              </div>
+              <button onClick={() => setEditTimeModal(null)}
+                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 hover:bg-gray-200 transition-colors text-sm">✕</button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">Arrivée</label>
+                <input type="time" value={editTimeModal.arrivee}
+                  onChange={e => setEditTimeModal(m => m ? { ...m, arrivee: e.target.value } : m)}
+                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">Départ</label>
+                <input type="time" value={editTimeModal.depart}
+                  onChange={e => setEditTimeModal(m => m ? { ...m, depart: e.target.value } : m)}
+                  className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">Pause (minutes)</label>
+              <input type="number" min="0" value={editTimeModal.pause}
+                onChange={e => setEditTimeModal(m => m ? { ...m, pause: e.target.value } : m)}
+                placeholder="0"
+                className="w-full px-3 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-orange-400" />
+            </div>
+
+            <div>
+              <label className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1.5 block">Chantier</label>
+              <div className="max-h-36 overflow-y-auto space-y-1 rounded-xl border border-gray-200 p-1">
+                <button
+                  onClick={() => setEditTimeModal(m => m ? { ...m, chantier_id: null } : m)}
+                  className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
+                    !editTimeModal.chantier_id ? 'bg-gray-100 text-gray-700 font-semibold' : 'hover:bg-gray-50 text-gray-500'
+                  }`}>
+                  — Aucun chantier
+                </button>
+                {chantiers.map(c => (
+                  <button key={c.id}
+                    onClick={() => setEditTimeModal(m => m ? { ...m, chantier_id: c.id } : m)}
+                    className={`w-full text-left px-3 py-2 rounded-lg text-xs transition-colors ${
+                      editTimeModal.chantier_id === c.id ? 'bg-blue-50 text-blue-700 font-semibold' : 'hover:bg-gray-50 text-gray-700'
+                    }`}>
+                    <span className="font-medium">{c.client_nom}</span>
+                    <span className="text-gray-400"> · {c.nom}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-1">
+              <button onClick={() => setEditTimeModal(null)}
+                className="flex-1 border border-gray-200 text-gray-600 font-semibold py-3 rounded-xl hover:bg-gray-50 transition-colors text-sm">
+                Annuler
+              </button>
+              <button
+                disabled={savingTime}
+                onClick={async () => {
+                  if (!editTimeModal) return
+                  setSavingTime(true)
+                  await upsertForTech(editTimeModal.techId, editTimeModal.date, {
+                    arrivee:     editTimeModal.arrivee   || null,
+                    depart:      editTimeModal.depart    || null,
+                    pause:       editTimeModal.pause.trim() ? parseInt(editTimeModal.pause) : null,
+                    chantier_id: editTimeModal.chantier_id,
+                  })
+                  setSavingTime(false)
+                  setEditTimeModal(null)
+                }}
+                className="flex-1 text-white font-semibold py-3 rounded-xl transition-all text-sm disabled:opacity-60"
+                style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
+                {savingTime ? 'Enregistrement...' : 'Enregistrer'}
               </button>
             </div>
           </div>

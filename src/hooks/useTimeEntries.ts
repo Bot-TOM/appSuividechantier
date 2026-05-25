@@ -95,47 +95,64 @@ export function useMyTimeEntries(weekStart: string) {
   return { entries, loading, upsert }
 }
 
-// Hook manager — toutes les entrées de l'équipe (lecture seule)
+// Hook manager — toutes les entrées de l'équipe + upsert au nom d'un tech
 export function useTeamTimeEntries(weekStart: string, entrepriseId?: string) {
   const [entries, setEntries] = useState<TimeEntry[]>([])
   const [loading, setLoading] = useState(true)
 
   const weekEnd = getWeekDays(weekStart)[6]
 
-  useEffect(() => {
+  const fetchEntries = useCallback(async () => {
     setLoading(true)
-    const run = async () => {
-      // Si on filtre par entreprise, on récupère d'abord les IDs des techs de cette entreprise
-      if (entrepriseId) {
-        const { data: techProfiles } = await supabase
-          .from('profiles')
-          .select('id')
-          .eq('entreprise_id', entrepriseId)
-        const techIds = (techProfiles ?? []).map((p: { id: string }) => p.id)
-        if (techIds.length === 0) {
-          setEntries([])
-          setLoading(false)
-          return
-        }
-        const { data } = await supabase
-          .from('time_entries')
-          .select('*')
-          .gte('date', weekStart)
-          .lte('date', weekEnd)
-          .in('technicien_id', techIds)
-        setEntries((data ?? []).map(mapRow))
-      } else {
-        const { data } = await supabase
-          .from('time_entries')
-          .select('*')
-          .gte('date', weekStart)
-          .lte('date', weekEnd)
-        setEntries((data ?? []).map(mapRow))
-      }
-      setLoading(false)
+    if (entrepriseId) {
+      const { data: techProfiles } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('entreprise_id', entrepriseId)
+      const techIds = (techProfiles ?? []).map((p: { id: string }) => p.id)
+      if (techIds.length === 0) { setEntries([]); setLoading(false); return }
+      const { data } = await supabase
+        .from('time_entries')
+        .select('*')
+        .gte('date', weekStart)
+        .lte('date', weekEnd)
+        .in('technicien_id', techIds)
+      setEntries((data ?? []).map(mapRow))
+    } else {
+      const { data } = await supabase
+        .from('time_entries')
+        .select('*')
+        .gte('date', weekStart)
+        .lte('date', weekEnd)
+      setEntries((data ?? []).map(mapRow))
     }
-    run()
+    setLoading(false)
   }, [weekStart, weekEnd, entrepriseId])
 
-  return { entries, loading }
+  useEffect(() => { fetchEntries() }, [fetchEntries])
+
+  /** Permet au manager de modifier une entrée d'un technicien */
+  const upsertForTech = useCallback(async (
+    technicienId: string,
+    date: string,
+    updates: { arrivee?: string | null; depart?: string | null; pause?: number | null; chantier_id?: string | null },
+  ) => {
+    const existing = entries.find(e => e.technicien_id === technicienId && e.date === date)
+    await supabase
+      .from('time_entries')
+      .upsert(
+        {
+          technicien_id: technicienId,
+          date,
+          heure_arrivee: updates.arrivee     !== undefined ? updates.arrivee     : (existing?.arrivee     ?? null),
+          heure_depart:  updates.depart      !== undefined ? updates.depart      : (existing?.depart      ?? null),
+          pause_minutes: updates.pause       !== undefined ? (updates.pause ?? 0)  : (existing?.pause       ?? 0),
+          chantier_id:   updates.chantier_id !== undefined ? updates.chantier_id : (existing?.chantier_id ?? null),
+        },
+        { onConflict: 'technicien_id,date' },
+      )
+    await fetchEntries()
+  }, [entries, fetchEntries])
+
+  return { entries, loading, upsertForTech }
 }
