@@ -6,7 +6,7 @@ import { useChantierDetail } from '@/hooks/useChantierDetail'
 import { useAnomalies } from '@/hooks/useAnomalies'
 import { useChecklistMateriel } from '@/hooks/useChecklistMateriel'
 import { useAutoControle, initChecks } from '@/hooks/useAutoControle'
-import { useDocuments } from '@/hooks/useDocuments'
+import { useDocuments, type ChantierDocument } from '@/hooks/useDocuments'
 import { useRapports } from '@/hooks/useRapports'
 import type { RapportPhoto } from '@/hooks/useRapports'
 import { ChantierStatut, Etape, EtapePhoto, Note, AutoControleCheck, isManagerRole, VisiteTechnique } from '@/types'
@@ -434,6 +434,7 @@ export default function ChantierDetail() {
   const [pdfOptions, setPdfOptions]         = useState<PdfOptions>(PDF_OPTIONS_DEFAULT)
   const [confirmDelete, setConfirmDelete]   = useState(false)
   const [deleting, setDeleting]         = useState(false)
+  const [docToDelete, setDocToDelete]   = useState<ChantierDocument | null>(null)
 
   // ── VT liée ─────────────────────────────────────────────────────────────────
   const [linkedVT, setLinkedVT]         = useState<VisiteTechnique | null>(null)
@@ -1090,7 +1091,7 @@ export default function ChantierDetail() {
                           </svg>
                         </a>
                         {(isManager || doc.uploaded_by === profile?.id) && (
-                          <button onClick={() => deleteDocument(doc)}
+                          <button onClick={() => setDocToDelete(doc)}
                             className="w-8 h-8 flex items-center justify-center rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
@@ -1870,6 +1871,36 @@ export default function ChantierDetail() {
                 className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors disabled:opacity-60"
               >
                 {deleting ? 'Suppression…' : 'Supprimer'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modale confirmation suppression document ─────────────────────── */}
+      {docToDelete && (
+        <div className="fixed inset-0 z-50 bg-black/50 flex items-center justify-center px-6" onClick={() => setDocToDelete(null)}>
+          <div className="bg-white rounded-2xl p-6 w-full max-w-sm shadow-xl" onClick={e => e.stopPropagation()}>
+            <div className="w-12 h-12 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+              <svg className="w-6 h-6 text-red-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+              </svg>
+            </div>
+            <h3 className="font-bold text-gray-900 text-lg mb-1 text-center">Supprimer ce document ?</h3>
+            <p className="text-gray-500 text-sm mb-1 text-center font-medium">{docToDelete.nom}</p>
+            <p className="text-gray-400 text-xs mb-6 text-center">Cette action est irréversible.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDocToDelete(null)}
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-gray-600 font-medium text-sm hover:bg-gray-50 transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={async () => { await deleteDocument(docToDelete); setDocToDelete(null) }}
+                className="flex-1 py-2.5 rounded-xl bg-red-500 text-white font-semibold text-sm hover:bg-red-600 transition-colors"
+              >
+                Supprimer
               </button>
             </div>
           </div>
