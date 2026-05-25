@@ -21,7 +21,6 @@ import { usePlan } from '@/hooks/usePlan'
 import UpgradeModal from '@/components/upgrade/UpgradeModal'
 import Avatar from '@/components/Avatar'
 import { Coffee, Clock, ArrowRight } from 'lucide-react'
-import { getChantierColor } from '@/lib/chantierColors'
 
 const PT: Record<PlanningType, { label: string; bg: string; text: string; border: string }> = {
   chantier:          { label: 'Chantier',          bg: 'bg-blue-50',    text: 'text-blue-600',   border: 'border-blue-200'   },
@@ -630,9 +629,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                           let note: string | null = null
 
                           if (entry && entry.type !== 'libre' && PT[entry.type]) {
-                            const pt = entry.type === 'chantier' && entry.chantier_id
-                              ? { ...PT[entry.type], ...getChantierColor(entry.chantier_id, chantiers.map(c => c.id)) }
-                              : PT[entry.type]
+                            const pt = PT[entry.type]
                             bg = pt.bg; textColor = pt.text; border = pt.border
                             label = PT[entry.type].label; note = entry.label
                           } else if (!entry && isFerie) {
@@ -801,9 +798,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                             let note: string | null = null
 
                             if (entry && entry.type !== 'libre' && PT[entry.type]) {
-                              const pt = entry.type === 'chantier' && entry.chantier_id
-                                ? { ...PT[entry.type], ...getChantierColor(entry.chantier_id, chantiers.map(c => c.id)) }
-                                : PT[entry.type]
+                              const pt = PT[entry.type]
                               bg = pt.bg; textColor = pt.text; border = pt.border
                               label = PT[entry.type].label; note = entry.label
                             } else if (!entry && isFerie) {
