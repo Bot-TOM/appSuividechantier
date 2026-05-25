@@ -1286,8 +1286,8 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                           ? 'bg-blue-50 text-blue-700 font-semibold'
                           : 'hover:bg-gray-50 text-gray-700'
                       }`}>
-                      <span className="font-medium">{c.client_nom}</span>
-                      <span className="text-gray-400"> · {c.nom}</span>
+                      <span className="font-medium">{c.nom}</span>
+                      <span className="text-gray-400"> · {c.client_nom}</span>
                     </button>
                   ))}
                 </div>
@@ -1439,8 +1439,8 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                           ? 'bg-blue-50 text-blue-700 font-semibold'
                           : 'hover:bg-gray-50 text-gray-700'
                       }`}>
-                      <span className="font-medium">{c.client_nom}</span>
-                      <span className="text-gray-400"> · {c.nom}</span>
+                      <span className="font-medium">{c.nom}</span>
+                      <span className="text-gray-400"> · {c.client_nom}</span>
                     </button>
                   ))}
                 </div>
