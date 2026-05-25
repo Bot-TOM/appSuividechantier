@@ -77,13 +77,10 @@ function ChantierCard({ chantier, pct, colorIdx, onClick }: { chantier: Chantier
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group flex flex-col justify-between relative overflow-hidden cursor-pointer border-l-4"
+      className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group flex flex-col justify-between cursor-pointer border-l-4"
       style={{ borderLeftColor: color.color }}
     >
-      {/* Barre colorée en haut selon le statut */}
-      <div className={`absolute top-0 left-4 right-0 h-1 ${STATUT_TOP[chantier.statut]}`} />
-
-      <div className="p-6 pt-7">
+      <div className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div className="min-w-0 flex-1">
             <h3 className="font-bold text-lg text-slate-900 group-hover:text-orange-600 transition-colors truncate">{chantier.nom}</h3>
