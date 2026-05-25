@@ -21,26 +21,7 @@ import { usePlan } from '@/hooks/usePlan'
 import UpgradeModal from '@/components/upgrade/UpgradeModal'
 import Avatar from '@/components/Avatar'
 import { Coffee, Clock, ArrowRight } from 'lucide-react'
-
-// ─── Couleurs par type ────────────────────────────────────────────────────────
-// ─── Palette couleurs par chantier (déterministe par index) ──────────────────
-const CHANTIER_PALETTE: Array<{ bg: string; text: string; border: string }> = [
-  { bg: 'bg-blue-50',    text: 'text-blue-700',    border: 'border-blue-200'    },
-  { bg: 'bg-emerald-50', text: 'text-emerald-700',  border: 'border-emerald-200' },
-  { bg: 'bg-purple-50',  text: 'text-purple-700',   border: 'border-purple-200'  },
-  { bg: 'bg-rose-50',    text: 'text-rose-700',     border: 'border-rose-200'    },
-  { bg: 'bg-indigo-50',  text: 'text-indigo-700',   border: 'border-indigo-200'  },
-  { bg: 'bg-teal-50',    text: 'text-teal-700',     border: 'border-teal-200'    },
-  { bg: 'bg-cyan-50',    text: 'text-cyan-700',     border: 'border-cyan-200'    },
-  { bg: 'bg-pink-50',    text: 'text-pink-700',     border: 'border-pink-200'    },
-  { bg: 'bg-lime-50',    text: 'text-lime-700',     border: 'border-lime-200'    },
-  { bg: 'bg-sky-50',     text: 'text-sky-700',      border: 'border-sky-200'     },
-]
-
-function getChantierColor(chantierId: string, chantierIds: string[]) {
-  const idx = chantierIds.indexOf(chantierId)
-  return CHANTIER_PALETTE[(idx < 0 ? 0 : idx) % CHANTIER_PALETTE.length]
-}
+import { getChantierColor } from '@/lib/chantierColors'
 
 const PT: Record<PlanningType, { label: string; bg: string; text: string; border: string }> = {
   chantier:          { label: 'Chantier',          bg: 'bg-blue-50',    text: 'text-blue-600',   border: 'border-blue-200'   },

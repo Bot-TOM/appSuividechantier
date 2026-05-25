@@ -25,6 +25,7 @@ import { usePlan } from '@/hooks/usePlan'
 import UpgradeModal, { UpgradeReason } from '@/components/upgrade/UpgradeModal'
 import PlanSection from '@/components/upgrade/PlanSection'
 import OnboardingModal from '@/components/onboarding/OnboardingModal'
+import { getChantierColorByIndex } from '@/lib/chantierColors'
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
 type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat' | 'vt'
@@ -71,14 +72,16 @@ const STATUT_BADGE: Record<ChantierStatut, string> = {
 }
 
 // ─── Carte chantier ──────────────────────────────────────────────────────────
-function ChantierCard({ chantier, pct, onClick }: { chantier: Chantier; pct: number; onClick: () => void }) {
+function ChantierCard({ chantier, pct, colorIdx, onClick }: { chantier: Chantier; pct: number; colorIdx: number; onClick: () => void }) {
+  const color = getChantierColorByIndex(colorIdx)
   return (
     <div
       onClick={onClick}
-      className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group flex flex-col justify-between relative overflow-hidden cursor-pointer"
+      className="bg-white rounded-2xl shadow-sm border border-slate-100 hover:shadow-md transition-all group flex flex-col justify-between relative overflow-hidden cursor-pointer border-l-4"
+      style={{ borderLeftColor: color.color }}
     >
       {/* Barre colorée en haut selon le statut */}
-      <div className={`absolute top-0 left-0 w-full h-1 ${STATUT_TOP[chantier.statut]}`} />
+      <div className={`absolute top-0 left-4 right-0 h-1 ${STATUT_TOP[chantier.statut]}`} />
 
       <div className="p-6 pt-7">
         <div className="flex justify-between items-start mb-4">
@@ -1354,11 +1357,12 @@ export default function ManagerDashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 pb-8">
-            {chantiersFiltres.map(c => (
+            {chantiersFiltres.map((c, idx) => (
               <ChantierCard
                 key={c.id}
                 chantier={c}
                 pct={progression[c.id]?.pct ?? 0}
+                colorIdx={idx}
                 onClick={() => navigate(`/chantier/${c.id}`)}
               />
             ))}
