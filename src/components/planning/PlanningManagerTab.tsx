@@ -726,18 +726,18 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
               </div>
             ) : (
               <div
-                className="bg-white rounded-2xl overflow-hidden overflow-x-auto"
-                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+                className="bg-white rounded-2xl overflow-auto"
+                style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)', maxHeight: 'calc(100vh - 260px)' }}>
                 <table
                   className="w-full border-collapse"
                   style={{ minWidth: `${180 + sorted.length * 120}px` }}>
                   <thead>
                     <tr className="border-b border-gray-100 bg-slate-50/60">
-                      <th className="text-left px-5 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest sticky left-0 bg-slate-50/60 z-10 w-40">
+                      <th className="text-left px-5 py-4 text-xs font-bold text-slate-400 uppercase tracking-widest sticky left-0 top-0 bg-slate-50/60 z-30 w-40">
                         Jour
                       </th>
                       {sorted.map(person => (
-                        <th key={person.id} className="px-3 py-4 text-center border-l border-slate-100/60" style={{ minWidth: 110 }}>
+                        <th key={person.id} className="px-3 py-4 text-center border-l border-slate-100/60 sticky top-0 bg-slate-50/60 z-20" style={{ minWidth: 110 }}>
                           <div className="flex flex-col items-center gap-2">
                             <Avatar name={person.full_name} avatarUrl={person.avatar_url} size="sm" />
                             <p className="text-xs font-bold text-slate-800 leading-tight">
