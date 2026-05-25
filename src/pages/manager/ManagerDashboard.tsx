@@ -55,13 +55,6 @@ const STATUT_LABEL: Record<ChantierStatut, string> = {
 }
 
 
-const STATUT_TOP: Record<ChantierStatut, string> = {
-  planifie:   'bg-purple-400',
-  en_attente: 'bg-slate-300',
-  en_cours:   'bg-blue-400',
-  termine:    'bg-emerald-400',
-  bloque:     'bg-red-400',
-}
 
 const STATUT_BADGE: Record<ChantierStatut, string> = {
   planifie:   'text-purple-700 bg-purple-50 ring-purple-600/20',
