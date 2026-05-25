@@ -7,6 +7,8 @@ export interface ItemMateriel {
   nom: string
   checked: boolean
   ordre: number
+  quantite?: number | null
+  unite?: string | null
 }
 
 export function useChecklistMateriel(chantierId: string) {
@@ -39,9 +41,16 @@ export function useChecklistMateriel(chantierId: string) {
     fetch()
   }
 
-  async function addItem(nom: string) {
+  async function addItem(nom: string, quantite?: number | null, unite?: string | null) {
     const ordre = items.length + 1
-    await supabase.from('checklist_materiel').insert({ chantier_id: chantierId, nom: nom.trim(), checked: false, ordre })
+    await supabase.from('checklist_materiel').insert({
+      chantier_id: chantierId,
+      nom:         nom.trim(),
+      checked:     false,
+      ordre,
+      quantite:    quantite ?? null,
+      unite:       unite?.trim() || null,
+    })
     fetch()
   }
 

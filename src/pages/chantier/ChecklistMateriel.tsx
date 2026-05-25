@@ -7,14 +7,21 @@ export default function ChecklistMateriel() {
   const navigate = useNavigate()
   const { items, loading, total, checked, toggleItem, addItem, deleteItem } = useChecklistMateriel(chantierId!)
 
-  const [newItem, setNewItem] = useState('')
-  const [adding, setAdding]   = useState(false)
+  const [newItem, setNewItem]       = useState('')
+  const [newQty, setNewQty]         = useState('')
+  const [newUnite, setNewUnite]     = useState('U')
+  const [adding, setAdding]         = useState(false)
+
+  const UNITES = ['U', 'm', 'ml', 'm²', 'kg', 'g', 'L', 'sachet', 'boîte', 'rouleau']
 
   async function handleAdd() {
     if (!newItem.trim()) return
     setAdding(true)
-    await addItem(newItem)
+    const qty = newQty.trim() ? parseFloat(newQty.replace(',', '.')) : null
+    await addItem(newItem, isNaN(qty as number) ? null : qty, newUnite || null)
     setNewItem('')
+    setNewQty('')
+    setNewUnite('U')
     setAdding(false)
   }
 
@@ -93,6 +100,13 @@ export default function ChecklistMateriel() {
                   <span className={`flex-1 text-sm font-medium ${item.checked ? 'line-through text-gray-400' : 'text-gray-800'}`}>
                     {item.nom}
                   </span>
+                  {(item.quantite != null || item.unite) && (
+                    <span className={`text-xs font-semibold px-2 py-1 rounded-lg flex-shrink-0 ${
+                      item.checked ? 'bg-gray-100 text-gray-400' : 'bg-orange-50 text-orange-600'
+                    }`}>
+                      {item.quantite != null ? item.quantite : ''}{item.quantite != null && item.unite ? ' ' : ''}{item.unite ?? ''}
+                    </span>
+                  )}
                   <button
                     onClick={() => deleteItem(item.id)}
                     className="text-gray-300 hover:text-red-400 transition-colors w-8 h-8 flex items-center justify-center rounded-full hover:bg-red-50 text-lg leading-none"
@@ -106,23 +120,42 @@ export default function ChecklistMateriel() {
         </div>
 
         {/* ── Ajout article ─────────────────────────────────────────────────── */}
-        <div className="flex gap-2.5">
+        <div className="bg-white rounded-2xl p-4 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">Nouvel article</p>
           <input
             value={newItem}
             onChange={e => setNewItem(e.target.value)}
             onKeyDown={e => e.key === 'Enter' && handleAdd()}
-            placeholder="Ajouter un article..."
-            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
-            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+            placeholder="Désignation (ex : Câble solaire 4mm²)"
+            className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
           />
-          <button
-            onClick={handleAdd}
-            disabled={!newItem.trim() || adding}
-            className="text-white px-5 py-3 rounded-xl font-bold text-lg transition-all disabled:opacity-40"
-            style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}
-          >
-            +
-          </button>
+          <div className="flex gap-2">
+            <input
+              value={newQty}
+              onChange={e => setNewQty(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleAdd()}
+              placeholder="Qté"
+              type="number"
+              min="0"
+              step="any"
+              className="w-24 px-3 py-3 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+            />
+            <select
+              value={newUnite}
+              onChange={e => setNewUnite(e.target.value)}
+              className="w-32 px-3 py-3 rounded-xl border border-gray-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+            >
+              {UNITES.map(u => <option key={u} value={u}>{u}</option>)}
+            </select>
+            <button
+              onClick={handleAdd}
+              disabled={!newItem.trim() || adding}
+              className="flex-1 text-white py-3 rounded-xl font-bold text-lg transition-all disabled:opacity-40"
+              style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 12px rgba(249,115,22,0.35)' }}
+            >
+              +
+            </button>
+          </div>
         </div>
 
         <div className="h-2" />
