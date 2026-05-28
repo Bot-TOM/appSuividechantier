@@ -92,7 +92,17 @@ export function useMyTimeEntries(weekStart: string) {
       )
   }, [profile?.id, entries])
 
-  return { entries, loading, upsert }
+  const deleteEntry = useCallback(async (date: string) => {
+    if (!profile?.id) return
+    setEntries(prev => prev.filter(e => e.date !== date))
+    await supabase
+      .from('time_entries')
+      .delete()
+      .eq('technicien_id', profile.id)
+      .eq('date', date)
+  }, [profile?.id])
+
+  return { entries, loading, upsert, deleteEntry }
 }
 
 // Hook manager — toutes les entrées de l'équipe + upsert au nom d'un tech

@@ -84,7 +84,7 @@ export default function PlanningTechTab() {
   const [myChantiers, setMyChantiers] = useState<Chantier[]>([])
 
   const { entries: planning }                 = usePlanning(weekStart, getWeekDays(weekStart)[6])
-  const { entries: timeEntries, upsert: upsertTime } = useMyTimeEntries(weekStart)
+  const { entries: timeEntries, upsert: upsertTime, deleteEntry: deleteTimeEntry } = useMyTimeEntries(weekStart)
 
   useEffect(() => {
     if (!profile?.entreprise_id) return
@@ -526,12 +526,24 @@ export default function PlanningTechTab() {
               </div>
             )}
 
-            <button
-              onClick={saveTimeEdit}
-              className="w-full text-white font-semibold py-3.5 rounded-xl transition-all"
-              style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 16px rgba(249,115,22,0.40)' }}>
-              Enregistrer
-            </button>
+            <div className="flex gap-2">
+              {timeEntries.find(t => t.date === editingDate) && (
+                <button
+                  onClick={async () => {
+                    await deleteTimeEntry(editingDate)
+                    setEditingDate(null)
+                  }}
+                  className="flex-shrink-0 px-4 py-3.5 rounded-xl border border-red-200 text-red-500 text-sm font-semibold hover:bg-red-50 transition-colors">
+                  🗑 Réinitialiser
+                </button>
+              )}
+              <button
+                onClick={saveTimeEdit}
+                className="flex-1 text-white font-semibold py-3.5 rounded-xl transition-all"
+                style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)', boxShadow: '0 4px 16px rgba(249,115,22,0.40)' }}>
+                Enregistrer
+              </button>
+            </div>
           </div>
         </div>
       )}
