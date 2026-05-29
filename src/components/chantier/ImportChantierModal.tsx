@@ -224,12 +224,30 @@ export default function ImportChantierModal({ onClose, userId, entrepriseId }: P
     setResult(prev => prev ? { ...prev, chantier: { ...prev.chantier, [key]: value } } : prev)
   }
 
+  const updateRapport = (index: number, message: string) => {
+    setResult(prev => {
+      if (!prev) return prev
+      const rapports = prev.rapports.map((r, i) => i === index ? { ...r, message } : r)
+      return { ...prev, rapports }
+    })
+  }
+
+  const updateEtapeNom = (index: number, nom: string) => {
+    setResult(prev => {
+      if (!prev) return prev
+      const etapes = prev.etapes.map((e, i) => i === index ? { ...e, nom } : e)
+      return { ...prev, etapes }
+    })
+  }
+
   return (
-    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      onClick={e => { if (e.target === e.currentTarget) onClose() }}
+    >
       <div
         className="bg-white w-full sm:max-w-2xl sm:rounded-3xl rounded-t-3xl flex flex-col overflow-hidden"
         style={{ maxHeight: '92vh', paddingBottom: 'max(0px, env(safe-area-inset-bottom))' }}
-        onClick={e => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 flex-shrink-0">
@@ -374,11 +392,22 @@ export default function ImportChantierModal({ onClose, userId, entrepriseId }: P
                 ) : (
                   <div className="space-y-1.5">
                     {result.etapes.map((e, i) => (
-                      <div key={i} className={`flex items-center gap-3 px-4 py-2.5 rounded-xl border transition-colors ${etapesEnabled[i] ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100 opacity-50'}`}>
-                        <input type="checkbox" checked={etapesEnabled[i]} onChange={() => setEtapesEnabled(prev => prev.map((v, j) => j === i ? !v : v))}
-                          className="w-4 h-4 accent-orange-500 flex-shrink-0" />
-                        <span className="text-sm text-gray-700 flex-1">{e.nom}</span>
-                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
+                      <div key={i} className={`flex items-center gap-3 px-3 py-2 rounded-xl border transition-colors ${etapesEnabled[i] ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100 opacity-50'}`}>
+                        <input
+                          type="checkbox"
+                          checked={etapesEnabled[i]}
+                          onChange={() => setEtapesEnabled(prev => prev.map((v, j) => j === i ? !v : v))}
+                          className="w-4 h-4 accent-orange-500 flex-shrink-0"
+                        />
+                        <input
+                          type="text"
+                          value={e.nom}
+                          onChange={ev => updateEtapeNom(i, ev.target.value)}
+                          disabled={!etapesEnabled[i]}
+                          className="flex-1 text-sm text-gray-700 bg-transparent focus:outline-none focus:bg-gray-50 rounded-lg px-1 py-0.5 min-w-0 disabled:cursor-default"
+                          placeholder="Nom de l'étape"
+                        />
+                        <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 ${
                           e.statut === 'fait' ? 'bg-green-50 text-green-600' : e.statut === 'en_cours' ? 'bg-blue-50 text-blue-600' : 'bg-gray-100 text-gray-500'
                         }`}>{e.statut === 'fait' ? 'Fait' : e.statut === 'en_cours' ? 'En cours' : 'À faire'}</span>
                       </div>
@@ -399,10 +428,21 @@ export default function ImportChantierModal({ onClose, userId, entrepriseId }: P
                 ) : (
                   <div className="space-y-2">
                     {result.rapports.map((r, i) => (
-                      <div key={i} className={`flex gap-3 px-4 py-3 rounded-xl border transition-colors ${rapportsEnabled[i] ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100 opacity-50'}`}>
-                        <input type="checkbox" checked={rapportsEnabled[i]} onChange={() => setRapportsEnabled(prev => prev.map((v, j) => j === i ? !v : v))}
-                          className="w-4 h-4 accent-orange-500 flex-shrink-0 mt-0.5" />
-                        <p className="text-sm text-gray-700 leading-relaxed line-clamp-3">{r.message}</p>
+                      <div key={i} className={`flex gap-3 px-3 py-2.5 rounded-xl border transition-colors ${rapportsEnabled[i] ? 'bg-white border-gray-200' : 'bg-gray-50 border-gray-100 opacity-50'}`}>
+                        <input
+                          type="checkbox"
+                          checked={rapportsEnabled[i]}
+                          onChange={() => setRapportsEnabled(prev => prev.map((v, j) => j === i ? !v : v))}
+                          className="w-4 h-4 accent-orange-500 flex-shrink-0 mt-1"
+                        />
+                        <textarea
+                          value={r.message}
+                          onChange={ev => updateRapport(i, ev.target.value)}
+                          disabled={!rapportsEnabled[i]}
+                          rows={3}
+                          className="flex-1 text-sm text-gray-700 bg-transparent resize-none focus:outline-none focus:bg-gray-50 rounded-lg px-1 py-0.5 leading-relaxed disabled:cursor-default"
+                          placeholder="Contenu du rapport…"
+                        />
                       </div>
                     ))}
                   </div>

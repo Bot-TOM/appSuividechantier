@@ -6,13 +6,21 @@ import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { isManagerRole } from '@/types'
 
-const TYPES_INSTALLATION = ['Résidentiel', 'Professionnel', 'Industriel', 'Agricole']
+const TYPES_INSTALLATION = [
+  'Résidentiel',
+  'Résidentiel collectif',
+  'Tertiaire',
+  'GMS',
+  'Professionnel',
+  'Industriel',
+  'Agricole',
+]
 
 const TYPES_CONTRAT: { value: string; label: string }[] = [
   { value: '',                         label: 'Non précisé' },
-  { value: 'revente_totale',           label: 'Revente totale' },
-  { value: 'autoconsommation',         label: 'Autoconsommation' },
-  { value: 'autoconsommation_surplus', label: 'Autoconsommation + surplus' },
+  { value: 'revente_totale',           label: 'Vente totale' },
+  { value: 'autoconsommation',         label: 'Autoconsommation individuelle et collective' },
+  { value: 'autoconsommation_surplus', label: 'Autoconsommation avec revente de surplus' },
 ]
 
 interface EtapeForm {
@@ -107,6 +115,17 @@ export default function CreateChantier() {
       await supabase.from('chantier_techniciens').insert(
         selectedTechs.map(tid => ({ chantier_id: chantier.id, technicien_id: tid }))
       )
+      // Notification push aux techniciens assignés
+      supabase.functions.invoke('send-push', {
+        body: {
+          table:  'assignation_chantier',
+          record: {
+            chantierId:    chantier.id,
+            chantierNom:   form.nom,
+            technicienIds: selectedTechs,
+          },
+        },
+      }).catch(() => {})
     }
 
     // 3. Créer les étapes

@@ -6,13 +6,21 @@ import { useChantierTechniciens } from '@/hooks/useChantierTechniciens'
 import { usePermissions } from '@/hooks/usePermissions'
 import { ChantierStatut, Etape } from '@/types'
 
-const TYPES_INSTALLATION = ['Résidentiel', 'Professionnel', 'Industriel', 'Agricole']
+const TYPES_INSTALLATION = [
+  'Résidentiel',
+  'Résidentiel collectif',
+  'Tertiaire',
+  'GMS',
+  'Professionnel',
+  'Industriel',
+  'Agricole',
+]
 
 const TYPES_CONTRAT: { value: string; label: string }[] = [
   { value: '',                         label: 'Non précisé' },
-  { value: 'revente_totale',           label: 'Revente totale' },
-  { value: 'autoconsommation',         label: 'Autoconsommation' },
-  { value: 'autoconsommation_surplus', label: 'Autoconsommation + surplus' },
+  { value: 'revente_totale',           label: 'Vente totale' },
+  { value: 'autoconsommation',         label: 'Autoconsommation individuelle et collective' },
+  { value: 'autoconsommation_surplus', label: 'Autoconsommation avec revente de surplus' },
 ]
 
 const STATUTS: { value: ChantierStatut; label: string }[] = [
@@ -127,6 +135,8 @@ export default function EditChantier() {
     e.preventDefault()
     setError('')
     setSubmitting(true)
+    // Capture les assignations originales avant toute modification DB
+    const originalAssignedIds = [...assignedIds]
 
     // 1. Mettre à jour le chantier
     const { error: errUpdate } = await supabase
@@ -184,6 +194,20 @@ export default function EditChantier() {
       await supabase.from('chantier_techniciens').insert(
         selectedTechs.map(tid => ({ chantier_id: id, technicien_id: tid }))
       )
+      // Notification push uniquement aux techniciens nouvellement assignés
+      const newlyAssigned = selectedTechs.filter(tid => !originalAssignedIds.includes(tid))
+      if (newlyAssigned.length > 0) {
+        supabase.functions.invoke('send-push', {
+          body: {
+            table:  'assignation_chantier',
+            record: {
+              chantierId:    id,
+              chantierNom:   form.nom,
+              technicienIds: newlyAssigned,
+            },
+          },
+        }).catch(() => {})
+      }
     }
 
     navigate(`/chantier/${id}`)

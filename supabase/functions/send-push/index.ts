@@ -174,6 +174,13 @@ Deno.serve(async (req) => {
     recipientIds = record.userIds ?? []
     url = '/'
 
+  } else if (table === 'assignation_chantier') {
+    // Appelé lors de l'assignation d'un technicien à un chantier
+    title = '📋 Nouveau chantier assigné'
+    body  = `Vous avez été assigné au chantier : ${record.chantierNom ?? 'Nouveau chantier'}`
+    recipientIds = record.technicienIds ?? []
+    url = record.chantierId ? `/chantier/${record.chantierId}` : '/'
+
   } else {
     return new Response(JSON.stringify({ ignored: true, table }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
