@@ -20,6 +20,10 @@
     {
       "path": "/api/weekly-recap",
       "schedule": "0 7 * * 1"
+    },
+    {
+      "path": "/api/hours-reminder",
+      "schedule": "30 15 * * 5"
     }
   ]
 }
