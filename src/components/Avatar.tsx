@@ -28,7 +28,7 @@ export default function Avatar({ name, avatarUrl, size = 'md', online, className
   const initials  = name?.charAt(0).toUpperCase() ?? '?'
 
   return (
-    <div className={`relative inline-flex flex-shrink-0 ${className}`}>
+    <div className={`relative inline-flex flex-shrink-0 rounded-full ${className}`}>
       {avatarUrl && !imgError
         ? <img
             src={avatarUrl}
