@@ -76,12 +76,16 @@ async function sb(url: string, key: string, path: string) {
 // ─── Envoi push via la fonction existante send-push ───────────────────────────
 async function sendPush(supabaseUrl: string, serviceKey: string, userIds: string[], title: string, body: string) {
   if (!userIds.length) return
-  const r = await fetch(`${supabaseUrl}/functions/v1/send-push`, {
+  const webhookSecret = process.env.WEBHOOK_SECRET
+  await fetch(`${supabaseUrl}/functions/v1/send-push`, {
     method:  'POST',
-    headers: { Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ table: 'weekly_recap', record: { title, body, userIds } }),
-  }).catch(() => null)
-  if (r) console.log(`[sendPush] status=${r.status} body=${await r.text()}`)
+    headers: {
+      Authorization:      `Bearer ${serviceKey}`,
+      'Content-Type':     'application/json',
+      ...(webhookSecret ? { 'x-webhook-secret': webhookSecret } : {}),
+    },
+    body: JSON.stringify({ table: 'weekly_recap', record: { title, body, userIds } }),
+  }).catch(() => {})
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
