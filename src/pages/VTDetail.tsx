@@ -134,7 +134,7 @@ export default function VTDetail() {
               </button>
               <div className="min-w-0">
                 <h1 className="font-bold text-slate-900 text-lg truncate">
-                  {vt.client_nom ?? 'VT sans titre'}
+                  {(vt.data as Record<string, unknown>)?.['nom_projet'] as string || vt.client_nom || 'VT sans titre'}
                 </h1>
                 <div className="flex items-center gap-2 mt-1 flex-wrap">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold ${TYPE_COLOR[vt.type]}`}>

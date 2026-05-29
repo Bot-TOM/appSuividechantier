@@ -407,6 +407,7 @@ export default function ChantierDetail() {
   const [rapportLightbox, setRapportLightbox] = useState<{ photos: RapportPhoto[]; index: number } | null>(null)
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [uploadDocError, setUploadDocError] = useState('')
+  const [draggingDocs, setDraggingDocs] = useState(false)
 
   const [newMatItem, setNewMatItem]         = useState('')
   const [importedItems, setImportedItems]   = useState<string[]>([])
@@ -682,6 +683,21 @@ export default function ChantierDetail() {
     const files = Array.from(e.target.files ?? [])
     if (!files.length || !profile) return
     e.target.value = ''
+    setUploadingDoc(true)
+    setUploadDocError('')
+    for (const file of files) {
+      const { error } = await uploadDocument(file, profile.id)
+      if (error) { setUploadDocError(error); break }
+    }
+    setUploadingDoc(false)
+  }
+
+  async function handleDocsDrop(e: React.DragEvent) {
+    e.preventDefault()
+    setDraggingDocs(false)
+    if (!profile || !can('ajouter_document')) return
+    const files = Array.from(e.dataTransfer.files)
+    if (!files.length) return
     setUploadingDoc(true)
     setUploadDocError('')
     for (const file of files) {
@@ -1033,7 +1049,13 @@ export default function ChantierDetail() {
 
         {/* ── DOCS ──────────────────────────────────────────────────────────── */}
         {activeTab === 'docs' && (
-          <section className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+          <section
+            className={`bg-white rounded-2xl overflow-hidden transition-all ${draggingDocs ? 'ring-2 ring-orange-400 ring-offset-2' : ''}`}
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
+            onDragOver={e => { e.preventDefault(); if (can('ajouter_document')) setDraggingDocs(true) }}
+            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDraggingDocs(false) }}
+            onDrop={handleDocsDrop}
+          >
             <div className="px-4 py-3.5 border-b border-gray-50 flex items-center justify-between">
               <h2 className="font-semibold text-gray-900 text-sm">
                 Documents
@@ -1061,9 +1083,17 @@ export default function ChantierDetail() {
               )}
             </div>
             {uploadDocError && <p className="px-4 py-2 text-xs text-red-500 bg-red-50">{uploadDocError}</p>}
-            {documents.length === 0 ? (
+            {draggingDocs && (
+              <div className="mx-4 my-3 border-2 border-dashed border-orange-300 rounded-xl bg-orange-50 flex items-center justify-center py-6 gap-2 text-orange-400 text-sm font-medium pointer-events-none">
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                Déposer pour ajouter
+              </div>
+            )}
+            {documents.length === 0 && !draggingDocs ? (
               <p className="text-center text-gray-400 text-sm py-12">Aucun document ajouté</p>
-            ) : (
+            ) : documents.length > 0 ? (
               <div className="divide-y divide-gray-50">
                 {documents.map(doc => {
                   const ext = doc.nom.split('.').pop()?.toLowerCase() ?? ''
@@ -1109,7 +1139,7 @@ export default function ChantierDetail() {
                   )
                 })}
               </div>
-            )}
+            ) : null}
           </section>
         )}
 

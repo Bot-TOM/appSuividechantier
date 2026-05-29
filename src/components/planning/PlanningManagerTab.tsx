@@ -520,22 +520,27 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
       </div>
 
       {/* ── Onglets Planning activité / Heures équipe ─────────────────────── */}
-      {displayMode === 'semaine' && (
-        <div className="flex p-1 bg-white rounded-xl border border-slate-100 w-fit" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
-          {(['activite', 'heures'] as const).map(v => (
-            <button
-              key={v}
-              onClick={() => setView(v)}
-              className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all ${
-                view === v
-                  ? 'bg-slate-50 text-orange-600 ring-1 ring-slate-200/70 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}>
-              {v === 'activite' ? 'Planning activité' : 'Heures équipe'}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="flex p-1 bg-white rounded-xl border border-slate-100 w-fit" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
+        {(['activite', 'heures'] as const).map(v => (
+          <button
+            key={v}
+            onClick={() => {
+              // Si on est en vue mois et qu'on clique sur Heures → repasser en semaine
+              if (v === 'heures' && displayMode === 'mois') {
+                setDisplayMode('semaine')
+                setWeekStart(getMondayOfWeek(new Date(monthStart + 'T00:00:00')))
+              }
+              setView(v)
+            }}
+            className={`px-5 py-2 text-sm font-semibold rounded-lg transition-all ${
+              view === v && (v === 'activite' ? true : displayMode === 'semaine')
+                ? 'bg-slate-50 text-orange-600 ring-1 ring-slate-200/70 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+            }`}>
+            {v === 'activite' ? 'Planning activité' : 'Heures équipe'}
+          </button>
+        ))}
+      </div>
 
       {/* ═══════════════════ VUE PLANNING ACTIVITÉ ═══════════════════════════ */}
       {view === 'activite' && displayMode === 'semaine' && (
