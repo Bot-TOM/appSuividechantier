@@ -494,6 +494,9 @@ export default function ChantierDetail() {
     }
   }, [autocontrole])
 
+  const isManager              = isManagerRole(profile?.role)
+  const { can }                = usePermissions()
+
   // Drag & drop documents — listeners natifs sur document pour court-circuiter
   // le comportement par défaut du navigateur (ouverture du fichier)
   useEffect(() => {
@@ -541,8 +544,6 @@ export default function ChantierDetail() {
     }
   }, [activeTab, profile, can, uploadDocument])
 
-  const isManager              = isManagerRole(profile?.role)
-  const { can }                = usePermissions()
   const canValidateEtapes      = isManager || can('creer_chantier')
   const CHEF_POSTES            = ["Chef d'équipe", 'Chef de chantier', 'Conducteur de travaux']
   const canEditPourcentage     = isManager || CHEF_POSTES.includes(profile?.poste ?? '')
