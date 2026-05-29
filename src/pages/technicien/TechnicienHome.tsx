@@ -392,11 +392,11 @@ export default function TechnicienHome() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] md:flex md:flex-col">
 
       {/* ── Header gradient ───────────────────────────────────────────────── */}
-      <header className="px-5 pt-6 pb-5" style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
-        <div className="max-w-lg mx-auto">
+      <header className="px-5 pt-6 pb-5 md:px-8" style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
+        <div className="max-w-lg mx-auto md:max-w-7xl md:mx-0">
 
           {/* Barre du haut : logo + avatar */}
           <div className="flex items-center justify-between">
@@ -476,8 +476,71 @@ export default function TechnicienHome() {
         </div>
       </header>
 
-      {/* ── Contenu ──────────────────────────────────────────────────────── */}
-      <main className="px-4 py-6 max-w-lg mx-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
+      {/* ── Layout body (desktop: sidebar + main) ─────────────────────────── */}
+      <div className="md:flex md:flex-1 md:overflow-hidden">
+
+        {/* ── Sidebar desktop ──────────────────────────────────────────────── */}
+        <aside className="hidden md:flex md:flex-col w-60 bg-white border-r border-slate-100 shrink-0">
+          <nav className="flex-1 py-4 px-3 space-y-1">
+
+            <button onClick={() => setActiveTab('chantiers')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === 'chantiers' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={activeTab === 'chantiers' ? 2.5 : 1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
+              </svg>
+              Chantiers
+            </button>
+
+            <button onClick={() => setActiveTab('vt')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === 'vt' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={activeTab === 'vt' ? 2.5 : 1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+              </svg>
+              Visites Techniques
+            </button>
+
+            <button onClick={() => setActiveTab('planning')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === 'planning' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={activeTab === 'planning' ? 2.5 : 1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              Planning
+            </button>
+
+            <button onClick={() => setActiveTab('equipe')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === 'equipe' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={activeTab === 'equipe' ? 2.5 : 1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Équipe
+            </button>
+
+            <button onClick={() => setActiveTab('chat')}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === 'chat' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={activeTab === 'chat' ? 2.5 : 1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              </svg>
+              Chat
+              {chatUnread > 0 && activeTab !== 'chat' && (
+                <span className="ml-auto min-w-[20px] h-5 px-1.5 bg-orange-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                  {chatUnread > 9 ? '9+' : chatUnread}
+                </span>
+              )}
+            </button>
+
+            <button onClick={() => { setActiveTab('profil'); refreshProfile() }}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === 'profil' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>
+              <svg className="w-5 h-5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={activeTab === 'profil' ? 2.5 : 1.8}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
+              </svg>
+              Profil
+            </button>
+
+          </nav>
+        </aside>
+
+        {/* ── Contenu ──────────────────────────────────────────────────────── */}
+        <main className="px-4 py-6 max-w-lg mx-auto md:flex-1 md:max-w-none md:px-8 md:py-8 md:overflow-y-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
 
         {activeTab === 'chantiers' && (
           <>
@@ -601,10 +664,12 @@ export default function TechnicienHome() {
             <ProfilTab profile={profile} signOut={signOut} pushStatus={pushStatus} subscribePush={subscribePush} unsubscribePush={unsubscribePush} onAvatarChange={refreshProfile} />
           </div>
         )}
-      </main>
+        </main>
 
-      {/* ── Barre de navigation bas ───────────────────────────────────────── */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-30 pb-safe">
+      </div>{/* end layout body */}
+
+      {/* ── Barre de navigation bas (mobile only) ────────────────────────── */}
+      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 z-30 pb-safe md:hidden">
         <div className="flex max-w-lg mx-auto">
           <button
             onClick={() => setActiveTab('chantiers')}
