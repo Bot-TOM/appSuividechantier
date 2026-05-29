@@ -68,7 +68,9 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
     if (filterStatut !== 'tous' && v.statut !== filterStatut) return false
     if (search.trim()) {
       const q = search.toLowerCase()
+      const nomProjet = (v.data as Record<string, unknown>)?.['nom_projet'] as string | undefined
       if (
+        !nomProjet?.toLowerCase().includes(q) &&
         !v.client_nom?.toLowerCase().includes(q) &&
         !v.client_adresse?.toLowerCase().includes(q) &&
         !v.profiles?.full_name?.toLowerCase().includes(q)
@@ -187,7 +189,7 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
                 <div className="flex items-start justify-between gap-2 mb-3">
                   <div className="flex-1 min-w-0">
                     <h3 className="font-bold text-slate-900 text-base truncate group-hover:text-orange-600 transition-colors">
-                      {vt.client_nom ?? 'Sans titre'}
+                      {(vt.data as Record<string, unknown>)?.['nom_projet'] as string || vt.client_nom || 'Sans titre'}
                     </h3>
                     {vt.client_adresse && (
                       <p className="text-sm text-slate-500 truncate mt-0.5">{vt.client_adresse}</p>
