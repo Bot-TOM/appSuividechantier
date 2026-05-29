@@ -209,12 +209,12 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
           <h1 className="text-2xl font-bold mb-4">{greeting}, {prenom} 👋</h1>
           <div className="flex flex-wrap gap-2">
             <button
-              onClick={() => navigate('/creer-chantier')}
+              onClick={() => navigate('/manager/nouveau-chantier')}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-orange-500 hover:bg-orange-400 transition-colors text-white">
               <Plus className="w-4 h-4" /> Nouveau chantier
             </button>
             <button
-              onClick={() => navigate('/vt/creer')}
+              onClick={() => navigate('/vt/nouvelle')}
               className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold bg-white/10 hover:bg-white/20 transition-colors text-white">
               <Plus className="w-4 h-4" /> Nouvelle VT
             </button>
