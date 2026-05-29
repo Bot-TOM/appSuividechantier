@@ -25,10 +25,11 @@ import { usePlan } from '@/hooks/usePlan'
 import UpgradeModal, { UpgradeReason } from '@/components/upgrade/UpgradeModal'
 import PlanSection from '@/components/upgrade/PlanSection'
 import OnboardingModal from '@/components/onboarding/OnboardingModal'
+import ManagerHomeTab from '@/components/dashboard/ManagerHomeTab'
 import { getChantierColorByIndex } from '@/lib/chantierColors'
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
-type Tab = 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat' | 'vt'
+type Tab = 'accueil' | 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat' | 'vt'
 
 type AnomalieWithRelations = Anomalie & {
   profiles?: { full_name?: string } | null
@@ -165,7 +166,7 @@ export default function ManagerDashboard() {
   const { anomalies, updateStatut: updateAnomalieStatut, updateStatutBulk, deleteAnomalies } = useAnomalies(undefined, selectedEntreprise?.id)
   const navigate               = useNavigate()
 
-  const [activeTab, setActiveTab]       = useState<Tab>('chantiers')
+  const [activeTab, setActiveTab]       = useState<Tab>('accueil')
   const [filterStatut, setFilterStatut] = useState<FilterStatut>('tous')
   const [sortKey, setSortKey]           = useState<SortKey>('date')
   const [searchQuery, setSearchQuery]   = useState('')
@@ -468,6 +469,7 @@ export default function ManagerDashboard() {
           {/* Onglets navigation mobile — masqués sur desktop (remplacés par la sidebar) */}
           <nav className="flex gap-0 overflow-x-auto no-scrollbar -mb-px md:hidden">
             {([
+              { key: 'accueil',   label: 'Accueil' },
               { key: 'chantiers', label: 'Chantiers' },
               { key: 'vt',        label: 'VT' },
               { key: 'anomalies', label: 'Anomalies', badge: anomaliesOuvertes.length || undefined },
@@ -522,7 +524,8 @@ export default function ManagerDashboard() {
         <aside className="hidden md:flex md:flex-col w-60 bg-white border-r border-slate-100 shrink-0">
           <nav className="flex flex-col gap-1 p-3 flex-1 pt-4">
             {([
-              { key: 'chantiers',   label: 'Chantiers',   Icon: Layers        },
+              { key: 'accueil',     label: 'Accueil',      Icon: Sun           },
+              { key: 'chantiers',   label: 'Chantiers',    Icon: Layers        },
               { key: 'vt',          label: 'VT',           Icon: FileText      },
               { key: 'anomalies',   label: 'Anomalies',    Icon: AlertTriangle, badge: anomaliesOuvertes.length || undefined },
               { key: 'stats',       label: 'Stats',        Icon: BarChart2     },
@@ -569,6 +572,18 @@ export default function ManagerDashboard() {
         </aside>
 
         <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 md:flex-1 md:max-w-none md:overflow-y-auto">
+
+        {/* ── Onglet Accueil ────────────────────────────────────────────────── */}
+        {activeTab === 'accueil' && (
+          <ManagerHomeTab
+            chantiers={chantiers}
+            anomalies={anomalies}
+            notifications={notifications}
+            entrepriseId={selectedEntreprise?.id ?? profile?.entreprise_id ?? undefined}
+            managerName={profile?.full_name}
+            onNavigate={tab => setActiveTab(tab as Tab)}
+          />
+        )}
 
         {/* ── Onglet Anomalies ──────────────────────────────────────────────── */}
         {activeTab === 'anomalies' && (
