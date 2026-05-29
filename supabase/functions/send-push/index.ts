@@ -45,9 +45,11 @@ Deno.serve(async (req) => {
   const webhookSecret = Deno.env.get('WEBHOOK_SECRET')
   if (webhookSecret) {
     const providedSecret = req.headers.get('x-webhook-secret')
+    const authHeader     = req.headers.get('authorization') ?? ''
     // Accepte aussi les appels internes authentifiés avec la clé service Supabase
-    const serviceKey     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    const isInternalCall = serviceKey && req.headers.get('authorization') === `Bearer ${serviceKey}`
+    const serviceKey     = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    const isInternalCall = authHeader === `Bearer ${serviceKey}`
+    console.log('[send-push] auth check — hasWebhookSecret:', !!providedSecret, 'isInternalCall:', isInternalCall, 'authPrefix:', authHeader.slice(0, 20))
     if (providedSecret !== webhookSecret && !isInternalCall) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), {
         status: 401,
