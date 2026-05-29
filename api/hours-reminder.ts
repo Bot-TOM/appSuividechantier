@@ -98,9 +98,13 @@ export default async function handler(req: Request) {
   const year      = new Date(weekStart + 'T00:00:00Z').getUTCFullYear()
   const feries    = getFeries(year)
 
+  console.log('[hours-reminder] days:', days, 'feries this week:', days.filter(d => feries.has(d)))
+
   // Tous les profils
   const allProfiles: Profile[] = await sb(supabaseUrl, serviceKey,
     `profiles?select=id,full_name,role,entreprise_id`)
+
+  console.log('[hours-reminder] profiles count:', allProfiles.length, '| roles:', allProfiles.map(p => p.role))
 
   // Grouper par entreprise → { techs, managers }
   const entreprises = new Map<string, { techs: Profile[]; managers: Profile[] }>()
@@ -112,9 +116,12 @@ export default async function handler(req: Request) {
     else if (p.role === 'manager' || p.role === 'admin') group.managers.push(p)
   }
 
+  console.log('[hours-reminder] entreprises count:', entreprises.size)
+
   const results: string[] = []
 
   for (const [entrepriseId, { techs, managers }] of entreprises) {
+    console.log(`[hours-reminder] entreprise ${entrepriseId}: ${techs.length} techs, ${managers.length} managers`)
     if (!techs.length) continue
 
     const techIds = techs.map(t => t.id).join(',')
@@ -126,6 +133,8 @@ export default async function handler(req: Request) {
       sb(supabaseUrl, serviceKey,
         `planning_entries?technicien_id=in.(${techIds})&date=gte.${weekStart}&date=lte.${weekEnd}&select=technicien_id,date,type`),
     ]) as [TimeEntry[], PlanningEntry[]]
+
+    console.log(`[hours-reminder] timeEntries: ${timeEntries.length}, planningEntries: ${planningEntries.length}`)
 
     // Identifier les techs avec au moins un jour ouvré non rempli
     const techsWithMissing: Profile[] = []
@@ -140,6 +149,7 @@ export default async function handler(req: Request) {
         // Heures déjà renseignées → OK
         return !timeEntries.some(t => t.technicien_id === tech.id && t.date === date)
       })
+      console.log(`[hours-reminder] tech ${tech.full_name}: hasMissingDay=${hasMissingDay}`)
       if (hasMissingDay) techsWithMissing.push(tech)
     }
 
