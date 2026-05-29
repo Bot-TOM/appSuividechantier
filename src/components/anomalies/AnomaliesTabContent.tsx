@@ -27,12 +27,13 @@ export default function AnomaliesTabContent({ chantierId, canResolve = true }: {
   const { profile } = useAuth()
   const { anomalies, loading, updateStatut, updateStatutBulk, deleteAnomalies } = useAnomalies(chantierId)
 
-  const [showForm, setShowForm]         = useState(false)
-  const [submitting, setSubmitting]     = useState(false)
-  const [photoFile, setPhotoFile]       = useState<File | null>(null)
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null)
-  const [selectMode, setSelectMode]     = useState(false)
-  const [selectedIds, setSelectedIds]   = useState<Set<string>>(new Set())
+  const [showForm, setShowForm]             = useState(false)
+  const [submitting, setSubmitting]         = useState(false)
+  const [photoFile, setPhotoFile]           = useState<File | null>(null)
+  const [photoPreview, setPhotoPreview]     = useState<string | null>(null)
+  const [selectMode, setSelectMode]         = useState(false)
+  const [selectedIds, setSelectedIds]       = useState<Set<string>>(new Set())
+  const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null)
   const [form, setForm] = useState({
     titre: '',
     type: TYPES_ANOMALIE[0],
@@ -329,12 +330,25 @@ export default function AnomaliesTabContent({ chantierId, canResolve = true }: {
                         <span className="text-sm font-semibold text-slate-800">{anomalie.type}</span>
                         <GraviteBadge gravite={anomalie.gravite} />
                       </div>
-                      {!selectMode && (canResolve || statut.next !== 'resolu') && (
-                        <button onClick={() => updateStatut(anomalie.id, statut.next)}
-                          className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full flex-shrink-0 transition-all hover:opacity-80 ${statut.bg}`}>
-                          <span className={`w-1.5 h-1.5 rounded-full ${statut.dot}`} />
-                          {statut.label} →
-                        </button>
+                      {!selectMode && (
+                        <div className="flex items-center gap-1.5 flex-shrink-0">
+                          {(canResolve || statut.next !== 'resolu') && (
+                            <button onClick={() => updateStatut(anomalie.id, statut.next)}
+                              className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full transition-all hover:opacity-80 ${statut.bg}`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${statut.dot}`} />
+                              {statut.label} →
+                            </button>
+                          )}
+                          {isManager && (
+                            <button
+                              onClick={() => setConfirmDeleteId(confirmDeleteId === anomalie.id ? null : anomalie.id)}
+                              className="p-1.5 rounded-lg text-slate-300 hover:text-rose-400 hover:bg-rose-50 transition-colors"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                     <p className="text-slate-700 text-sm leading-relaxed">{anomalie.description}</p>
@@ -348,6 +362,25 @@ export default function AnomaliesTabContent({ chantierId, canResolve = true }: {
                         </p>
                       )}
                     </div>
+
+                    {/* ── Confirmation suppression ── */}
+                    {confirmDeleteId === anomalie.id && (
+                      <div className="mt-3 flex items-center gap-2 p-3 bg-rose-50 border border-rose-100 rounded-xl">
+                        <p className="text-xs font-semibold text-rose-700 flex-1">Supprimer cette anomalie ?</p>
+                        <button
+                          onClick={() => { deleteAnomalies([anomalie.id]); setConfirmDeleteId(null) }}
+                          className="text-xs font-bold px-3 py-1.5 rounded-lg bg-rose-600 text-white hover:bg-rose-700 transition-colors"
+                        >
+                          Supprimer
+                        </button>
+                        <button
+                          onClick={() => setConfirmDeleteId(null)}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors"
+                        >
+                          Annuler
+                        </button>
+                      </div>
+                    )}
                   </div>
                 </div>
               )
