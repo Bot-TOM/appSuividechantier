@@ -155,10 +155,22 @@ export default async function handler(req: Request) {
     if (techsWithMissing.length > 0 && managers.length > 0) {
       const count = techsWithMissing.length
       const names = techsWithMissing.map(t => t.full_name.split(' ')[0]).join(', ')
+      const managerMsg = `${count} technicien${count > 1 ? 's' : ''} n'${count > 1 ? 'ont' : 'a'} pas rempli ses heures : ${names}`
       await sendPush(supabaseUrl, serviceKey, managers.map(m => m.id),
         '⏰ Heures manquantes',
-        `${count} technicien${count > 1 ? 's' : ''} n'${count > 1 ? 'ont' : 'a'} pas rempli ses heures : ${names}`,
+        managerMsg,
       )
+      // Insérer aussi dans le centre de notifs in-app
+      await fetch(`${supabaseUrl}/rest/v1/notifications`, {
+        method: 'POST',
+        headers: {
+          apikey:         serviceKey,
+          Authorization:  `Bearer ${serviceKey}`,
+          'Content-Type': 'application/json',
+          Prefer:         'return=minimal',
+        },
+        body: JSON.stringify({ type: 'heures', message: managerMsg, chantier_id: null, lu: false }),
+      }).catch(() => {})
     }
 
     results.push(

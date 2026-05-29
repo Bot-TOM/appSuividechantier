@@ -426,16 +426,26 @@ export default function ManagerDashboard() {
                       ) : notifications.map(n => (
                         <button
                           key={n.id}
-                          onClick={() => { markRead(n.id); setShowNotifPanel(false); navigate(`/chantier/${n.chantier_id}`) }}
+                          onClick={() => {
+                            markRead(n.id)
+                            setShowNotifPanel(false)
+                            if (n.chantier_id) navigate(`/chantier/${n.chantier_id}`)
+                          }}
                           className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors ${!n.lu ? 'bg-orange-50/40' : ''}`}
                         >
                           <span className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${
-                            n.type === 'anomalie' ? 'bg-red-100 text-red-500' :
-                            n.type === 'rapport'  ? 'bg-blue-100 text-blue-500' :
-                            n.type === 'bloque'   ? 'bg-orange-100 text-orange-500' :
+                            n.type === 'anomalie'     ? 'bg-red-100 text-red-500' :
+                            n.type === 'rapport'      ? 'bg-blue-100 text-blue-500' :
+                            n.type === 'bloque'       ? 'bg-orange-100 text-orange-500' :
+                            n.type === 'autocontrole' ? 'bg-purple-100 text-purple-500' :
+                            n.type === 'heures'       ? 'bg-yellow-100 text-yellow-600' :
                             'bg-green-100 text-green-500'
                           }`}>
-                            {n.type === 'anomalie' ? '⚠' : n.type === 'rapport' ? '📋' : n.type === 'bloque' ? '🔒' : '✓'}
+                            {n.type === 'anomalie'     ? '⚠️' :
+                             n.type === 'rapport'      ? '📋' :
+                             n.type === 'bloque'       ? '🔒' :
+                             n.type === 'autocontrole' ? '✅' :
+                             n.type === 'heures'       ? '⏰' : '✓'}
                           </span>
                           <div className="flex-1 min-w-0">
                             <p className={`text-sm leading-snug ${!n.lu ? 'font-semibold text-gray-900' : 'text-gray-700'}`}>{n.message}</p>

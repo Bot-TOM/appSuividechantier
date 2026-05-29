@@ -12,6 +12,30 @@ webpush.setVapidDetails(
   Deno.env.get('VAPID_PRIVATE_KEY')!,
 )
 
+// ─── Helper : insère une notification dans la table notifications ─────────────
+async function insertNotif(
+  supabaseUrl: string,
+  serviceKey: string,
+  type: string,
+  message: string,
+  chantierId: string | null,
+) {
+  try {
+    await fetch(`${supabaseUrl}/rest/v1/notifications`, {
+      method: 'POST',
+      headers: {
+        apikey:          serviceKey,
+        Authorization:   `Bearer ${serviceKey}`,
+        'Content-Type':  'application/json',
+        Prefer:          'return=minimal',
+      },
+      body: JSON.stringify({ type, message, chantier_id: chantierId, lu: false }),
+    })
+  } catch {
+    // Ne pas bloquer l'envoi push si l'insert échoue
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
 
@@ -33,10 +57,10 @@ Deno.serve(async (req) => {
   const { table, record } = payload
   console.log('[send-push] table:', table, 'record.id:', record?.id, 'chantier_id:', record?.chantier_id)
 
-  const supabase = createClient(
-    Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-  )
+  const supabaseUrl = Deno.env.get('SUPABASE_URL')!
+  const serviceKey  = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+
+  const supabase = createClient(supabaseUrl, serviceKey)
 
   let title = ''
   let body = ''
@@ -44,6 +68,8 @@ Deno.serve(async (req) => {
   let recipientIds: string[] = []
   let chatOnly = false
   let prefFilter: string | null = null  // colonne push_subscriptions à filtrer (true requis)
+  let notifType:   string | null = null  // type pour la table notifications (null = pas d'insertion)
+  let notifChantier: string | null = null
 
   if (table === 'notes') {
     title = '📝 Nouveau message technicien'
@@ -51,6 +77,7 @@ Deno.serve(async (req) => {
     const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'rapport_notif_enabled'
+    notifType = 'rapport'; notifChantier = record.chantier_id ?? null
 
   } else if (table === 'auto_controles') {
     title = '✅ Auto-contrôle soumis'
@@ -58,6 +85,7 @@ Deno.serve(async (req) => {
     const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'autocontrole_notif_enabled'
+    notifType = 'autocontrole'; notifChantier = record.chantier_id ?? null
 
   } else if (table === 'messages') {
     // Chat par chantier
@@ -107,6 +135,7 @@ Deno.serve(async (req) => {
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'anomalie_notif_enabled'
     url = record.chantier_id ? `/chantier/${record.chantier_id}/anomalies` : '/'
+    notifType = 'anomalie'; notifChantier = record.chantier_id ?? null
 
   } else if (table === 'chantiers' && record.statut === 'bloque') {
     title = '🚨 Chantier bloqué'
@@ -115,6 +144,7 @@ Deno.serve(async (req) => {
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'chantier_notif_enabled'
     url = record.id ? `/chantier/${record.id}` : '/'
+    notifType = 'bloque'; notifChantier = record.id ?? null
 
   } else if (table === 'chantiers' && record.statut === 'termine') {
     title = '✅ Chantier terminé'
@@ -123,6 +153,7 @@ Deno.serve(async (req) => {
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'chantier_notif_enabled'
     url = record.id ? `/chantier/${record.id}` : '/'
+    notifType = 'termine'; notifChantier = record.id ?? null
 
   } else if (table === 'bug_reports') {
     const sevEmoji = record.severite === 'bloquant' ? '🔴' : '🟡'
@@ -143,6 +174,11 @@ Deno.serve(async (req) => {
     return new Response(JSON.stringify({ ignored: true, table }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     })
+  }
+
+  // Insertion dans la table notifications (centre de notifs in-app)
+  if (notifType && body) {
+    await insertNotif(supabaseUrl, serviceKey, notifType, body, notifChantier)
   }
 
   console.log('[send-push] recipientIds:', recipientIds)

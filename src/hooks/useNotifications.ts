@@ -3,8 +3,8 @@ import { supabase } from '@/lib/supabase'
 
 export interface Notification {
   id: string
-  chantier_id: string
-  type: 'anomalie' | 'rapport' | 'bloque' | 'termine'
+  chantier_id: string | null
+  type: 'anomalie' | 'rapport' | 'bloque' | 'termine' | 'autocontrole' | 'heures'
   message: string
   lu: boolean
   created_at: string
