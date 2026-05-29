@@ -494,17 +494,52 @@ export default function ChantierDetail() {
     }
   }, [autocontrole])
 
-  // Bloque l'ouverture native du navigateur quand on glisse un fichier sur l'onglet docs
+  // Drag & drop documents — listeners natifs sur document pour court-circuiter
+  // le comportement par défaut du navigateur (ouverture du fichier)
   useEffect(() => {
     if (activeTab !== 'docs') return
-    const prevent = (e: DragEvent) => e.preventDefault()
-    window.addEventListener('dragover', prevent)
-    window.addEventListener('drop', prevent)
-    return () => {
-      window.removeEventListener('dragover', prevent)
-      window.removeEventListener('drop', prevent)
+    let counter = 0
+
+    const onDragEnter = (e: DragEvent) => {
+      e.preventDefault()
+      if (e.dataTransfer?.types.includes('Files')) { counter++; setDraggingDocs(true) }
     }
-  }, [activeTab])
+    const onDragOver  = (e: DragEvent) => { e.preventDefault() }
+    const onDragLeave = (e: DragEvent) => {
+      e.preventDefault()
+      counter--
+      if (counter <= 0) { counter = 0; setDraggingDocs(false) }
+    }
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault()
+      counter = 0
+      setDraggingDocs(false)
+      if (!profile || !can('ajouter_document')) return
+      const files = Array.from(e.dataTransfer?.files ?? [])
+      if (!files.length) return
+      setUploadingDoc(true)
+      setUploadDocError('')
+      ;(async () => {
+        for (const file of files) {
+          const { error } = await uploadDocument(file, profile.id)
+          if (error) { setUploadDocError(error); break }
+        }
+        setUploadingDoc(false)
+      })()
+    }
+
+    document.addEventListener('dragenter', onDragEnter)
+    document.addEventListener('dragover',  onDragOver)
+    document.addEventListener('dragleave', onDragLeave)
+    document.addEventListener('drop',      onDrop)
+    return () => {
+      document.removeEventListener('dragenter', onDragEnter)
+      document.removeEventListener('dragover',  onDragOver)
+      document.removeEventListener('dragleave', onDragLeave)
+      document.removeEventListener('drop',      onDrop)
+      setDraggingDocs(false)
+    }
+  }, [activeTab, profile, can, uploadDocument])
 
   const isManager              = isManagerRole(profile?.role)
   const { can }                = usePermissions()
@@ -704,20 +739,6 @@ export default function ChantierDetail() {
     setUploadingDoc(false)
   }
 
-  async function handleDocsDrop(e: React.DragEvent) {
-    e.preventDefault()
-    setDraggingDocs(false)
-    if (!profile || !can('ajouter_document')) return
-    const files = Array.from(e.dataTransfer.files)
-    if (!files.length) return
-    setUploadingDoc(true)
-    setUploadDocError('')
-    for (const file of files) {
-      const { error } = await uploadDocument(file, profile.id)
-      if (error) { setUploadDocError(error); break }
-    }
-    setUploadingDoc(false)
-  }
 
   function handleRapportPhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? [])
@@ -1064,9 +1085,6 @@ export default function ChantierDetail() {
           <section
             className={`bg-white rounded-2xl overflow-hidden transition-all ${draggingDocs ? 'ring-2 ring-orange-400 ring-offset-2' : ''}`}
             style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}
-            onDragOver={e => { e.preventDefault(); if (can('ajouter_document')) setDraggingDocs(true) }}
-            onDragLeave={e => { if (!e.currentTarget.contains(e.relatedTarget as Node)) setDraggingDocs(false) }}
-            onDrop={handleDocsDrop}
           >
             <div className="px-4 py-3.5 border-b border-gray-50 flex items-center justify-between">
               <h2 className="font-semibold text-gray-900 text-sm">
