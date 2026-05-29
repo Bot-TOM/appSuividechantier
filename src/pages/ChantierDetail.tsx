@@ -494,6 +494,18 @@ export default function ChantierDetail() {
     }
   }, [autocontrole])
 
+  // Bloque l'ouverture native du navigateur quand on glisse un fichier sur l'onglet docs
+  useEffect(() => {
+    if (activeTab !== 'docs') return
+    const prevent = (e: DragEvent) => e.preventDefault()
+    window.addEventListener('dragover', prevent)
+    window.addEventListener('drop', prevent)
+    return () => {
+      window.removeEventListener('dragover', prevent)
+      window.removeEventListener('drop', prevent)
+    }
+  }, [activeTab])
+
   const isManager              = isManagerRole(profile?.role)
   const { can }                = usePermissions()
   const canValidateEtapes      = isManager || can('creer_chantier')
