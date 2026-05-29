@@ -76,11 +76,17 @@ async function sb(url: string, key: string, path: string) {
 // ─── Envoi push via la fonction existante send-push ───────────────────────────
 async function sendPush(supabaseUrl: string, serviceKey: string, userIds: string[], title: string, body: string) {
   if (!userIds.length) return
-  await fetch(`${supabaseUrl}/functions/v1/send-push`, {
-    method:  'POST',
-    headers: { Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
-    body:    JSON.stringify({ table: 'weekly_recap', record: { title, body, userIds } }),
-  }).catch(() => {})
+  try {
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-push`, {
+      method:  'POST',
+      headers: { Authorization: `Bearer ${serviceKey}`, 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ table: 'weekly_recap', record: { title, body, userIds } }),
+    })
+    const text = await res.text()
+    console.log(`[hours-reminder] sendPush → status=${res.status} body=${text}`)
+  } catch (e) {
+    console.log('[hours-reminder] sendPush error:', e)
+  }
 }
 
 // ─── Handler ──────────────────────────────────────────────────────────────────
