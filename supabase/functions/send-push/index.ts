@@ -74,7 +74,7 @@ Deno.serve(async (req) => {
   if (table === 'notes') {
     title = '📝 Nouveau message technicien'
     body = record.contenu?.slice(0, 80) ?? 'Un technicien a publié un message'
-    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+    const { data: managers } = await supabase.from('profiles').select('id').in('role', ['manager', 'admin'])
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'rapport_notif_enabled'
     notifType = 'rapport'; notifChantier = record.chantier_id ?? null
@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
   } else if (table === 'auto_controles') {
     title = '✅ Auto-contrôle soumis'
     body = "Un technicien a soumis un rapport d'auto-contrôle"
-    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+    const { data: managers } = await supabase.from('profiles').select('id').in('role', ['manager', 'admin'])
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'autocontrole_notif_enabled'
     notifType = 'autocontrole'; notifChantier = record.chantier_id ?? null
@@ -100,7 +100,7 @@ Deno.serve(async (req) => {
       .from('chantier_techniciens')
       .select('technicien_id')
       .eq('chantier_id', record.chantier_id)
-    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+    const { data: managers } = await supabase.from('profiles').select('id').in('role', ['manager', 'admin'])
 
     const allIds = [
       ...(techs?.map((t: { technicien_id: string }) => t.technicien_id) ?? []),
@@ -131,7 +131,7 @@ Deno.serve(async (req) => {
     const graviteEmoji = record.gravite === 'haute' ? '🔴' : record.gravite === 'moyenne' ? '🟡' : '🟢'
     title = `${graviteEmoji} Nouvelle anomalie`
     body = `${record.type ?? 'Anomalie'} — ${record.description?.slice(0, 60) ?? ''}`
-    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+    const { data: managers } = await supabase.from('profiles').select('id').in('role', ['manager', 'admin'])
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'anomalie_notif_enabled'
     url = record.chantier_id ? `/chantier/${record.chantier_id}/anomalies` : '/'
@@ -140,7 +140,7 @@ Deno.serve(async (req) => {
   } else if (table === 'chantiers' && record.statut === 'bloque') {
     title = '🚨 Chantier bloqué'
     body = `${record.nom} est passé en statut Bloqué — action requise`
-    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+    const { data: managers } = await supabase.from('profiles').select('id').in('role', ['manager', 'admin'])
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'chantier_notif_enabled'
     url = record.id ? `/chantier/${record.id}` : '/'
@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
   } else if (table === 'chantiers' && record.statut === 'termine') {
     title = '✅ Chantier terminé'
     body = `${record.nom} vient d'être marqué comme terminé`
-    const { data: managers } = await supabase.from('profiles').select('id').eq('role', 'manager')
+    const { data: managers } = await supabase.from('profiles').select('id').in('role', ['manager', 'admin'])
     recipientIds = managers?.map((m: { id: string }) => m.id) ?? []
     prefFilter = 'chantier_notif_enabled'
     url = record.id ? `/chantier/${record.id}` : '/'
