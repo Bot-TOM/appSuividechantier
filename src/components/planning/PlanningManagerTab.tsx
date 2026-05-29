@@ -93,10 +93,10 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
   const days = displayMode === 'semaine' ? getWeekDays(weekStart) : monthDays
 
   const { entries, loading, upsert, upsertBulk } = usePlanning(planStart, planEnd)
-  const { entries: timeEntries, loading: timeLoading, upsertForTech } = useTeamTimeEntries(weekStart, entrepriseId)
+  const { entries: timeEntries, loading: timeLoading, upsertForTech, deleteForTech } = useTeamTimeEntries(weekStart, entrepriseId)
 
   // Modale édition heures (manager)
-  type EditTimeModal = { techId: string; techName: string; date: string; arrivee: string; depart: string; pause: string; chantier_id: string | null }
+  type EditTimeModal = { techId: string; techName: string; date: string; arrivee: string; depart: string; pause: string; chantier_id: string | null; isNew: boolean }
   const [editTimeModal, setEditTimeModal] = useState<EditTimeModal | null>(null)
   const [savingTime, setSavingTime]       = useState(false)
 
@@ -999,6 +999,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                                     depart: '',
                                     pause: '',
                                     chantier_id: null,
+                                    isNew: true,
                                   })}
                                   className={`h-[84px] w-full rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-all group ${
                                     isToday
@@ -1029,6 +1030,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                                   depart:  e.depart  ?? '',
                                   pause:   e.pause != null ? String(e.pause) : '',
                                   chantier_id: e.chantier_id ?? null,
+                                  isNew: false,
                                 })}
                                 className={`h-[84px] w-full rounded-xl border p-3 flex flex-col justify-between transition-all group cursor-pointer ${
                                 isToday
@@ -1557,6 +1559,24 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                 ))}
               </div>
             </div>
+
+            {/* Bouton réinitialiser — uniquement si une entrée existe déjà */}
+            {!editTimeModal.isNew && (
+              <button
+                disabled={savingTime}
+                onClick={async () => {
+                  setSavingTime(true)
+                  await deleteForTech(editTimeModal.techId, editTimeModal.date)
+                  setSavingTime(false)
+                  setEditTimeModal(null)
+                }}
+                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl text-sm font-semibold text-red-500 bg-red-50 hover:bg-red-100 transition-colors disabled:opacity-50">
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                </svg>
+                Réinitialiser cette journée
+              </button>
+            )}
 
             <div className="flex gap-3 pt-1">
               <button onClick={() => setEditTimeModal(null)}

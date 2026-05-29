@@ -164,5 +164,15 @@ export function useTeamTimeEntries(weekStart: string, entrepriseId?: string) {
     await fetchEntries()
   }, [entries, fetchEntries])
 
-  return { entries, loading, upsertForTech }
+  /** Permet au manager de supprimer une entrée d'un technicien */
+  const deleteForTech = useCallback(async (technicienId: string, date: string) => {
+    await supabase
+      .from('time_entries')
+      .delete()
+      .eq('technicien_id', technicienId)
+      .eq('date', date)
+    await fetchEntries()
+  }, [fetchEntries])
+
+  return { entries, loading, upsertForTech, deleteForTech }
 }
