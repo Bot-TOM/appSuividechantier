@@ -393,7 +393,7 @@ export default function ChantierDetail() {
   const { items: matItems, total: matTotal, checked: matChecked, toggleItem: toggleMat, addItem: addMat, deleteItem: deleteMat } = useChecklistMateriel(id!)
   const { autocontrole, save: saveAC, signer: signerAC } = useAutoControle(id!)
   const { documents, uploadDocument, deleteDocument } = useDocuments(id!)
-  const { rapports, addRapport, deleteRapport, deleteRapportPhoto } = useRapports(id!)
+  const { rapports, addRapport, updateRapport, deleteRapport, deleteRapportPhoto } = useRapports(id!)
   const userId = profile?.id ?? ''
   const unreadChat = useUnreadMessages(id!, userId)
 
@@ -426,6 +426,11 @@ export default function ChantierDetail() {
   const [rapportPreviews, setRapportPreviews] = useState<string[]>([])
   const [submittingRapport, setSubmittingRapport] = useState(false)
   const [rapportError, setRapportError] = useState('')
+
+  // Édition inline d'un rapport (manager uniquement)
+  const [editingRapportId, setEditingRapportId]       = useState<string | null>(null)
+  const [editingRapportMessage, setEditingRapportMessage] = useState('')
+  const [savingRapport, setSavingRapport]             = useState(false)
   const [noteText, setNoteText]         = useState('')
   const [savingNote, setSavingNote]     = useState(false)
   const [generatingPDF, setGeneratingPDF]   = useState(false)
@@ -1319,7 +1324,18 @@ export default function ChantierDetail() {
                                 {photos.length} photo{photos.length > 1 ? 's' : ''}
                               </button>
                             )}
-                            {(isManager || rapport.auteur_id === profile?.id) && (
+                            {isManager && editingRapportId !== rapport.id && (
+                              <button
+                                onClick={() => { setEditingRapportId(rapport.id); setEditingRapportMessage(rapport.message) }}
+                                className="w-7 h-7 flex items-center justify-center rounded-full text-gray-300 hover:text-orange-500 hover:bg-orange-50 transition-colors"
+                                title="Modifier le rapport"
+                              >
+                                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z" />
+                                </svg>
+                              </button>
+                            )}
+                            {(isManager || rapport.auteur_id === profile?.id) && editingRapportId !== rapport.id && (
                               <button
                                 onClick={() => deleteRapport(rapport)}
                                 className="w-7 h-7 flex items-center justify-center rounded-full text-gray-300 hover:text-red-400 hover:bg-red-50 transition-colors"
@@ -1332,7 +1348,40 @@ export default function ChantierDetail() {
                           </div>
                         </div>
 
-                        <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{rapport.message}</p>
+                        {editingRapportId === rapport.id ? (
+                          <div className="space-y-2">
+                            <textarea
+                              value={editingRapportMessage}
+                              onChange={e => setEditingRapportMessage(e.target.value)}
+                              rows={4}
+                              autoFocus
+                              className="w-full text-sm text-gray-700 leading-relaxed px-3 py-2.5 rounded-xl border border-orange-300 focus:outline-none focus:ring-2 focus:ring-orange-400 resize-none bg-orange-50/30"
+                            />
+                            <div className="flex gap-2 justify-end">
+                              <button
+                                onClick={() => setEditingRapportId(null)}
+                                className="px-3 py-1.5 text-xs font-semibold text-gray-500 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                              >
+                                Annuler
+                              </button>
+                              <button
+                                disabled={savingRapport || !editingRapportMessage.trim()}
+                                onClick={async () => {
+                                  setSavingRapport(true)
+                                  await updateRapport(rapport.id, editingRapportMessage)
+                                  setSavingRapport(false)
+                                  setEditingRapportId(null)
+                                }}
+                                className="px-3 py-1.5 text-xs font-semibold text-white rounded-lg disabled:opacity-50 transition-all"
+                                style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}
+                              >
+                                {savingRapport ? 'Enregistrement…' : 'Enregistrer'}
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">{rapport.message}</p>
+                        )}
 
                         {photos.length > 0 && (
                           <div className="mt-3 flex gap-2 overflow-x-auto pb-1 no-scrollbar">

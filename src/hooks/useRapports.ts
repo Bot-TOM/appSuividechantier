@@ -95,6 +95,16 @@ export function useRapports(chantierId: string) {
     setRapports(prev => prev.filter(r => r.id !== rapport.id))
   }
 
+  async function updateRapport(rapportId: string, message: string): Promise<{ error: string | null }> {
+    const { error } = await supabase
+      .from('rapports')
+      .update({ message: message.trim() })
+      .eq('id', rapportId)
+    if (error) return { error: error.message }
+    setRapports(prev => prev.map(r => r.id === rapportId ? { ...r, message: message.trim() } : r))
+    return { error: null }
+  }
+
   async function deleteRapportPhoto(photo: RapportPhoto) {
     const path = new URL(photo.url).pathname.replace(/^\/storage\/v1\/object\/public\/rapport-photos\//, '')
     await supabase.storage.from('rapport-photos').remove([path])
@@ -106,5 +116,5 @@ export function useRapports(chantierId: string) {
     ))
   }
 
-  return { rapports, loading, addRapport, deleteRapport, deleteRapportPhoto, refetch: fetchRapports }
+  return { rapports, loading, addRapport, updateRapport, deleteRapport, deleteRapportPhoto, refetch: fetchRapports }
 }
