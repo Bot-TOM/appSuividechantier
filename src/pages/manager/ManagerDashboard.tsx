@@ -1,6 +1,6 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { Layers, RefreshCw, AlertTriangle, CheckCircle2, Sun, LogOut, Bell, Calendar, Zap, MoreHorizontal, MoreVertical, Shield, ChevronRight, AlertCircle, FileText, CheckSquare, MessageCircle, TrendingUp, ShieldAlert, Search, Filter, CircleDot, Folder, Clock, Trash2 } from 'lucide-react'
+import { Layers, RefreshCw, AlertTriangle, CheckCircle2, Sun, LogOut, Bell, Calendar, Zap, MoreHorizontal, MoreVertical, Shield, ChevronRight, AlertCircle, FileText, CheckSquare, MessageCircle, TrendingUp, ShieldAlert, Search, Filter, CircleDot, Folder, Clock, Trash2, Users, BarChart2, Building2, Bug } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantiers } from '@/hooks/useChantiers'
 import { useAnomalies } from '@/hooks/useAnomalies'
@@ -337,7 +337,7 @@ export default function ManagerDashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC]">
+    <div className="min-h-screen bg-[#F8FAFC] md:flex md:flex-col">
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
@@ -465,8 +465,8 @@ export default function ManagerDashboard() {
             </div>
           </div>
 
-          {/* Onglets navigation — style underline */}
-          <nav className="flex gap-0 overflow-x-auto no-scrollbar -mb-px">
+          {/* Onglets navigation mobile — masqués sur desktop (remplacés par la sidebar) */}
+          <nav className="flex gap-0 overflow-x-auto no-scrollbar -mb-px md:hidden">
             {([
               { key: 'chantiers', label: 'Chantiers' },
               { key: 'vt',        label: 'VT' },
@@ -515,7 +515,60 @@ export default function ManagerDashboard() {
         </div>
       )}
 
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      {/* ── Body : sidebar desktop + contenu ──────────────────────────────── */}
+      <div className="md:flex md:flex-1 md:overflow-hidden">
+
+        {/* ── Sidebar desktop ───────────────────────────────────────────────── */}
+        <aside className="hidden md:flex md:flex-col w-60 bg-white border-r border-slate-100 shrink-0">
+          <nav className="flex flex-col gap-1 p-3 flex-1 pt-4">
+            {([
+              { key: 'chantiers',   label: 'Chantiers',   Icon: Layers        },
+              { key: 'vt',          label: 'VT',           Icon: FileText      },
+              { key: 'anomalies',   label: 'Anomalies',    Icon: AlertTriangle, badge: anomaliesOuvertes.length || undefined },
+              { key: 'stats',       label: 'Stats',        Icon: BarChart2     },
+              { key: 'planning',    label: 'Planning',     Icon: Calendar      },
+              { key: 'equipe',      label: 'Équipe',       Icon: Users         },
+              { key: 'chat',        label: 'Chat',         Icon: MessageCircle, badge: activeTab !== 'chat' ? (chatUnread || undefined) : undefined },
+              ...(profile?.role === 'admin' ? [
+                { key: 'entreprises', label: 'Entreprises', Icon: Building2 },
+                { key: 'bugs',        label: 'Bugs',         Icon: Bug       },
+              ] : []),
+            ] as { key: Tab; label: string; Icon: React.ElementType; badge?: number }[]).map(({ key, label, Icon, badge }) => (
+              <button
+                key={key}
+                onClick={() => setActiveTab(key)}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${
+                  activeTab === key
+                    ? 'bg-orange-50 text-orange-600'
+                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+                }`}>
+                <Icon className="w-5 h-5 shrink-0" strokeWidth={activeTab === key ? 2.5 : 1.8} />
+                <span className="flex-1 text-left">{label}</span>
+                {badge ? (
+                  <span className={`text-xs font-bold px-1.5 py-0.5 rounded-full ${
+                    activeTab === key ? 'bg-orange-200 text-orange-700' : 'bg-slate-100 text-slate-500'
+                  }`}>{badge}</span>
+                ) : null}
+              </button>
+            ))}
+          </nav>
+
+          {/* Profil en bas de sidebar */}
+          <div className="p-3 border-t border-slate-100">
+            <button
+              onClick={() => { setActiveTab('profil'); refreshProfile() }}
+              className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all ${
+                activeTab === 'profil'
+                  ? 'bg-orange-50 text-orange-600'
+                  : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'
+              }`}>
+              <Avatar name={profile?.full_name ?? ''} avatarUrl={profile?.avatar_url} size="sm" />
+              <span className="truncate">{profile?.full_name?.split(' ')[0] ?? 'Profil'}</span>
+            </button>
+          </div>
+        </aside>
+
+        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 md:flex-1 md:max-w-none md:overflow-y-auto">
 
         {/* ── Onglet Anomalies ──────────────────────────────────────────────── */}
         {activeTab === 'anomalies' && (
@@ -1400,6 +1453,7 @@ export default function ManagerDashboard() {
           <GlobalChatTab userId={profile.id} entrepriseId={profile.entreprise_id ?? ''} isActive={activeTab === 'chat'} />
         )}
       </main>
+      </div>{/* fin body wrapper */}
 
       <BugReportButton />
 
