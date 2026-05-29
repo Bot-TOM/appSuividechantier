@@ -180,6 +180,14 @@ const TYPE_LABELS: Record<PlanningType, string> = {
   libre:             'Libre',
 }
 
+// ─── Lundi de la semaine courante (date locale ISO) ───────────────────────────
+function getCurrentMonday(): string {
+  const d   = new Date()
+  const day = d.getDay()
+  d.setDate(d.getDate() - (day === 0 ? 6 : day - 1))
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`
+}
+
 interface Props {
   profiles: UserProfile[]
   onClose:  () => void
@@ -195,6 +203,7 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
   const [error,     setError]     = useState('')
   const [step,      setStep]      = useState<'idle' | 'parsing' | 'preview'>('idle')
   const [parseMode, setParseMode] = useState<'direct' | 'ai'>('direct')
+  const [includePast, setIncludePast] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   async function handleFile(file: File) {
@@ -240,7 +249,8 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
   }
 
   async function doImport() {
-    const valid = rows.filter(r => r.status === 'ok')
+    const currentMonday = getCurrentMonday()
+    const valid = rows.filter(r => r.status === 'ok' && (includePast || r.date >= currentMonday))
     if (!valid.length) return
     setImporting(true)
     try {
@@ -265,8 +275,11 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
     setImporting(false)
   }
 
-  const okCount  = rows.filter(r => r.status === 'ok').length
-  const errCount = rows.filter(r => r.status !== 'ok').length
+  const currentMonday = getCurrentMonday()
+  const okCount   = rows.filter(r => r.status === 'ok').length
+  const errCount  = rows.filter(r => r.status !== 'ok').length
+  const pastCount = rows.filter(r => r.status === 'ok' && r.date < currentMonday).length
+  const importCount = includePast ? okCount : okCount - pastCount
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center">
@@ -351,9 +364,15 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
 
               <div className="flex gap-3">
                 <div className="flex-1 bg-green-50 border border-green-100 rounded-xl p-3 text-center">
-                  <p className="text-2xl font-bold text-green-600">{okCount}</p>
+                  <p className="text-2xl font-bold text-green-600">{importCount}</p>
                   <p className="text-xs text-green-500 mt-0.5">entrées à importer</p>
                 </div>
+                {pastCount > 0 && !includePast && (
+                  <div className="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-center">
+                    <p className="text-2xl font-bold text-slate-400">{pastCount}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">semaines passées ignorées</p>
+                  </div>
+                )}
                 {errCount > 0 && (
                   <div className="flex-1 bg-amber-50 border border-amber-100 rounded-xl p-3 text-center">
                     <p className="text-2xl font-bold text-amber-500">{errCount}</p>
@@ -361,6 +380,35 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
                   </div>
                 )}
               </div>
+
+              {/* Protection données passées */}
+              {pastCount > 0 && (
+                <div className={`rounded-xl px-4 py-3 border ${includePast ? 'bg-amber-50 border-amber-200' : 'bg-slate-50 border-slate-200'}`}>
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1">
+                      <p className={`text-xs font-semibold ${includePast ? 'text-amber-700' : 'text-slate-600'}`}>
+                        {includePast
+                          ? `⚠️ Les ${pastCount} entrées des semaines passées seront écrasées`
+                          : `🔒 ${pastCount} entrées antérieures à cette semaine protégées`}
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {includePast
+                          ? 'Les données historiques déjà saisies seront remplacées.'
+                          : 'L\'historique existant ne sera pas modifié.'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => setIncludePast(v => !v)}
+                      className={`flex-shrink-0 text-xs font-semibold px-3 py-1.5 rounded-lg border transition-colors ${
+                        includePast
+                          ? 'bg-amber-100 text-amber-700 border-amber-300 hover:bg-amber-200'
+                          : 'bg-white text-slate-500 border-slate-300 hover:bg-slate-100'
+                      }`}>
+                      {includePast ? 'Annuler' : 'Écraser quand même'}
+                    </button>
+                  </div>
+                </div>
+              )}
 
               {errCount > 0 && (
                 <p className="text-xs text-gray-400">
@@ -414,13 +462,13 @@ export default function PlanningImportModal({ profiles, onClose, onDone }: Props
           {step === 'preview' && (
             <button
               onClick={doImport}
-              disabled={okCount === 0 || importing}
+              disabled={importCount === 0 || importing}
               className="flex-1 py-2.5 rounded-xl text-white text-sm font-semibold disabled:opacity-40 transition-all flex items-center justify-center gap-2"
               style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}
             >
               {importing
                 ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />Import…</>
-                : `Importer ${okCount} entrée${okCount > 1 ? 's' : ''}`
+                : `Importer ${importCount} entrée${importCount > 1 ? 's' : ''}`
               }
             </button>
           )}

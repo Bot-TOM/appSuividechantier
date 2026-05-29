@@ -112,15 +112,15 @@ export function usePlanning(startDate: string, endDate: string) {
 
     // 3. Refetch dès que l'onglet/app repasse au premier plan
     const onFocus = () => refetch()
+    const onVisibility = () => { if (document.visibilityState === 'visible') refetch() }
     window.addEventListener('focus', onFocus)
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'visible') refetch()
-    })
+    document.addEventListener('visibilitychange', onVisibility)
 
     return () => {
       supabase.removeChannel(channel)
       clearInterval(interval)
       window.removeEventListener('focus', onFocus)
+      document.removeEventListener('visibilitychange', onVisibility)
     }
   }, [refetch, startDate, endDate])
 
