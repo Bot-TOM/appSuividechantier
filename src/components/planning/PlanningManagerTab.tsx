@@ -975,16 +975,39 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                               : `${pauseMin}m`)
                             : null
 
-                          // Cellule weekend ou vide
-                          if (isWeekend || !e?.arrivee) {
+                          // Cellule weekend → tiret non cliquable
+                          if (isWeekend) {
                             return (
                               <td key={date} className="p-2 align-middle">
-                                <div className={`h-[84px] w-full rounded-xl border-2 border-dashed flex items-center justify-center ${
-                                  isToday && !isWeekend
-                                    ? 'border-orange-200/50 bg-orange-50/20'
-                                    : 'border-slate-100'
-                                }`}>
+                                <div className="h-[84px] w-full rounded-xl border-2 border-dashed border-slate-100 flex items-center justify-center">
                                   <div className="w-4 h-0.5 bg-slate-200 rounded-full" />
+                                </div>
+                              </td>
+                            )
+                          }
+
+                          // Cellule vide → cliquable pour le manager (ajouter des heures)
+                          if (!e?.arrivee) {
+                            return (
+                              <td key={date} className="p-2 align-middle">
+                                <div
+                                  onClick={() => setEditTimeModal({
+                                    techId: person.id,
+                                    techName: person.full_name,
+                                    date,
+                                    arrivee: '',
+                                    depart: '',
+                                    pause: '',
+                                    chantier_id: null,
+                                  })}
+                                  className={`h-[84px] w-full rounded-xl border-2 border-dashed flex items-center justify-center cursor-pointer transition-all group ${
+                                    isToday
+                                      ? 'border-orange-200/50 bg-orange-50/20 hover:border-orange-300 hover:bg-orange-50/40'
+                                      : 'border-slate-100 hover:border-slate-300 hover:bg-slate-50/50'
+                                  }`}>
+                                  <span className={`text-lg font-light transition-colors ${
+                                    isToday ? 'text-orange-300 group-hover:text-orange-400' : 'text-slate-200 group-hover:text-slate-400'
+                                  }`}>+</span>
                                 </div>
                               </td>
                             )
@@ -1541,7 +1564,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                 Annuler
               </button>
               <button
-                disabled={savingTime}
+                disabled={savingTime || !editTimeModal.arrivee}
                 onClick={async () => {
                   if (!editTimeModal) return
                   setSavingTime(true)
@@ -1554,7 +1577,7 @@ export default function PlanningManagerTab({ entrepriseId }: { entrepriseId?: st
                   setSavingTime(false)
                   setEditTimeModal(null)
                 }}
-                className="flex-1 text-white font-semibold py-3 rounded-xl transition-all text-sm disabled:opacity-60"
+                className="flex-1 text-white font-semibold py-3 rounded-xl transition-all text-sm disabled:opacity-40"
                 style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
                 {savingTime ? 'Enregistrement...' : 'Enregistrer'}
               </button>
