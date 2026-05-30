@@ -6,7 +6,7 @@ import type { Notification } from '@/hooks/useNotifications'
 import {
   AlertTriangle, Calendar, Layers, ArrowRight, Clock,
   CheckCircle2, FileText, Bell, Plus, ShieldAlert,
-  Users, TrendingUp, ChevronRight, Sun,
+  Users, TrendingUp, ChevronRight, Sun, Lock, CheckSquare, X,
 } from 'lucide-react'
 
 // ─── Types internes ───────────────────────────────────────────────────────────
@@ -34,6 +34,26 @@ interface Props {
   entrepriseId?: string
   managerName?:  string
   onNavigate:    (tab: string, filter?: string) => void
+  markAllRead?:  () => void
+  markRead?:     (id: string) => void
+}
+
+// ─── Icône par type de notification ──────────────────────────────────────────
+function NotifIcon({ type }: { type: Notification['type'] }) {
+  const map: Record<Notification['type'], { icon: React.ReactNode; bg: string; text: string }> = {
+    anomalie:     { icon: <AlertTriangle className="w-3.5 h-3.5" />, bg: 'bg-red-100',    text: 'text-red-500'    },
+    rapport:      { icon: <FileText      className="w-3.5 h-3.5" />, bg: 'bg-blue-100',   text: 'text-blue-500'   },
+    bloque:       { icon: <Lock          className="w-3.5 h-3.5" />, bg: 'bg-orange-100', text: 'text-orange-500' },
+    autocontrole: { icon: <CheckSquare   className="w-3.5 h-3.5" />, bg: 'bg-purple-100', text: 'text-purple-500' },
+    termine:      { icon: <CheckCircle2  className="w-3.5 h-3.5" />, bg: 'bg-emerald-100',text: 'text-emerald-500'},
+    heures:       { icon: <Clock         className="w-3.5 h-3.5" />, bg: 'bg-slate-100',  text: 'text-slate-500'  },
+  }
+  const s = map[type] ?? map.rapport
+  return (
+    <span className={`w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 ${s.bg} ${s.text}`}>
+      {s.icon}
+    </span>
+  )
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -127,7 +147,7 @@ function EmptyState({ text }: { text: string }) {
 }
 
 // ─── Composant principal ──────────────────────────────────────────────────────
-export default function ManagerHomeTab({ chantiers, anomalies, notifications, managerName, onNavigate }: Props) {
+export default function ManagerHomeTab({ chantiers, anomalies, notifications, managerName, onNavigate, markAllRead, markRead }: Props) {
   const navigate = useNavigate()
 
   const today  = localISO(new Date())
@@ -184,8 +204,9 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
       .then(({ data }) => { setRecentRapports((data ?? []) as unknown as Rapport[]); setLoadingRapports(false) })
   }, [today]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Notifications récentes (5 dernières) ─────────────────────────────────
-  const recentNotifs = notifications.slice(0, 5)
+  // ── Notifications ────────────────────────────────────────────────────────
+  const unreadNotifs = notifications.filter(n => !n.lu)
+  const unreadCount  = unreadNotifs.length
 
   // ── Greeting ──────────────────────────────────────────────────────────────
   const prenom    = managerName?.split(' ')[0] ?? 'Manager'
@@ -226,6 +247,72 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
           </div>
         </div>
       </div>
+
+      {/* ── Inbox notifications non-lues ──────────────────────────────────── */}
+      {unreadCount > 0 && (
+        <div
+          className="bg-white rounded-2xl border border-orange-200 overflow-hidden"
+          style={{ boxShadow: '0 2px 12px rgba(249,115,22,0.12)' }}>
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 bg-gradient-to-r from-orange-50 to-amber-50 border-b border-orange-100">
+            <div className="flex items-center gap-3">
+              <div className="relative">
+                <div className="w-10 h-10 rounded-xl bg-orange-500 flex items-center justify-center shadow-sm">
+                  <Bell className="w-5 h-5 text-white" />
+                </div>
+                <span className="absolute -top-1.5 -right-1.5 min-w-[20px] h-5 px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+                  {unreadCount > 99 ? '99+' : unreadCount}
+                </span>
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm">Notifications</h3>
+                <p className="text-xs text-orange-600 font-medium">
+                  {unreadCount} non lue{unreadCount > 1 ? 's' : ''} — action requise
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => markAllRead?.()}
+              className="flex items-center gap-1.5 text-xs font-semibold text-slate-400 hover:text-orange-500 transition-colors px-3 py-1.5 rounded-lg hover:bg-orange-50">
+              <X className="w-3.5 h-3.5" /> Tout lu
+            </button>
+          </div>
+
+          {/* Liste */}
+          <div className="divide-y divide-slate-50">
+            {unreadNotifs.slice(0, 7).map(n => (
+              <button
+                key={n.id}
+                onClick={() => {
+                  markRead?.(n.id)
+                  if (n.chantier_id) navigate(`/chantier/${n.chantier_id}`)
+                }}
+                className="w-full text-left px-5 py-3.5 flex items-start gap-3 hover:bg-orange-50/50 transition-colors group">
+                <NotifIcon type={n.type} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-slate-900 leading-snug">{n.message}</p>
+                  <p className="text-xs text-slate-400 mt-0.5">{timeAgo(n.created_at)}</p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 mt-1">
+                  <span className="w-2 h-2 rounded-full bg-orange-500" />
+                  {n.chantier_id && (
+                    <ArrowRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-orange-500 transition-colors" />
+                  )}
+                </div>
+              </button>
+            ))}
+          </div>
+
+          {/* Footer si débordement */}
+          {unreadCount > 7 && (
+            <div className="px-5 py-3 bg-orange-50/50 border-t border-orange-100 text-center">
+              <p className="text-xs text-orange-500 font-medium">
+                +{unreadCount - 7} autres notifications non lues
+              </p>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
@@ -512,28 +599,23 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
         )}
       </SectionCard>
 
-      {/* ── Notifications récentes ─────────────────────────────────────────── */}
-      {recentNotifs.length > 0 && (
+      {/* ── Historique notifications ───────────────────────────────────────── */}
+      {notifications.length > 0 && (
         <SectionCard
-          title="Notifications récentes"
+          title="Historique des notifications"
           icon={<Bell className="w-4 h-4" />}>
           <div className="divide-y divide-slate-50">
-            {recentNotifs.map(n => (
+            {notifications.slice(0, 8).map(n => (
               <button
                 key={n.id}
-                onClick={() => n.chantier_id && navigate(`/chantier/${n.chantier_id}`)}
-                className={`w-full text-left px-5 py-3.5 flex items-start gap-3 hover:bg-slate-50 transition-colors ${!n.lu ? 'bg-orange-50/40' : ''}`}>
-                <span className={`mt-0.5 w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 text-sm ${
-                  n.type === 'anomalie'     ? 'bg-red-100 text-red-500' :
-                  n.type === 'rapport'      ? 'bg-blue-100 text-blue-500' :
-                  n.type === 'bloque'       ? 'bg-orange-100 text-orange-500' :
-                  n.type === 'autocontrole' ? 'bg-purple-100 text-purple-500' :
-                  'bg-green-100 text-green-500'
-                }`}>
-                  {n.type === 'anomalie' ? '⚠️' : n.type === 'rapport' ? '📋' : n.type === 'bloque' ? '🔒' : n.type === 'autocontrole' ? '✅' : '✓'}
-                </span>
+                onClick={() => {
+                  markRead?.(n.id)
+                  if (n.chantier_id) navigate(`/chantier/${n.chantier_id}`)
+                }}
+                className={`w-full text-left px-5 py-3.5 flex items-start gap-3 hover:bg-slate-50 transition-colors ${!n.lu ? 'bg-orange-50/30' : ''}`}>
+                <NotifIcon type={n.type} />
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm leading-snug truncate ${!n.lu ? 'font-semibold text-slate-900' : 'text-slate-600'}`}>{n.message}</p>
+                  <p className={`text-sm leading-snug truncate ${!n.lu ? 'font-semibold text-slate-900' : 'text-slate-500'}`}>{n.message}</p>
                   <p className="text-xs text-slate-400 mt-0.5">{timeAgo(n.created_at)}</p>
                 </div>
                 {!n.lu && <span className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0 mt-2" />}

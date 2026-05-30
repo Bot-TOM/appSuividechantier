@@ -581,6 +581,8 @@ export default function ManagerDashboard() {
             notifications={notifications}
             entrepriseId={selectedEntreprise?.id ?? profile?.entreprise_id ?? undefined}
             managerName={profile?.full_name}
+            markAllRead={markAllRead}
+            markRead={markRead}
             onNavigate={(tab, filter) => {
               if (filter) setFilterStatut(filter as FilterStatut)
               setActiveTab(tab as Tab)
