@@ -1,9 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Search, Plus, ChevronLeft, MessageSquare, Users, Layers } from 'lucide-react'
+import { Search, Plus, ChevronLeft, MessageSquare, Users, Layers, User } from 'lucide-react'
 import GlobalChatTab from '@/components/chat/GlobalChatTab'
 import ChatTab from '@/components/chat/ChatTab'
 import GroupChatTab from '@/components/chat/GroupChatTab'
 import CreateGroupModal from '@/components/chat/CreateGroupModal'
+import NewDMModal from '@/components/chat/NewDMModal'
 import { useChatGroups } from '@/hooks/useChatGroups'
 import { useChantiers } from '@/hooks/useChantiers'
 import { useChatUnread, relativeTime } from '@/hooks/useChatUnread'
@@ -29,7 +30,7 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
   const userId       = profile.id
   const entrepriseId = entrepriseIdOverride ?? profile.entreprise_id ?? ''
 
-  const { groups, loading: groupsLoading, createGroup, deleteGroup, leaveGroup, refetch: refetchGroups } =
+  const { groups, loading: groupsLoading, createGroup, deleteGroup, leaveGroup, createDM, refetch: refetchGroups } =
     useChatGroups(userId, entrepriseId)
   const { chantiers, loading: chantiersLoading } = useChantiers(entrepriseIdOverride)
 
@@ -43,6 +44,7 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
   const [activeConv, setActiveConv]         = useState<ActiveConv>({ type: 'global', id: 'global', label: 'Équipe' })
   const [showConvOnMobile, setShowConvOnMobile] = useState(false)
   const [showCreateModal, setShowCreateModal]   = useState(false)
+  const [showDMModal, setShowDMModal]           = useState(false)
 
   // Quand l'admin change d'entreprise, revenir au chat Équipe de la nouvelle entreprise
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
     'équipe'.includes(searchQuery.toLowerCase()) ||
     'chat'.includes(searchQuery.toLowerCase())
 
-  // Liste unifiée chantiers + groupes triée par dernière activité (plus récent en haut)
+  // Liste unifiée chantiers + groupes (hors DMs) triée par dernière activité
   type ConvEntry =
     | { type: 'chantier'; id: string; label: string; sub: string }
     | { type: 'group';    id: string; label: string; sub: string }
@@ -69,7 +71,7 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
       .map(c => ({ type: 'chantier' as const, id: c.id, label: c.nom, sub: c.client_nom }))
 
     const groupEntries: ConvEntry[] = groups
-      .filter(g => !q || g.name.toLowerCase().includes(q))
+      .filter(g => !g.is_dm && (!q || g.name.toLowerCase().includes(q)))
       .map(g => ({
         type:  'group' as const,
         id:    g.id,
@@ -80,9 +82,30 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
     return [...chantierEntries, ...groupEntries].sort((a, b) => {
       const ta = lastActivityMap[a.id] ?? '1970-01-01'
       const tb = lastActivityMap[b.id] ?? '1970-01-01'
-      return tb.localeCompare(ta) // plus récent en premier
+      return tb.localeCompare(ta)
     })
   }, [chantiers, groups, searchQuery, lastActivityMap])
+
+  // Liste des DMs triée par dernière activité
+  type DMEntry = { id: string; label: string; sub: string }
+
+  const sortedDMs = useMemo<DMEntry[]>(() => {
+    const q = searchQuery.toLowerCase()
+    return groups
+      .filter(g => g.is_dm === true)
+      .map(g => {
+        const other = (g.members ?? []).find(m => m.user_id !== userId)
+        const label = other?.profiles?.full_name ?? 'Message privé'
+        const sub   = other?.profiles?.poste ?? (other?.profiles?.role === 'manager' ? 'Manager' : '')
+        return { id: g.id, label, sub }
+      })
+      .filter(dm => !q || dm.label.toLowerCase().includes(q))
+      .sort((a, b) => {
+        const ta = lastActivityMap[a.id] ?? '1970-01-01'
+        const tb = lastActivityMap[b.id] ?? '1970-01-01'
+        return tb.localeCompare(ta)
+      })
+  }, [groups, userId, searchQuery, lastActivityMap])
 
   const openConv = (conv: ActiveConv) => {
     setActiveConv(conv)
@@ -134,62 +157,107 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
           />
         )}
 
-        {/* ── Divider + bouton nouveau groupe ────────────────────────────── */}
+        {/* ── Conversations + DMs ─────────────────────────────────────── */}
         {(chantiersLoading || groupsLoading) ? (
           <div className="flex justify-center py-6">
             <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : sortedConversations.length === 0 && !searchQuery ? (
-          /* État vide : aucun chantier ni groupe */
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="w-full flex flex-col items-center gap-1.5 py-6 px-3 mt-2 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:border-orange-300 hover:text-orange-400 transition-colors"
-          >
-            <Plus className="w-5 h-5" />
-            <span className="text-xs font-medium">Créer un groupe</span>
-          </button>
         ) : (
           <>
-            {/* En-tête section avec bouton + Nouveau */}
-            <div className="flex items-center justify-between px-2 mt-3 mb-1">
-              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
-                Conversations
-              </p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-0.5 text-[10px] font-semibold text-orange-500 hover:text-orange-600 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Nouveau groupe
-              </button>
-            </div>
+            {/* ── Section Conversations (chantiers + groupes) ── */}
+            {(sortedConversations.length > 0 || !searchQuery) && (
+              <>
+                <div className="flex items-center justify-between px-2 mt-3 mb-1">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+                    Conversations
+                  </p>
+                  <button
+                    onClick={() => setShowCreateModal(true)}
+                    className="flex items-center gap-0.5 text-[10px] font-semibold text-orange-500 hover:text-orange-600 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Nouveau groupe
+                  </button>
+                </div>
 
-            {/* Liste unifiée triée par activité récente */}
-            {sortedConversations.map(conv => {
-              const preview = lastMsgMap[conv.id]
-              return (
-                <ConvItem
-                  key={`${conv.type}-${conv.id}`}
-                  icon={
-                    conv.type === 'chantier'
-                      ? <Layers className="w-4 h-4 text-white" />
-                      : <Users  className="w-4 h-4 text-white" />
-                  }
-                  iconBg={
-                    conv.type === 'chantier'
-                      ? 'bg-gradient-to-br from-blue-500 to-blue-600'
-                      : 'bg-gradient-to-br from-violet-500 to-violet-600'
-                  }
-                  label={conv.label}
-                  preview={preview?.text}
-                  previewOwn={preview?.isOwn}
-                  time={preview ? relativeTime(preview.time) : undefined}
-                  unread={unreadMap[conv.id] ?? 0}
-                  active={activeConv.type === conv.type && activeConv.id === conv.id}
-                  onClick={() => openConv({ type: conv.type, id: conv.id, label: conv.label })}
-                />
-              )
-            })}
+                {sortedConversations.length === 0 ? (
+                  <p className="text-xs text-slate-400 px-2 py-1.5">Aucun chantier ou groupe</p>
+                ) : (
+                  sortedConversations.map(conv => {
+                    const preview = lastMsgMap[conv.id]
+                    return (
+                      <ConvItem
+                        key={`${conv.type}-${conv.id}`}
+                        icon={
+                          conv.type === 'chantier'
+                            ? <Layers className="w-4 h-4 text-white" />
+                            : <Users  className="w-4 h-4 text-white" />
+                        }
+                        iconBg={
+                          conv.type === 'chantier'
+                            ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                            : 'bg-gradient-to-br from-violet-500 to-violet-600'
+                        }
+                        label={conv.label}
+                        preview={preview?.text}
+                        previewOwn={preview?.isOwn}
+                        time={preview ? relativeTime(preview.time) : undefined}
+                        unread={unreadMap[conv.id] ?? 0}
+                        active={activeConv.type === conv.type && activeConv.id === conv.id}
+                        onClick={() => openConv({ type: conv.type, id: conv.id, label: conv.label })}
+                      />
+                    )
+                  })
+                )}
+              </>
+            )}
+
+            {/* ── Section Privés (DMs) ── */}
+            {(sortedDMs.length > 0 || !searchQuery) && (
+              <>
+                <div className="flex items-center justify-between px-2 mt-4 mb-1">
+                  <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+                    Privés
+                  </p>
+                  <button
+                    onClick={() => setShowDMModal(true)}
+                    className="flex items-center gap-0.5 text-[10px] font-semibold text-orange-500 hover:text-orange-600 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    Nouveau
+                  </button>
+                </div>
+
+                {sortedDMs.length === 0 ? (
+                  <button
+                    onClick={() => setShowDMModal(true)}
+                    className="w-full flex items-center gap-2 py-2.5 px-3 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:border-orange-300 hover:text-orange-400 transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5 flex-shrink-0" />
+                    <span className="text-xs font-medium">Démarrer une conversation</span>
+                  </button>
+                ) : (
+                  sortedDMs.map(dm => {
+                    const preview = lastMsgMap[dm.id]
+                    return (
+                      <ConvItem
+                        key={`dm-${dm.id}`}
+                        icon={<User className="w-4 h-4 text-white" />}
+                        iconBg="bg-gradient-to-br from-pink-500 to-rose-500"
+                        label={dm.label}
+                        sub={dm.sub || undefined}
+                        preview={preview?.text}
+                        previewOwn={preview?.isOwn}
+                        time={preview ? relativeTime(preview.time) : undefined}
+                        unread={unreadMap[dm.id] ?? 0}
+                        active={activeConv.type === 'group' && activeConv.id === dm.id}
+                        onClick={() => openConv({ type: 'group', id: dm.id, label: dm.label })}
+                      />
+                    )
+                  })
+                )}
+              </>
+            )}
           </>
         )}
       </div>
@@ -289,6 +357,20 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
             openConv({ type: 'group', id: groupId, label: '…' })
           }}
           onCreate={createGroup}
+        />
+      )}
+
+      {/* ── Modale nouveau DM ──────────────────────────────────────────── */}
+      {showDMModal && (
+        <NewDMModal
+          userId={userId}
+          entrepriseId={entrepriseId}
+          onClose={() => setShowDMModal(false)}
+          onSelect={async (otherUserId, name) => {
+            setShowDMModal(false)
+            const { group } = await createDM(otherUserId)
+            if (group) openConv({ type: 'group', id: group.id, label: name })
+          }}
         />
       )}
     </>

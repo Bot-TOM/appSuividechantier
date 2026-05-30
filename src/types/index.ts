@@ -188,6 +188,7 @@ export interface ChatGroup {
   entreprise_id: string
   created_by: string | null
   created_at: string
+  is_dm?: boolean
   members?: ChatGroupMember[]
 }
 

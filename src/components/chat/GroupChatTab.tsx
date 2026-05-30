@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Paperclip, Send, Users, Trash2 } from 'lucide-react'
+import { Paperclip, Send, Users, Trash2, Lock } from 'lucide-react'
 import { useGroupMessages } from '@/hooks/useGroupMessages'
 import { usePresence } from '@/hooks/usePresence'
 import Avatar from '@/components/Avatar'
@@ -61,7 +61,7 @@ export default function GroupChatTab({ group, userId, userRole, isActive = true,
   const [showScrollBtn,   setShowScrollBtn]   = useState(false)
   const [confirmDelete,   setConfirmDelete]   = useState(false)
 
-  const canDelete = userRole === 'manager' || userRole === 'admin'
+  const canDelete = (userRole === 'manager' || userRole === 'admin') && !group.is_dm
 
   useEffect(() => {
     const el = msgsContainerRef.current
@@ -90,6 +90,10 @@ export default function GroupChatTab({ group, userId, userRole, isActive = true,
       role: m.profiles?.role,
     }))
   }, [group.members])
+
+  // Pour les DMs : identifier l'autre membre
+  const otherMember = group.is_dm ? members.find(m => m.id !== userId) ?? null : null
+  const otherOnline = otherMember ? onlineUsers.has(otherMember.id) : false
 
   const scrollToBottom = useCallback((smooth = false) => {
     const el = msgsContainerRef.current
@@ -151,55 +155,83 @@ export default function GroupChatTab({ group, userId, userRole, isActive = true,
     >
       {/* ── Header ─────────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-slate-100 shrink-0" onClick={e => e.stopPropagation()}>
-        <button
-          onClick={() => setShowMembers(p => !p)}
-          className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
-            showMembers
-              ? 'bg-orange-50 border-orange-200 text-orange-600'
-              : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
-          }`}
-        >
-          <Users className="w-3.5 h-3.5" />
-          <span>{members.length} membre{members.length !== 1 ? 's' : ''} · {onlineUsers.size} en ligne</span>
-        </button>
 
-        <div className="flex items-center gap-2">
-          {onLeave && !canDelete && (
-            <button
-              onClick={onLeave}
-              className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
-            >
-              Quitter
-            </button>
-          )}
-          {canDelete && onDelete && (
-            confirmDelete ? (
-              <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                <span className="text-xs text-red-600 font-medium">Supprimer définitivement ?</span>
-                <button onClick={onDelete}
-                  className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors">
-                  Oui
-                </button>
-                <button onClick={() => setConfirmDelete(false)}
-                  className="text-xs font-medium px-2.5 py-1 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
-                  Non
-                </button>
-              </div>
-            ) : (
+        {group.is_dm ? (
+          /* Header DM : avatar + nom + statut en ligne */
+          <div className="flex items-center gap-2.5">
+            <Avatar
+              name={otherMember?.name ?? '?'}
+              avatarUrl={otherMember?.avatarUrl}
+              size="sm"
+              online={otherOnline}
+            />
+            <div>
+              <p className="text-sm font-semibold text-slate-800 leading-tight">
+                {otherMember?.name ?? 'Message privé'}
+              </p>
+              <p className={`text-xs leading-tight ${otherOnline ? 'text-emerald-500' : 'text-slate-400'}`}>
+                {otherOnline ? 'En ligne' : 'Hors ligne'}
+              </p>
+            </div>
+            <span className="ml-1 flex items-center gap-1 text-[10px] font-medium text-slate-400 bg-slate-50 border border-slate-100 px-2 py-0.5 rounded-full">
+              <Lock className="w-2.5 h-2.5" />
+              Privé
+            </span>
+          </div>
+        ) : (
+          /* Header groupe classique */
+          <button
+            onClick={() => setShowMembers(p => !p)}
+            className={`flex items-center gap-1.5 text-xs font-medium px-3 py-1.5 rounded-full border transition-colors ${
+              showMembers
+                ? 'bg-orange-50 border-orange-200 text-orange-600'
+                : 'bg-slate-50 border-slate-100 text-slate-600 hover:bg-slate-100'
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span>{members.length} membre{members.length !== 1 ? 's' : ''} · {onlineUsers.size} en ligne</span>
+          </button>
+        )}
+
+        {!group.is_dm && (
+          <div className="flex items-center gap-2">
+            {onLeave && !canDelete && (
               <button
-                onClick={() => setConfirmDelete(true)}
+                onClick={onLeave}
                 className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
               >
-                <Trash2 className="w-3.5 h-3.5" />
-                Supprimer le groupe
+                Quitter
               </button>
-            )
-          )}
-        </div>
+            )}
+            {canDelete && onDelete && (
+              confirmDelete ? (
+                <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                  <span className="text-xs text-red-600 font-medium">Supprimer définitivement ?</span>
+                  <button onClick={onDelete}
+                    className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors">
+                    Oui
+                  </button>
+                  <button onClick={() => setConfirmDelete(false)}
+                    className="text-xs font-medium px-2.5 py-1 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+                    Non
+                  </button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Supprimer le groupe
+                </button>
+              )
+            )}
+          </div>
+        )}
       </div>
 
-      {/* ── Panneau membres ────────────────────────────────────────────── */}
-      {showMembers && (
+      {/* ── Panneau membres (groupes seulement) ───────────────────────── */}
+      {showMembers && !group.is_dm && (
         <div className="bg-white border-b border-slate-100 px-4 py-3 shrink-0" onClick={e => e.stopPropagation()}>
           <p className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide mb-2.5">
             Membres ({members.length})

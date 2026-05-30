@@ -66,5 +66,34 @@ export function useChatGroups(userId: string, entrepriseId: string) {
     await fetchGroups()
   }, [fetchGroups])
 
-  return { groups, loading, createGroup, deleteGroup, leaveGroup, addMember, refetch: fetchGroups }
+  const createDM = useCallback(async (otherUserId: string): Promise<{ group: ChatGroup | null; error?: string }> => {
+    // Vérifier si un DM existe déjà avec cet utilisateur
+    const existing = groups.find(g =>
+      g.is_dm === true &&
+      (g.members ?? []).some(m => m.user_id === otherUserId)
+    )
+    if (existing) return { group: existing }
+
+    // Créer un nouveau groupe DM (name vide, is_dm = true)
+    const { data: group, error } = await supabase
+      .from('chat_groups')
+      .insert({ name: '', entreprise_id: entrepriseId, created_by: userId, is_dm: true })
+      .select()
+      .single()
+    if (error || !group) return { group: null, error: error?.message ?? 'Erreur création DM' }
+
+    // Ajouter les deux membres
+    const { error: membersError } = await supabase
+      .from('chat_group_members')
+      .insert([
+        { group_id: group.id, user_id: userId },
+        { group_id: group.id, user_id: otherUserId },
+      ])
+    if (membersError) return { group: null, error: membersError.message }
+
+    await fetchGroups()
+    return { group: group as ChatGroup }
+  }, [userId, entrepriseId, groups, fetchGroups])
+
+  return { groups, loading, createGroup, deleteGroup, leaveGroup, addMember, createDM, refetch: fetchGroups }
 }
