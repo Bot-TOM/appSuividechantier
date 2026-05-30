@@ -28,7 +28,7 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
   const [filterType, setFilterType]   = useState<VTType | 'tous'>('tous')
   const [filterStatut, setFilterStatut] = useState<VTStatut | 'tous'>('tous')
 
-  const kpis = [
+  const kpis: { label: string; value: number; sub: string; border: string; icon: React.ReactElement; iconBg: string; filter: VTStatut | 'tous' }[] = [
     {
       label: 'Total VT',
       value: vts.length,
@@ -36,6 +36,7 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
       border: 'border-l-slate-800',
       icon: <ClipboardList className="w-5 h-5 text-slate-700" />,
       iconBg: 'bg-slate-100',
+      filter: 'tous',
     },
     {
       label: 'Brouillons',
@@ -44,6 +45,7 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
       border: 'border-l-amber-400',
       icon: <FileEdit className="w-5 h-5 text-amber-600" />,
       iconBg: 'bg-amber-50',
+      filter: 'brouillon',
     },
     {
       label: 'Complètes',
@@ -52,6 +54,7 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
       border: 'border-l-blue-500',
       icon: <FileCheck className="w-5 h-5 text-blue-600" />,
       iconBg: 'bg-blue-50',
+      filter: 'complete',
     },
     {
       label: 'Validées',
@@ -60,6 +63,7 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
       border: 'border-l-emerald-500',
       icon: <CheckCircle2 className="w-5 h-5 text-emerald-600" />,
       iconBg: 'bg-emerald-50',
+      filter: 'valide',
     },
   ]
 
@@ -84,24 +88,29 @@ export default function VTListTab({ userId: _userId, isManager: _isManager }: { 
 
       {/* ── KPI Cards ────────────────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-        {kpis.map((kpi, i) => (
-          <div
-            key={i}
-            className={`bg-white rounded-2xl p-6 shadow-sm border border-slate-100 border-l-4 ${kpi.border} hover:shadow-md hover:-translate-y-0.5 transition-all cursor-default relative overflow-hidden group`}
-          >
-            <div className="absolute -right-3 -bottom-3 opacity-[0.04] group-hover:scale-110 group-hover:-rotate-12 transition-all duration-500 pointer-events-none">
-              {React.cloneElement(kpi.icon as React.ReactElement, { className: 'w-28 h-28' })}
-            </div>
-            <div className="flex justify-between items-start mb-5 relative z-10">
-              <div className={`p-2.5 rounded-xl ${kpi.iconBg}`}>{kpi.icon}</div>
-            </div>
-            <div className="relative z-10">
-              <p className="text-4xl font-black text-slate-800 tracking-tight">{kpi.value}</p>
-              <h3 className="text-sm font-bold text-slate-700 mt-1">{kpi.label}</h3>
-              <p className="text-xs text-slate-400 font-medium mt-0.5">{kpi.sub}</p>
-            </div>
-          </div>
-        ))}
+        {kpis.map((kpi, i) => {
+          const isActive = filterStatut === kpi.filter
+          return (
+            <button
+              key={i}
+              onClick={() => setFilterStatut(isActive ? 'tous' : kpi.filter)}
+              className={`text-left w-full bg-white rounded-2xl p-6 shadow-sm border border-slate-100 border-l-4 ${kpi.border} hover:shadow-md hover:-translate-y-0.5 transition-all relative overflow-hidden group`}
+            >
+              <div className="absolute -right-3 -bottom-3 opacity-[0.04] group-hover:scale-110 group-hover:-rotate-12 transition-all duration-500 pointer-events-none">
+                {React.cloneElement(kpi.icon, { className: 'w-28 h-28' })}
+              </div>
+              <div className="flex justify-between items-start mb-5 relative z-10">
+                <div className={`p-2.5 rounded-xl ${kpi.iconBg}`}>{kpi.icon}</div>
+                {isActive && <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">Filtre actif</span>}
+              </div>
+              <div className="relative z-10">
+                <p className="text-4xl font-black text-slate-800 tracking-tight">{kpi.value}</p>
+                <h3 className="text-sm font-bold text-slate-700 mt-1">{kpi.label}</h3>
+                <p className="text-xs text-slate-400 font-medium mt-0.5">{kpi.sub}</p>
+              </div>
+            </button>
+          )
+        })}
       </div>
 
       {/* ── Barre de recherche + bouton nouvelle VT ──────────────────────────── */}
