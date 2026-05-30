@@ -36,14 +36,24 @@ export default async function handler(req: Request) {
 
   // ── ÉTAPE 1 : Transcription avec Whisper ────────────────────────────────────
   // Le prompt aide Whisper à reconnaître le vocabulaire technique photovoltaïque
+  // Important : inclure des collocations complètes, pas seulement des mots isolés,
+  // pour ancrer le contexte et éviter les substitutions phonétiques (ex: "structure" → "instruction")
   const whisperPrompt = [
-    'onduleur', 'micro-onduleur', 'optimiseur', 'panneau solaire', 'module photovoltaïque',
-    'câble solaire', 'DC', 'AC', 'coffret DC', 'coffret AC', 'parafoudre', 'disjoncteur',
-    'rail de fixation', 'lyre', 'presse-étoupe', 'connecteur MC4', 'tracker',
-    'toiture', 'bac acier', 'tuiles', 'ardoise', 'charpente', 'liteaux', 'écran sous-toiture',
-    'GTL', 'tableau général basse tension', 'TGBT', 'compteur Linky', 'injection', 'autoconsommation',
-    'puissance crête', 'Wc', 'kWc', 'kWh', 'MPP', 'MPPT', 'string', 'calepinage',
-    'pare-feu', 'ERP', 'mise à la terre', 'masse', 'chantier', 'consuel', 'Enedis',
+    // Structures & fixation
+    'pose de la structure', 'structure aluminium', 'structure de fixation', 'rails de fixation',
+    'rail de fixation', 'liteaux', 'chevrons', 'fixation toiture', 'bac acier', 'écran sous-toiture',
+    // Panneaux & câblage
+    'pose des panneaux', 'module photovoltaïque', 'panneau solaire', 'câble solaire', 'câblage DC',
+    'câblage AC', 'connecteur MC4', 'presse-étoupe', 'lyre', 'coffret DC', 'coffret AC',
+    // Onduleurs & électricité
+    'onduleur', 'micro-onduleur', 'optimiseur', 'mise en service', 'mise à la terre',
+    'parafoudre', 'disjoncteur', 'GTL', 'TGBT', 'tableau général basse tension', 'compteur Linky',
+    // Toiture & chantier
+    'tuiles', 'ardoise', 'charpente', 'toiture', 'pan de toiture', 'arrivée sur site',
+    'fin de journée', 'déchargement', 'livraison matériel', 'chantier', 'visite technique',
+    // Mesures & normes
+    'puissance crête', 'kWc', 'kWh', 'Wc', 'MPP', 'MPPT', 'string', 'calepinage',
+    'injection', 'autoconsommation', 'consuel', 'Enedis', 'ERP', 'pare-feu', 'DC', 'AC',
   ].join(', ')
 
   const whisperForm = new FormData()
@@ -51,6 +61,7 @@ export default async function handler(req: Request) {
   whisperForm.append('model', 'whisper-1')
   whisperForm.append('language', 'fr')
   whisperForm.append('prompt', whisperPrompt)
+  whisperForm.append('temperature', '0.2')
 
   const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
     method: 'POST',
