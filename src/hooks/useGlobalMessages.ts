@@ -24,7 +24,8 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
   const [messages, setMessages]   = useState<GlobalMessage[]>([])
   const [loading, setLoading]     = useState(true)
   const [uploading, setUploading] = useState(false)
-  const msgsRef = useRef<GlobalMessage[]>([])
+  const msgsRef      = useRef<GlobalMessage[]>([])
+  const channelRef   = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const fetchMessages = useCallback(async () => {
     if (!entrepriseId) return          // pas d'entreprise connue → rien à charger
@@ -50,17 +51,18 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
     const channelName = `global-chat-${entrepriseId}`
     const channel = supabase
       .channel(channelName)
-      // payload.new = {} vide avec RLS → ne pas inspecter le payload
+      .on('broadcast',        { event: 'refresh' }, fetchMessages)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'global_messages' }, fetchMessages)
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'global_messages' }, fetchMessages)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'global_message_reactions',
-      }, fetchMessages)
+      .on('postgres_changes', { event: '*',      schema: 'public', table: 'global_message_reactions' }, fetchMessages)
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    channelRef.current = channel
+    return () => { supabase.removeChannel(channel); channelRef.current = null }
   }, [fetchMessages, entrepriseId])
+
+  const broadcastRefresh = useCallback(() => {
+    channelRef.current?.send({ type: 'broadcast', event: 'refresh', payload: {} }).catch(() => {})
+  }, [])
 
   const sendMessage = useCallback(async (content: string, replyToId?: string) => {
     if (!entrepriseId) return
@@ -71,12 +73,12 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
       reply_to_id:   replyToId ?? null,
     }).select().single()
     if (error) { console.error('[global-chat] sendMessage:', error); return }
-    // Rafraîchissement immédiat — ne pas attendre uniquement le realtime
     fetchMessages()
+    broadcastRefresh()
     supabase.functions.invoke('send-push', {
       body: { table: 'global_messages', record: data },
     }).catch(() => {})
-  }, [userId, entrepriseId, fetchMessages])
+  }, [userId, entrepriseId, fetchMessages, broadcastRefresh])
 
   const sendFile = useCallback(async (file: File, replyToId?: string) => {
     if (!entrepriseId) return
@@ -98,6 +100,7 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
       if (insertErr) { console.error('[global-chat] sendFile insert:', insertErr) }
       else {
         fetchMessages()
+        broadcastRefresh()
         supabase.functions.invoke('send-push', {
           body: { table: 'global_messages', record: fileData },
         }).catch(() => {})
@@ -105,11 +108,12 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
     } finally {
       setUploading(false)
     }
-  }, [userId, entrepriseId, fetchMessages])
+  }, [userId, entrepriseId, fetchMessages, broadcastRefresh])
 
   const deleteMessage = useCallback(async (id: string) => {
     await supabase.from('global_messages').delete().eq('id', id)
-  }, [])
+    broadcastRefresh()
+  }, [broadcastRefresh])
 
   const toggleReaction = useCallback(async (messageId: string, emoji: string) => {
     const { data } = await supabase

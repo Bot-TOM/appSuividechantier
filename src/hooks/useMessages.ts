@@ -7,6 +7,7 @@ export function useMessages(chantierId: string, userId: string) {
   const [loading, setLoading] = useState(true)
   const [uploading, setUploading] = useState(false)
   const messagesRef = useRef<ChatMessage[]>([])
+  const channelRef  = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
   const fetchMessages = useCallback(async () => {
     const { data, error } = await supabase
@@ -25,16 +26,21 @@ export function useMessages(chantierId: string, userId: string) {
   useEffect(() => { fetchMessages() }, [fetchMessages])
 
   useEffect(() => {
-    // payload.new = {} vide avec RLS → ne pas inspecter le payload
     const channel = supabase
       .channel(`chat-${chantierId}`)
+      .on('broadcast',        { event: 'refresh' }, fetchMessages)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, fetchMessages)
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, fetchMessages)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, fetchMessages)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reads' },     fetchMessages)
       .subscribe()
-    return () => { supabase.removeChannel(channel) }
+    channelRef.current = channel
+    return () => { supabase.removeChannel(channel); channelRef.current = null }
   }, [chantierId, fetchMessages])
+
+  const broadcastRefresh = useCallback(() => {
+    channelRef.current?.send({ type: 'broadcast', event: 'refresh', payload: {} }).catch(() => {})
+  }, [])
 
   const sendMessage = useCallback(async (content: string, replyToId?: string) => {
     const { data, error } = await supabase.from('messages').insert({
@@ -44,12 +50,12 @@ export function useMessages(chantierId: string, userId: string) {
       reply_to_id: replyToId ?? null,
     }).select().single()
     if (error) { console.error('[chat] sendMessage:', error); return }
-    // Rafraîchissement immédiat — ne pas attendre uniquement le realtime
     fetchMessages()
+    broadcastRefresh()
     supabase.functions.invoke('send-push', {
       body: { table: 'messages', record: data },
     }).catch(() => {})
-  }, [chantierId, userId, fetchMessages])
+  }, [chantierId, userId, fetchMessages, broadcastRefresh])
 
   const sendFile = useCallback(async (file: File, replyToId?: string) => {
     setUploading(true)
@@ -70,6 +76,7 @@ export function useMessages(chantierId: string, userId: string) {
       if (insertErr) { console.error('[chat] sendFile insert:', insertErr) }
       else {
         fetchMessages()
+        broadcastRefresh()
         supabase.functions.invoke('send-push', {
           body: { table: 'messages', record: fileData },
         }).catch(() => {})
@@ -81,7 +88,8 @@ export function useMessages(chantierId: string, userId: string) {
 
   const deleteMessage = useCallback(async (id: string) => {
     await supabase.from('messages').delete().eq('id', id)
-  }, [])
+    broadcastRefresh()
+  }, [broadcastRefresh])
 
   const toggleReaction = useCallback(async (messageId: string, emoji: string) => {
     const { data } = await supabase
