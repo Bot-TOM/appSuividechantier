@@ -6,6 +6,8 @@ import GroupChatTab from '@/components/chat/GroupChatTab'
 import CreateGroupModal from '@/components/chat/CreateGroupModal'
 import { useChatGroups } from '@/hooks/useChatGroups'
 import { useChantiers } from '@/hooks/useChantiers'
+import { useChatUnread } from '@/hooks/useChatUnread'
+import { useGlobalMessages } from '@/hooks/useGlobalMessages'
 import type { UserProfile } from '@/types'
 
 type ConvType = 'global' | 'chantier' | 'group'
@@ -28,6 +30,12 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
   const { groups, loading: groupsLoading, createGroup, leaveGroup, refetch: refetchGroups } =
     useChatGroups(userId, entrepriseId)
   const { chantiers, loading: chantiersLoading } = useChantiers()
+
+  // Non-lus
+  const chantierIds = useMemo(() => chantiers.map(c => c.id), [chantiers])
+  const groupIds    = useMemo(() => groups.map(g => g.id),    [groups])
+  const { unreadMap, markAsRead } = useChatUnread(userId, chantierIds, groupIds)
+  const { unreadCount: globalUnread } = useGlobalMessages(userId, entrepriseId)
 
   const [searchQuery, setSearchQuery]       = useState('')
   const [activeConv, setActiveConv]         = useState<ActiveConv>({ type: 'global', id: 'global', label: 'Équipe' })
@@ -57,6 +65,9 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
   const openConv = (conv: ActiveConv) => {
     setActiveConv(conv)
     setShowConvOnMobile(true)
+    // Marque comme lu à l'ouverture
+    if (conv.type === 'chantier') markAsRead(conv.id, 'chantier')
+    if (conv.type === 'group')    markAsRead(conv.id, 'group')
   }
 
   const activeGroup = activeConv.type === 'group'
@@ -94,6 +105,7 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
               iconBg="bg-gradient-to-br from-orange-500 to-orange-600"
               label="Équipe"
               sub="Chat de l'entreprise"
+              unread={globalUnread}
               active={activeConv.type === 'global'}
               onClick={() => openConv({ type: 'global', id: 'global', label: 'Équipe' })}
             />
@@ -117,6 +129,7 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
                 iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
                 label={c.nom}
                 sub={c.client_nom}
+                unread={unreadMap[c.id] ?? 0}
                 active={activeConv.type === 'chantier' && activeConv.id === c.id}
                 onClick={() => openConv({ type: 'chantier', id: c.id, label: c.nom })}
               />
@@ -161,6 +174,7 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
                 iconBg="bg-gradient-to-br from-violet-500 to-violet-600"
                 label={g.name}
                 sub={`${memberCount} membre${memberCount !== 1 ? 's' : ''}`}
+                unread={unreadMap[g.id] ?? 0}
                 active={activeConv.type === 'group' && activeConv.id === g.id}
                 onClick={() => openConv({ type: 'group', id: g.id, label: g.name })}
               />
@@ -267,31 +281,45 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
 
 // ── Composant item conversation dans la sidebar ──────────────────────────────
 function ConvItem({
-  icon, iconBg, label, sub, active, onClick,
+  icon, iconBg, label, sub, active, unread = 0, onClick,
 }: {
   icon: React.ReactNode
   iconBg: string
   label: string
   sub?: string
   active: boolean
+  unread?: number
   onClick: () => void
 }) {
+  const hasUnread = unread > 0 && !active
   return (
     <button
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-2 py-2.5 rounded-xl transition-colors text-left mb-0.5 ${
-        active ? 'bg-orange-50' : 'hover:bg-slate-50'
+        active ? 'bg-orange-50' : hasUnread ? 'bg-orange-50/40 hover:bg-orange-50/70' : 'hover:bg-slate-50'
       }`}
     >
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${iconBg}`}>
-        {icon}
+      {/* Icône avec point rouge si non lu */}
+      <div className="relative flex-shrink-0">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${iconBg}`}>
+          {icon}
+        </div>
+        {hasUnread && (
+          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none">
+            {unread > 99 ? '99+' : unread}
+          </span>
+        )}
       </div>
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-semibold truncate ${active ? 'text-orange-600' : 'text-slate-800'}`}>
+        <p className={`text-sm truncate ${
+          active ? 'font-semibold text-orange-600' : hasUnread ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'
+        }`}>
           {label}
         </p>
         {sub && (
-          <p className="text-xs text-slate-400 truncate">{sub}</p>
+          <p className={`text-xs truncate ${hasUnread ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
+            {sub}
+          </p>
         )}
       </div>
       {active && (
