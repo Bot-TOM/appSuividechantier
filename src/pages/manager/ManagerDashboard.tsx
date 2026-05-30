@@ -1380,7 +1380,7 @@ export default function ManagerDashboard() {
               onClick={() => setFilterStatut(f.value)}
               className={`flex-shrink-0 transition-all ${
                 filterStatut === f.value
-                  ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20 px-4 py-2 rounded-full text-sm font-medium'
+                  ? 'bg-orange-500 text-white px-4 py-2 rounded-full text-sm font-medium'
                   : 'bg-white text-slate-600 border border-slate-200 hover:border-orange-500 hover:text-orange-500 px-4 py-2 rounded-full text-sm font-medium'
               }`}
             >
