@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Paperclip, Send, Users, Trash2 } from 'lucide-react'
+import { Paperclip, Send, Users, Trash2, AlertTriangle } from 'lucide-react'
 import { useGroupMessages } from '@/hooks/useGroupMessages'
 import { usePresence } from '@/hooks/usePresence'
 import Avatar from '@/components/Avatar'
@@ -28,11 +28,13 @@ function sameDay(a: string, b: string) {
 interface Props {
   group: ChatGroup
   userId: string
+  userRole?: string
   isActive?: boolean
   onLeave?: () => void
+  onDelete?: () => void
 }
 
-export default function GroupChatTab({ group, userId, isActive = true, onLeave }: Props) {
+export default function GroupChatTab({ group, userId, userRole, isActive = true, onLeave, onDelete }: Props) {
   const { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction } =
     useGroupMessages(group.id, userId)
 
@@ -56,7 +58,10 @@ export default function GroupChatTab({ group, userId, isActive = true, onLeave }
   const textareaRef      = useRef<HTMLTextAreaElement>(null)
   const prevLengthRef    = useRef(0)
 
-  const [showScrollBtn, setShowScrollBtn] = useState(false)
+  const [showScrollBtn,   setShowScrollBtn]   = useState(false)
+  const [confirmDelete,   setConfirmDelete]   = useState(false)
+
+  const canDelete = userRole === 'manager' || userRole === 'admin'
 
   useEffect(() => {
     const el = msgsContainerRef.current
@@ -159,14 +164,39 @@ export default function GroupChatTab({ group, userId, isActive = true, onLeave }
           <span>{members.length} membre{members.length !== 1 ? 's' : ''} · {onlineUsers.size} en ligne</span>
         </button>
 
-        {onLeave && (
-          <button
-            onClick={onLeave}
-            className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
-          >
-            Quitter
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {onLeave && !canDelete && (
+            <button
+              onClick={onLeave}
+              className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+            >
+              Quitter
+            </button>
+          )}
+          {canDelete && onDelete && (
+            confirmDelete ? (
+              <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                <span className="text-xs text-red-600 font-medium">Supprimer définitivement ?</span>
+                <button onClick={onDelete}
+                  className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors">
+                  Oui
+                </button>
+                <button onClick={() => setConfirmDelete(false)}
+                  className="text-xs font-medium px-2.5 py-1 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+                  Non
+                </button>
+              </div>
+            ) : (
+              <button
+                onClick={() => setConfirmDelete(true)}
+                className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Supprimer le groupe
+              </button>
+            )
+          )}
+        </div>
       </div>
 
       {/* ── Panneau membres ────────────────────────────────────────────── */}

@@ -232,9 +232,15 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
         <GroupChatTab
           group={activeGroup}
           userId={userId}
+          userRole={profile.role}
           isActive={isActive && (showConvOnMobile || window.innerWidth >= 768)}
           onLeave={async () => {
             await leaveGroup(activeGroup.id)
+            setActiveConv({ type: 'global', id: 'global', label: 'Équipe' })
+            setShowConvOnMobile(false)
+          }}
+          onDelete={async () => {
+            await deleteGroup(activeGroup.id)
             setActiveConv({ type: 'global', id: 'global', label: 'Équipe' })
             setShowConvOnMobile(false)
           }}
