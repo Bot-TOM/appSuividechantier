@@ -311,8 +311,8 @@ export default function GlobalChatTab({ userId, entrepriseId, isActive = true }:
   return (
     <>
     <div
-      className="bg-white rounded-2xl border border-slate-200 flex overflow-hidden"
-      style={{ height: 'calc(100dvh - 240px)', minHeight: 480, boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
+      className="bg-white rounded-2xl border border-slate-200 flex overflow-hidden flex-1 min-h-0"
+      style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}
       onClick={dismiss}
     >
 

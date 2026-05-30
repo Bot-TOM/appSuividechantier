@@ -198,7 +198,7 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
 
   // ── Zone conversation ──────────────────────────────────────────────────────
   const conversation = (
-    <div className="flex-1 min-w-0 flex flex-col">
+    <div className="flex-1 min-w-0 flex flex-col h-[calc(100dvh-270px)] md:h-auto min-h-[420px] md:min-h-0">
       {/* Header conversation (mobile : bouton retour) */}
       <div className="md:hidden flex items-center gap-2 px-4 py-3 border-b border-slate-100 bg-white shrink-0">
         <button

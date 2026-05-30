@@ -146,8 +146,7 @@ export default function GroupChatTab({ group, userId, userRole, isActive = true,
   return (
     <>
     <div
-      className="flex flex-col bg-white rounded-2xl overflow-hidden border border-slate-100"
-      style={{ height: 'calc(100dvh - 270px)', minHeight: 420 }}
+      className="flex flex-col bg-white rounded-2xl overflow-hidden border border-slate-100 flex-1 min-h-0"
       onClick={dismiss}
     >
       {/* ── Header ─────────────────────────────────────────────────────── */}
