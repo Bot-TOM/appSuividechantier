@@ -33,9 +33,13 @@ export function useMessages(chantierId: string, userId: string) {
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, fetchMessages)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, fetchMessages)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reads' },     fetchMessages)
-      .subscribe()
-    channelRef.current = channel
-    return () => { supabase.removeChannel(channel); channelRef.current = null }
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') channelRef.current = channel
+      })
+
+    const poll = setInterval(fetchMessages, 5000)
+
+    return () => { clearInterval(poll); supabase.removeChannel(channel); channelRef.current = null }
   }, [chantierId, fetchMessages])
 
   const broadcastRefresh = useCallback(() => {

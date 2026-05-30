@@ -55,9 +55,13 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'global_messages' }, fetchMessages)
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'global_messages' }, fetchMessages)
       .on('postgres_changes', { event: '*',      schema: 'public', table: 'global_message_reactions' }, fetchMessages)
-      .subscribe()
-    channelRef.current = channel
-    return () => { supabase.removeChannel(channel); channelRef.current = null }
+      .subscribe((status) => {
+        if (status === 'SUBSCRIBED') channelRef.current = channel
+      })
+
+    const poll = setInterval(fetchMessages, 5000)
+
+    return () => { clearInterval(poll); supabase.removeChannel(channel); channelRef.current = null }
   }, [fetchMessages, entrepriseId])
 
   const broadcastRefresh = useCallback(() => {

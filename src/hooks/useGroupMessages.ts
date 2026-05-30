@@ -30,26 +30,25 @@ export function useGroupMessages(groupId: string, userId: string) {
   useEffect(() => {
     if (!groupId) return
 
-    // ── Stratégie double : Broadcast + postgres_changes (fallback) ────────────
-    //
-    // postgres_changes seul est peu fiable avec RLS (payload.new vide, coupures
-    // réseau mobile, WebSocket suspendu en background).
-    //
-    // Broadcast = message WebSocket direct entre clients, sans WAL ni RLS.
-    // L'expéditeur appelle channel.send() après chaque action, tous les
-    // abonnés reçoivent l'événement et rechargent.
+    // Stratégie triple :
+    // 1. Broadcast WebSocket direct (instantané, sans RLS)
+    // 2. postgres_changes (fallback WAL)
+    // 3. Polling toutes les 5 s (filet de sécurité absolu : mobile, réseau instable)
     const channel = supabase
       .channel(`group-chat-${groupId}`)
-      // 1. Broadcast : notification directe expéditeur → destinataires
-      .on('broadcast', { event: 'refresh' }, fetchMessages)
-      // 2. postgres_changes : fallback si le broadcast échoue
+      .on('broadcast',        { event: 'refresh' }, fetchMessages)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages' }, fetchMessages)
       .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'group_messages' }, fetchMessages)
       .on('postgres_changes', { event: '*',      schema: 'public', table: 'group_message_reactions' }, fetchMessages)
-      .subscribe()
+      .subscribe((status) => {
+        // Ne stocker la ref que quand le canal est réellement prêt à envoyer
+        if (status === 'SUBSCRIBED') channelRef.current = channel
+      })
 
-    channelRef.current = channel
+    const poll = setInterval(fetchMessages, 5000)
+
     return () => {
+      clearInterval(poll)
       supabase.removeChannel(channel)
       channelRef.current = null
     }
