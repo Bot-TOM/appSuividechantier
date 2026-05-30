@@ -29,7 +29,7 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
   const userId       = profile.id
   const entrepriseId = entrepriseIdOverride ?? profile.entreprise_id ?? ''
 
-  const { groups, loading: groupsLoading, createGroup, leaveGroup, refetch: refetchGroups } =
+  const { groups, loading: groupsLoading, createGroup, deleteGroup, leaveGroup, refetch: refetchGroups } =
     useChatGroups(userId, entrepriseId)
   const { chantiers, loading: chantiersLoading } = useChantiers(entrepriseIdOverride)
 
