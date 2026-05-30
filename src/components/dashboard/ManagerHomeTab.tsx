@@ -33,7 +33,7 @@ interface Props {
   notifications: Notification[]
   entrepriseId?: string
   managerName?:  string
-  onNavigate:    (tab: string) => void
+  onNavigate:    (tab: string, filter?: string) => void
 }
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
@@ -234,14 +234,14 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
           label="Chantiers en cours"
           value={enCours.length}
           color="orange"
-          onClick={() => onNavigate('chantiers')}
+          onClick={() => onNavigate('chantiers', 'en_cours')}
         />
         <KpiCard
           icon={<Calendar className="w-5 h-5" />}
           label="Planifiés"
           value={planifies.length}
           color="blue"
-          onClick={() => onNavigate('chantiers')}
+          onClick={() => onNavigate('chantiers', 'planifie')}
         />
         <KpiCard
           icon={<AlertTriangle className="w-5 h-5" />}
@@ -249,7 +249,7 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
           value={bloques.length}
           color="red"
           urgent={bloques.length > 0}
-          onClick={() => onNavigate('chantiers')}
+          onClick={() => onNavigate('chantiers', 'bloque')}
         />
         <KpiCard
           icon={<ShieldAlert className="w-5 h-5" />}
@@ -263,19 +263,23 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
 
       {/* ── Stats secondaires ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        {[
-          { label: 'Terminés ce mois', value: terminesCeMois.length, color: 'text-emerald-600 bg-emerald-50', icon: <CheckCircle2 className="w-4 h-4" /> },
-          { label: 'Total chantiers',   value: chantiers.length,          color: 'text-slate-600 bg-slate-50',    icon: <Layers className="w-4 h-4" /> },
-          { label: 'Anomalies haute priorité', value: anomaliesHaute.length, color: 'text-red-600 bg-red-50',    icon: <AlertTriangle className="w-4 h-4" /> },
-          { label: 'En retard',          value: enRetard.length,           color: 'text-amber-600 bg-amber-50',   icon: <Clock className="w-4 h-4" /> },
-        ].map(({ label, value, color, icon }) => (
-          <div key={label} className="flex items-center gap-3 bg-white rounded-xl border border-slate-100 px-4 py-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
+        {([
+          { label: 'Terminés ce mois', value: terminesCeMois.length, color: 'text-emerald-600 bg-emerald-50', icon: <CheckCircle2 className="w-4 h-4" />, tab: 'chantiers', filter: 'termine' },
+          { label: 'Total chantiers',  value: chantiers.length,      color: 'text-slate-600 bg-slate-50',    icon: <Layers className="w-4 h-4" />,       tab: 'chantiers', filter: 'tous'    },
+          { label: 'Anomalies haute priorité', value: anomaliesHaute.length, color: 'text-red-600 bg-red-50', icon: <AlertTriangle className="w-4 h-4" />, tab: 'anomalies', filter: undefined },
+          { label: 'En retard',        value: enRetard.length,       color: 'text-amber-600 bg-amber-50',   icon: <Clock className="w-4 h-4" />,         tab: 'chantiers', filter: 'en_cours' },
+        ] as const).map(({ label, value, color, icon, tab, filter }) => (
+          <button
+            key={label}
+            onClick={() => onNavigate(tab, filter)}
+            className="flex items-center gap-3 bg-white rounded-xl border border-slate-100 px-4 py-3 hover:shadow-md transition-all text-left w-full"
+            style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.05)' }}>
             <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>{icon}</div>
             <div>
               <div className="text-lg font-bold text-slate-800">{value}</div>
               <div className="text-[11px] font-medium text-slate-400 leading-tight">{label}</div>
             </div>
-          </div>
+          </button>
         ))}
       </div>
 
