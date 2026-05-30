@@ -72,21 +72,12 @@ export default async function handler(req: Request) {
 
   // ── ÉTAPE 2 : Génération du rapport avec Claude ─────────────────────────────
   const contextClause = context
-    ? `Contexte du chantier : ${context.slice(0, 500)}\n\n`
+    ? `Chantier : ${context.slice(0, 300)}\n`
     : ''
 
-  const prompt = `${contextClause}Voici la transcription brute d'un message vocal d'un technicien photovoltaïque décrivant sa journée de travail :
+  const prompt = `${contextClause}Transcription du technicien : "${transcript}"
 
-"${transcript}"
-
-Rédige un rapport d'avancement professionnel et structuré en français, à la troisième personne (ex: "Le technicien a..."), basé UNIQUEMENT sur ce que le technicien a dit.
-Le rapport doit :
-- Être clair, concis et professionnel (3 à 8 phrases)
-- Mentionner les tâches réalisées, l'avancement, les observations importantes
-- Signaler tout problème ou blocage évoqué
-- Ne rien inventer — si une information n'est pas dans la transcription, ne l'inclus pas
-
-Retourne UNIQUEMENT le texte du rapport, sans titre ni balises.`
+Réécris ça en 2 à 4 phrases courtes, dans le style d'une note de chantier rédigée directement par le technicien (première personne, ton direct, pas de mise en forme). Garde uniquement ce qui est dit, sans rien ajouter. Pas de titre, pas de liste, pas de formule de politesse.`
 
   const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -97,7 +88,7 @@ Retourne UNIQUEMENT le texte du rapport, sans titre ni balises.`
     },
     body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
-      max_tokens: 1024,
+      max_tokens: 300,
       messages: [{ role: 'user', content: prompt }],
     }),
   })
