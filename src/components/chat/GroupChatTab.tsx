@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
-import { Paperclip, Send, Users, Trash2, AlertTriangle } from 'lucide-react'
+import { Paperclip, Send, Users, Trash2 } from 'lucide-react'
 import { useGroupMessages } from '@/hooks/useGroupMessages'
 import { usePresence } from '@/hooks/usePresence'
 import Avatar from '@/components/Avatar'
