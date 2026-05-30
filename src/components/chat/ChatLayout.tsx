@@ -34,7 +34,7 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
   // Non-lus
   const chantierIds = useMemo(() => chantiers.map(c => c.id), [chantiers])
   const groupIds    = useMemo(() => groups.map(g => g.id),    [groups])
-  const { unreadMap, markAsRead } = useChatUnread(userId, chantierIds, groupIds)
+  const { unreadMap, lastActivityMap, markAsRead } = useChatUnread(userId, chantierIds, groupIds)
   const { unreadCount: globalUnread } = useGlobalMessages(userId, entrepriseId)
 
   const [searchQuery, setSearchQuery]       = useState('')
@@ -43,24 +43,37 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
   const [showCreateModal, setShowCreateModal]   = useState(false)
 
   // Filtre sidebar
-  const filteredChantiers = useMemo(() => {
-    if (!searchQuery.trim()) return chantiers
-    const q = searchQuery.toLowerCase()
-    return chantiers.filter(c =>
-      c.nom.toLowerCase().includes(q) ||
-      (c.client_nom ?? '').toLowerCase().includes(q)
-    )
-  }, [chantiers, searchQuery])
-
-  const filteredGroups = useMemo(() => {
-    if (!searchQuery.trim()) return groups
-    const q = searchQuery.toLowerCase()
-    return groups.filter(g => g.name.toLowerCase().includes(q))
-  }, [groups, searchQuery])
-
   const showGlobal = !searchQuery.trim() ||
     'équipe'.includes(searchQuery.toLowerCase()) ||
     'chat'.includes(searchQuery.toLowerCase())
+
+  // Liste unifiée chantiers + groupes triée par dernière activité (plus récent en haut)
+  type ConvEntry =
+    | { type: 'chantier'; id: string; label: string; sub: string }
+    | { type: 'group';    id: string; label: string; sub: string }
+
+  const sortedConversations = useMemo<ConvEntry[]>(() => {
+    const q = searchQuery.toLowerCase()
+
+    const chantierEntries: ConvEntry[] = chantiers
+      .filter(c => !q || c.nom.toLowerCase().includes(q) || (c.client_nom ?? '').toLowerCase().includes(q))
+      .map(c => ({ type: 'chantier' as const, id: c.id, label: c.nom, sub: c.client_nom }))
+
+    const groupEntries: ConvEntry[] = groups
+      .filter(g => !q || g.name.toLowerCase().includes(q))
+      .map(g => ({
+        type:  'group' as const,
+        id:    g.id,
+        label: g.name,
+        sub:   `${g.members?.length ?? 0} membre${(g.members?.length ?? 0) !== 1 ? 's' : ''}`,
+      }))
+
+    return [...chantierEntries, ...groupEntries].sort((a, b) => {
+      const ta = lastActivityMap[a.id] ?? '1970-01-01'
+      const tb = lastActivityMap[b.id] ?? '1970-01-01'
+      return tb.localeCompare(ta) // plus récent en premier
+    })
+  }, [chantiers, groups, searchQuery, lastActivityMap])
 
   const openConv = (conv: ActiveConv) => {
     setActiveConv(conv)
@@ -94,92 +107,71 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
       {/* Liste des conversations */}
       <div className="flex-1 overflow-y-auto px-2 pb-4">
 
-        {/* ── Global ─────────────────────────────────────────────────────── */}
+        {/* ── Chat Équipe (épinglé en haut) ──────────────────────────────── */}
         {showGlobal && (
-          <>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-2 mb-1.5 mt-1">
-              Général
-            </p>
-            <ConvItem
-              icon={<MessageSquare className="w-4 h-4 text-white" />}
-              iconBg="bg-gradient-to-br from-orange-500 to-orange-600"
-              label="Équipe"
-              sub="Chat de l'entreprise"
-              unread={globalUnread}
-              active={activeConv.type === 'global'}
-              onClick={() => openConv({ type: 'global', id: 'global', label: 'Équipe' })}
-            />
-          </>
+          <ConvItem
+            icon={<MessageSquare className="w-4 h-4 text-white" />}
+            iconBg="bg-gradient-to-br from-orange-500 to-orange-600"
+            label="Équipe"
+            sub="Chat de l'entreprise"
+            unread={globalUnread}
+            active={activeConv.type === 'global'}
+            onClick={() => openConv({ type: 'global', id: 'global', label: 'Équipe' })}
+          />
         )}
 
-        {/* ── Chantiers ─────────────────────────────────────────────────── */}
-        {filteredChantiers.length > 0 && (
-          <>
-            <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest px-2 mb-1.5 mt-4">
-              Chantiers
-            </p>
-            {chantiersLoading ? (
-              <div className="flex justify-center py-4">
-                <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
-              </div>
-            ) : filteredChantiers.map(c => (
-              <ConvItem
-                key={c.id}
-                icon={<Layers className="w-4 h-4 text-white" />}
-                iconBg="bg-gradient-to-br from-blue-500 to-blue-600"
-                label={c.nom}
-                sub={c.client_nom}
-                unread={unreadMap[c.id] ?? 0}
-                active={activeConv.type === 'chantier' && activeConv.id === c.id}
-                onClick={() => openConv({ type: 'chantier', id: c.id, label: c.nom })}
-              />
-            ))}
-          </>
-        )}
-
-        {/* ── Groupes ────────────────────────────────────────────────────── */}
-        <div className="flex items-center justify-between px-2 mb-1.5 mt-4">
-          <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
-            Groupes
-          </p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-0.5 text-[10px] font-semibold text-orange-500 hover:text-orange-600 transition-colors"
-            title="Créer un groupe"
-          >
-            <Plus className="w-3.5 h-3.5" />
-            Nouveau
-          </button>
-        </div>
-
-        {groupsLoading ? (
-          <div className="flex justify-center py-4">
+        {/* ── Divider + bouton nouveau groupe ────────────────────────────── */}
+        {(chantiersLoading || groupsLoading) ? (
+          <div className="flex justify-center py-6">
             <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : filteredGroups.length === 0 && !searchQuery ? (
+        ) : sortedConversations.length === 0 && !searchQuery ? (
+          /* État vide : aucun chantier ni groupe */
           <button
             onClick={() => setShowCreateModal(true)}
-            className="w-full flex flex-col items-center gap-1.5 py-4 px-3 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:border-orange-300 hover:text-orange-400 transition-colors"
+            className="w-full flex flex-col items-center gap-1.5 py-6 px-3 mt-2 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:border-orange-300 hover:text-orange-400 transition-colors"
           >
             <Plus className="w-5 h-5" />
             <span className="text-xs font-medium">Créer un groupe</span>
           </button>
         ) : (
-          filteredGroups.map(g => {
-            const memberCount = g.members?.length ?? 0
-            return (
+          <>
+            {/* En-tête section avec bouton + Nouveau */}
+            <div className="flex items-center justify-between px-2 mt-3 mb-1">
+              <p className="text-[10px] font-semibold text-slate-400 uppercase tracking-widest">
+                Conversations
+              </p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="flex items-center gap-0.5 text-[10px] font-semibold text-orange-500 hover:text-orange-600 transition-colors"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                Nouveau groupe
+              </button>
+            </div>
+
+            {/* Liste unifiée triée par activité récente */}
+            {sortedConversations.map(conv => (
               <ConvItem
-                key={g.id}
-                icon={<Users className="w-4 h-4 text-white" />}
-                iconBg="bg-gradient-to-br from-violet-500 to-violet-600"
-                label={g.name}
-                sub={`${memberCount} membre${memberCount !== 1 ? 's' : ''}`}
-                unread={unreadMap[g.id] ?? 0}
-                active={activeConv.type === 'group' && activeConv.id === g.id}
-                onClick={() => openConv({ type: 'group', id: g.id, label: g.name })}
+                key={`${conv.type}-${conv.id}`}
+                icon={
+                  conv.type === 'chantier'
+                    ? <Layers className="w-4 h-4 text-white" />
+                    : <Users  className="w-4 h-4 text-white" />
+                }
+                iconBg={
+                  conv.type === 'chantier'
+                    ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                    : 'bg-gradient-to-br from-violet-500 to-violet-600'
+                }
+                label={conv.label}
+                sub={conv.sub}
+                unread={unreadMap[conv.id] ?? 0}
+                active={activeConv.type === conv.type && activeConv.id === conv.id}
+                onClick={() => openConv({ type: conv.type, id: conv.id, label: conv.label })}
               />
-            )
-          })
+            ))}
+          </>
         )}
       </div>
     </div>
