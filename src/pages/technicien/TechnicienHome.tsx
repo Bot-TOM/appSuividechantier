@@ -399,7 +399,7 @@ export default function TechnicienHome() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] md:flex md:flex-col">
+    <div className="min-h-screen bg-[#F8FAFC] md:h-screen md:overflow-hidden md:flex md:flex-col">
 
       {/* ── Header gradient ───────────────────────────────────────────────── */}
       <header className="px-5 pt-6 pb-5 md:px-8" style={{ background: 'linear-gradient(135deg, #EA580C 0%, #F97316 100%)' }}>
@@ -488,7 +488,7 @@ export default function TechnicienHome() {
 
         {/* ── Sidebar desktop ──────────────────────────────────────────────── */}
         <aside className="hidden md:flex md:flex-col w-64 lg:w-72 bg-white border-r border-slate-100 shrink-0">
-          <nav className="flex-1 py-4 px-3 space-y-1">
+          <nav className="flex-1 py-4 px-3 space-y-1 overflow-y-auto">
 
             <button onClick={() => setActiveTab('chantiers')}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all ${activeTab === 'chantiers' ? 'bg-orange-50 text-orange-600' : 'text-slate-500 hover:bg-slate-50 hover:text-slate-700'}`}>

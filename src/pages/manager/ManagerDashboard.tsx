@@ -363,7 +363,7 @@ export default function ManagerDashboard() {
   ]
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] md:flex md:flex-col">
+    <div className="min-h-screen bg-[#F8FAFC] md:h-screen md:overflow-hidden md:flex md:flex-col">
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
@@ -548,7 +548,7 @@ export default function ManagerDashboard() {
 
         {/* ── Sidebar desktop ───────────────────────────────────────────────── */}
         <aside className="hidden md:flex md:flex-col w-64 lg:w-72 bg-white border-r border-slate-100 shrink-0">
-          <nav className="flex flex-col gap-1 p-3 flex-1 pt-4">
+          <nav className="flex flex-col gap-1 p-3 flex-1 pt-4 overflow-y-auto">
             {([
               { key: 'accueil',     label: 'Accueil',      Icon: Sun           },
               { key: 'chantiers',   label: 'Chantiers',    Icon: Layers        },
