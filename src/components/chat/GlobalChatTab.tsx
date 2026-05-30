@@ -60,7 +60,7 @@ export default function GlobalChatTab({ userId, entrepriseId, isActive = true }:
       .from('profiles')
       .select('id, full_name, avatar_url, poste, role')
       .eq('entreprise_id', entrepriseId)
-      .neq('role', 'admin')
+      .neq('id', userId)
       .then(({ data }) => {
         setMembers((data ?? []).map(p => ({
           id: p.id,
