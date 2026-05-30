@@ -94,6 +94,7 @@ Deno.serve(async (req) => {
     const managers = await managersOf(record.chantier_id ?? null)
     recipientIds = managers.map(m => m.id)
     prefFilter = 'rapport_notif_enabled'
+    url = record.chantier_id ? `/chantier/${record.chantier_id}?tab=rapport&r=${record.id}` : '/'
     notifType = 'rapport'; notifChantier = record.chantier_id ?? null
 
   } else if (table === 'auto_controles') {
@@ -102,6 +103,7 @@ Deno.serve(async (req) => {
     const managers = await managersOf(record.chantier_id ?? null)
     recipientIds = managers.map(m => m.id)
     prefFilter = 'autocontrole_notif_enabled'
+    url = record.chantier_id ? `/chantier/${record.chantier_id}?tab=autocontrole` : '/'
     notifType = 'autocontrole'; notifChantier = record.chantier_id ?? null
 
   } else if (table === 'messages') {

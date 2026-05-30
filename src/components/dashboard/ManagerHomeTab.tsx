@@ -38,6 +38,19 @@ interface Props {
   markRead?:     (id: string) => void
 }
 
+// ─── URL contextuelle par type de notification ───────────────────────────────
+function notifUrl(n: Notification): string | null {
+  switch (n.type) {
+    case 'anomalie':     return n.chantier_id ? `/chantier/${n.chantier_id}/anomalies`        : null
+    case 'rapport':      return n.chantier_id ? `/chantier/${n.chantier_id}?tab=rapport`      : null
+    case 'autocontrole': return n.chantier_id ? `/chantier/${n.chantier_id}?tab=autocontrole` : null
+    case 'bloque':
+    case 'termine':      return n.chantier_id ? `/chantier/${n.chantier_id}`                  : null
+    case 'heures':       return '/manager'
+    default:             return n.chantier_id ? `/chantier/${n.chantier_id}`                  : null
+  }
+}
+
 // ─── Icône par type de notification ──────────────────────────────────────────
 function NotifIcon({ type }: { type: Notification['type'] }) {
   const map: Record<Notification['type'], { icon: React.ReactNode; bg: string; text: string }> = {
@@ -289,7 +302,7 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
                 key={n.id}
                 onClick={() => {
                   markRead?.(n.id)
-                  if (n.chantier_id) navigate(`/chantier/${n.chantier_id}`)
+                  const url = notifUrl(n); if (url) navigate(url)
                 }}
                 className="w-full text-left px-5 py-3.5 flex items-start gap-3 hover:bg-orange-50/50 transition-colors group">
                 <NotifIcon type={n.type} />
@@ -614,7 +627,7 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
                 key={n.id}
                 onClick={() => {
                   markRead?.(n.id)
-                  if (n.chantier_id) navigate(`/chantier/${n.chantier_id}`)
+                  const url = notifUrl(n); if (url) navigate(url)
                 }}
                 className={`w-full text-left px-5 py-3.5 flex items-start gap-3 hover:bg-slate-50 transition-colors ${!n.lu ? 'bg-orange-50/30' : ''}`}>
                 <NotifIcon type={n.type} />

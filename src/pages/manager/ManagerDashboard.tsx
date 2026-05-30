@@ -27,6 +27,21 @@ import PlanSection from '@/components/upgrade/PlanSection'
 import OnboardingModal from '@/components/onboarding/OnboardingModal'
 import ManagerHomeTab from '@/components/dashboard/ManagerHomeTab'
 import { getChantierColorByIndex } from '@/lib/chantierColors'
+import type { Notification } from '@/hooks/useNotifications'
+
+/** Retourne l'URL contextuelle selon le type de notification */
+function notifUrl(n: Notification): string | null {
+  switch (n.type) {
+    case 'anomalie':     return n.chantier_id ? `/chantier/${n.chantier_id}/anomalies`      : null
+    case 'rapport':      return n.chantier_id ? `/chantier/${n.chantier_id}?tab=rapport`    : null
+    case 'autocontrole': return n.chantier_id ? `/chantier/${n.chantier_id}?tab=autocontrole` : null
+    case 'bloque':
+    case 'termine':      return n.chantier_id ? `/chantier/${n.chantier_id}`                : null
+    case 'heures':       return '/manager'
+    default:             return n.chantier_id ? `/chantier/${n.chantier_id}`                : null
+  }
+}
+
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
 type Tab = 'accueil' | 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat' | 'vt'
@@ -430,7 +445,8 @@ export default function ManagerDashboard() {
                           onClick={() => {
                             markRead(n.id)
                             setShowNotifPanel(false)
-                            if (n.chantier_id) navigate(`/chantier/${n.chantier_id}`)
+                            const url = notifUrl(n)
+                            if (url) navigate(url)
                           }}
                           className={`w-full text-left px-4 py-3 flex items-start gap-3 hover:bg-gray-50 transition-colors ${!n.lu ? 'bg-orange-50/40' : ''}`}
                         >
