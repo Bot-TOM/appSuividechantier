@@ -46,7 +46,7 @@ function notifUrl(n: Notification): string | null {
     case 'autocontrole': return n.chantier_id ? `/chantier/${n.chantier_id}?tab=autocontrole` : null
     case 'bloque':
     case 'termine':      return n.chantier_id ? `/chantier/${n.chantier_id}`                  : null
-    case 'heures':       return '/manager'
+    case 'heures':       return '/technicien?tab=planning&subtab=heures'
     default:             return n.chantier_id ? `/chantier/${n.chantier_id}`                  : null
   }
 }

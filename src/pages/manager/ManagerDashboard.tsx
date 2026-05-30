@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useCallback, useEffect, useRef } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { Layers, RefreshCw, AlertTriangle, CheckCircle2, Sun, LogOut, Bell, Calendar, Zap, MoreHorizontal, MoreVertical, Shield, ChevronRight, AlertCircle, FileText, CheckSquare, MessageCircle, TrendingUp, ShieldAlert, Search, Filter, CircleDot, Folder, Clock, Trash2, Users, BarChart2, Building2, Bug } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantiers } from '@/hooks/useChantiers'
@@ -37,7 +37,7 @@ function notifUrl(n: Notification): string | null {
     case 'autocontrole': return n.chantier_id ? `/chantier/${n.chantier_id}?tab=autocontrole` : null
     case 'bloque':
     case 'termine':      return n.chantier_id ? `/chantier/${n.chantier_id}`                : null
-    case 'heures':       return '/manager'
+    case 'heures':       return '/manager?tab=planning'
     default:             return n.chantier_id ? `/chantier/${n.chantier_id}`                : null
   }
 }
@@ -180,8 +180,13 @@ export default function ManagerDashboard() {
   const { chantiers, loading } = useChantiers(selectedEntreprise?.id)
   const { anomalies, updateStatut: updateAnomalieStatut, updateStatutBulk, deleteAnomalies } = useAnomalies(undefined, selectedEntreprise?.id)
   const navigate               = useNavigate()
+  const [searchParams]         = useSearchParams()
 
-  const [activeTab, setActiveTab]       = useState<Tab>('accueil')
+  const VALID_TABS: Tab[] = ['accueil','chantiers','anomalies','stats','equipe','profil','planning','entreprises','bugs','chat','vt']
+  const [activeTab, setActiveTab] = useState<Tab>(() => {
+    const t = searchParams.get('tab')
+    return (t && VALID_TABS.includes(t as Tab)) ? t as Tab : 'accueil'
+  })
   const [filterStatut, setFilterStatut] = useState<FilterStatut>('tous')
   const [sortKey, setSortKey]           = useState<SortKey>('date')
   const [searchQuery, setSearchQuery]   = useState('')

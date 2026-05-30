@@ -133,18 +133,41 @@ Deno.serve(async (req) => {
     const { data: sender } = await supabase
       .from('profiles').select('full_name').eq('id', record.user_id).single()
     const senderName = sender?.full_name ?? 'Quelqu\'un'
-    title = '💬 Chat équipe'
-    body = `${senderName} : ${record.content?.slice(0, 60) ?? '📎 Fichier'}`
+    const notifTitle = '💬 Chat équipe'
+    const notifBody  = `${senderName} : ${record.content?.slice(0, 60) ?? '📎 Fichier'}`
 
     const { data: members } = await supabase
       .from('profiles')
-      .select('id')
+      .select('id, role')
       .eq('entreprise_id', record.entreprise_id)
-    recipientIds = (members ?? [])
-      .map((m: { id: string }) => m.id)
-      .filter((id: string) => id !== record.user_id)
-    prefFilter = 'global_messages_notif_enabled'
-    url = '/'
+    const allMembers = (members ?? [] as { id: string; role: string }[]).filter((m: { id: string }) => m.id !== record.user_id)
+
+    // Envoie des pushs séparés par rôle avec URL adaptée
+    const sendGroup = async (ids: string[], targetUrl: string) => {
+      if (!ids.length) return
+      const { data: subs } = await supabase
+        .from('push_subscriptions')
+        .select('endpoint, p256dh, auth')
+        .in('user_id', ids)
+        .eq('global_messages_notif_enabled', true)
+      if (!subs?.length) return
+      const payload = JSON.stringify({ title: notifTitle, body: notifBody, url: targetUrl })
+      await Promise.allSettled(
+        subs.map((s: { endpoint: string; p256dh: string; auth: string }) =>
+          webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, payload)
+        )
+      )
+    }
+
+    const managerIds = allMembers.filter((m: { role: string }) => ['manager','admin'].includes(m.role)).map((m: { id: string }) => m.id)
+    const techIds    = allMembers.filter((m: { role: string }) => m.role === 'technicien').map((m: { id: string }) => m.id)
+    await Promise.all([
+      sendGroup(managerIds, '/manager?tab=chat'),
+      sendGroup(techIds, '/technicien?tab=chat'),
+    ])
+    return new Response(JSON.stringify({ sent: managerIds.length + techIds.length }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
 
   } else if (table === 'anomalies') {
     const graviteEmoji = record.gravite === 'haute' ? '🔴' : record.gravite === 'moyenne' ? '🟡' : '🟢'
@@ -187,7 +210,8 @@ Deno.serve(async (req) => {
     title = record.title ?? '📊 Récap hebdo'
     body  = record.body  ?? ''
     recipientIds = record.userIds ?? []
-    url = '/'
+    // Les récaps hebdo concernent les heures des techniciens → onglet Mes heures
+    url = '/technicien?tab=planning&subtab=heures'
 
   } else if (table === 'assignation_chantier') {
     // Appelé lors de l'assignation d'un technicien à un chantier

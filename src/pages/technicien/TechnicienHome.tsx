@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useChantiers } from '@/hooks/useChantiers'
 import { useEtapesProgression } from '@/hooks/useEtapesProgression'
@@ -362,7 +362,14 @@ export default function TechnicienHome() {
   const { chantiers, loading } = useChantiers()
   const { can } = usePermissions()
   const navigate = useNavigate()
-  const [activeTab, setActiveTab] = useState<'chantiers' | 'vt' | 'planning' | 'equipe' | 'chat' | 'profil'>('chantiers')
+  const [searchParams] = useSearchParams()
+
+  type TechTab = 'chantiers' | 'vt' | 'planning' | 'equipe' | 'chat' | 'profil'
+  const VALID_TECH_TABS: TechTab[] = ['chantiers', 'vt', 'planning', 'equipe', 'chat', 'profil']
+  const [activeTab, setActiveTab] = useState<TechTab>(() => {
+    const t = searchParams.get('tab')
+    return (t && VALID_TECH_TABS.includes(t as TechTab)) ? t as TechTab : 'chantiers'
+  })
   const { unreadCount: chatUnread } = useGlobalMessages(profile?.id ?? '', profile?.entreprise_id ?? '')
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([])
 
@@ -652,7 +659,7 @@ export default function TechnicienHome() {
         )}
 
         {activeTab === 'planning' && (
-          <PlanningTechTab />
+          <PlanningTechTab initialTab={(searchParams.get('subtab') as 'activite' | 'heures' | 'equipe') ?? undefined} />
         )}
 
         {activeTab === 'chat' && profile?.id && (

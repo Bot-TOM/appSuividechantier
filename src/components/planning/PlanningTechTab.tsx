@@ -63,7 +63,7 @@ function fmtDayLabel(iso: string): string {
 }
 
 // ─── Composant principal ──────────────────────────────────────────────────────
-export default function PlanningTechTab() {
+export default function PlanningTechTab({ initialTab }: { initialTab?: 'activite' | 'heures' | 'equipe' }) {
   const { profile } = useAuth()
   const { can }     = usePermissions()
 
@@ -78,7 +78,9 @@ export default function PlanningTechTab() {
     equipe:   'Équipe',
   }
 
-  const [tab, setTab]           = useState<TabId>('activite')
+  const [tab, setTab] = useState<TabId>(
+    initialTab && ['activite', 'heures', 'equipe'].includes(initialTab) ? initialTab : 'activite'
+  )
   const [weekStart, setWeekStart] = useState(getMondayOfWeek())
   const [allProfiles, setAllProfiles] = useState<UserProfile[]>([])
   const [myChantiers, setMyChantiers] = useState<Chantier[]>([])
