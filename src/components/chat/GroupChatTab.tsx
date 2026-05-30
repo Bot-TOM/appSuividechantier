@@ -56,6 +56,26 @@ export default function GroupChatTab({ group, userId, isActive = true, onLeave }
   const textareaRef      = useRef<HTMLTextAreaElement>(null)
   const prevLengthRef    = useRef(0)
 
+  const [showScrollBtn, setShowScrollBtn] = useState(false)
+
+  useEffect(() => {
+    const el = msgsContainerRef.current
+    if (!el) return
+    const onScroll = () => {
+      const dist = el.scrollHeight - el.scrollTop - el.clientHeight
+      setShowScrollBtn(dist > 200)
+    }
+    el.addEventListener('scroll', onScroll, { passive: true })
+    return () => el.removeEventListener('scroll', onScroll)
+  }, [])
+
+  useEffect(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 112) + 'px'
+  }, [text])
+
   const members = useMemo(() => {
     return (group.members ?? []).map(m => ({
       id: m.user_id,
@@ -184,7 +204,18 @@ export default function GroupChatTab({ group, userId, isActive = true, onLeave }
       )}
 
       {/* ── Messages ───────────────────────────────────────────────────── */}
-      <div ref={msgsContainerRef} className="flex-1 overflow-y-auto px-4 py-4 space-y-1">
+      <div className="relative flex-1 min-h-0">
+      {showScrollBtn && (
+        <button
+          onClick={() => scrollToBottom(true)}
+          className="absolute bottom-3 right-3 z-10 w-8 h-8 bg-white border border-slate-200 rounded-full shadow-md flex items-center justify-center text-slate-500 hover:bg-orange-50 hover:text-orange-500 hover:border-orange-200 transition-all"
+        >
+          <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+            <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      )}
+      <div ref={msgsContainerRef} className="h-full overflow-y-auto px-4 py-4 space-y-1">
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full gap-3 py-12">
             <div className="w-14 h-14 rounded-full bg-orange-100 flex items-center justify-center">
@@ -377,6 +408,7 @@ export default function GroupChatTab({ group, userId, isActive = true, onLeave }
         )}
 
         <div ref={bottomRef} />
+      </div>
       </div>
 
       {/* ── Saisie ─────────────────────────────────────────────────────── */}

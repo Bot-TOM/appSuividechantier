@@ -5,43 +5,69 @@ import { supabase } from '@/lib/supabase'
 const lastSeenKey = (type: 'chantier' | 'group', id: string) =>
   `chat-last-seen-${type}-${id}`
 
+export interface LastMessagePreview {
+  text: string       // contenu tronqué ou "📎 Fichier" / "🎤 Message vocal"
+  time: string       // ISO timestamp
+  isOwn: boolean
+}
+
+// ── Horodatage relatif ────────────────────────────────────────────────────────
+export function relativeTime(iso: string): string {
+  if (!iso || iso === '1970-01-01') return ''
+  const diff = Date.now() - new Date(iso).getTime()
+  const min  = Math.floor(diff / 60_000)
+  const h    = Math.floor(diff / 3_600_000)
+  const d    = Math.floor(diff / 86_400_000)
+  if (min < 1)  return 'maintenant'
+  if (min < 60) return `${min} min`
+  if (h   < 24) return `${h} h`
+  if (d   < 7)  return `${d} j`
+  return new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short' })
+}
+
 export function useChatUnread(
   userId: string,
   chantierIds: string[],
   groupIds: string[],
 ) {
-  // unreadMap : { [convId]: nombre de messages non lus }
   const [unreadMap,       setUnreadMap]       = useState<Record<string, number>>({})
-  // lastActivityMap : { [convId]: ISO timestamp du dernier message (tous utilisateurs) }
   const [lastActivityMap, setLastActivityMap] = useState<Record<string, string>>({})
+  const [lastMsgMap,      setLastMsgMap]      = useState<Record<string, LastMessagePreview>>({})
 
   const chantiersKey = useMemo(() => chantierIds.join(','), [chantierIds])
   const groupsKey    = useMemo(() => groupIds.join(','),    [groupIds])
 
   const checkUnread = useCallback(async () => {
     if (!userId) return
-    const nextUnread:   Record<string, number> = {}
-    const nextActivity: Record<string, string> = {}
+    const nextUnread:   Record<string, number>              = {}
+    const nextActivity: Record<string, string>              = {}
+    const nextLastMsg:  Record<string, LastMessagePreview>  = {}
 
     // ── Chantiers ──────────────────────────────────────────────────────────────
     if (chantierIds.length > 0) {
       const { data } = await supabase
         .from('messages')
-        .select('chantier_id, created_at, user_id')
+        .select('chantier_id, created_at, user_id, content, file_type')
         .in('chantier_id', chantierIds)
         .order('created_at', { ascending: false })
 
       for (const cId of chantierIds) {
         const msgs     = (data ?? []).filter(m => m.chantier_id === cId)
         const lastSeen = localStorage.getItem(lastSeenKey('chantier', cId)) ?? '1970-01-01'
+        const last     = msgs[0]
 
-        // Dernier message toutes personnes confondues → pour le tri
-        nextActivity[cId] = msgs[0]?.created_at ?? '1970-01-01'
-
-        // Non-lus : messages des autres plus récents que last seen
-        nextUnread[cId] = msgs.filter(
+        nextActivity[cId] = last?.created_at ?? '1970-01-01'
+        nextUnread[cId]   = msgs.filter(
           m => m.user_id !== userId && m.created_at > lastSeen
         ).length
+
+        if (last) {
+          nextLastMsg[cId] = {
+            text:  msgPreviewText(last.content, last.file_type),
+            time:  last.created_at,
+            isOwn: last.user_id === userId,
+          }
+        }
       }
     }
 
@@ -49,28 +75,37 @@ export function useChatUnread(
     if (groupIds.length > 0) {
       const { data } = await supabase
         .from('group_messages')
-        .select('group_id, created_at, user_id')
+        .select('group_id, created_at, user_id, content, file_type')
         .in('group_id', groupIds)
         .order('created_at', { ascending: false })
 
       for (const gId of groupIds) {
         const msgs     = (data ?? []).filter(m => m.group_id === gId)
         const lastSeen = localStorage.getItem(lastSeenKey('group', gId)) ?? '1970-01-01'
+        const last     = msgs[0]
 
-        nextActivity[gId] = msgs[0]?.created_at ?? '1970-01-01'
+        nextActivity[gId] = last?.created_at ?? '1970-01-01'
         nextUnread[gId]   = msgs.filter(
           m => m.user_id !== userId && m.created_at > lastSeen
         ).length
+
+        if (last) {
+          nextLastMsg[gId] = {
+            text:  msgPreviewText(last.content, last.file_type),
+            time:  last.created_at,
+            isOwn: last.user_id === userId,
+          }
+        }
       }
     }
 
     setUnreadMap(nextUnread)
     setLastActivityMap(nextActivity)
+    setLastMsgMap(nextLastMsg)
   }, [userId, chantiersKey, groupsKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { checkUnread() }, [checkUnread])
 
-  // Realtime : rafraîchit badges + ordre à chaque nouveau message
   useEffect(() => {
     if (!userId) return
     const channel = supabase
@@ -91,5 +126,14 @@ export function useChatUnread(
     [unreadMap],
   )
 
-  return { unreadMap, lastActivityMap, markAsRead, totalUnread, checkUnread }
+  return { unreadMap, lastActivityMap, lastMsgMap, markAsRead, totalUnread, checkUnread }
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+function msgPreviewText(content: string | null, fileType: string | null): string {
+  if (content) return content.slice(0, 60)
+  if (fileType === 'image') return '📷 Photo'
+  if (fileType === 'audio') return '🎤 Message vocal'
+  if (fileType === 'document') return '📎 Fichier'
+  return '📎 Fichier'
 }

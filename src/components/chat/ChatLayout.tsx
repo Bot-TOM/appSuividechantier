@@ -6,7 +6,7 @@ import GroupChatTab from '@/components/chat/GroupChatTab'
 import CreateGroupModal from '@/components/chat/CreateGroupModal'
 import { useChatGroups } from '@/hooks/useChatGroups'
 import { useChantiers } from '@/hooks/useChantiers'
-import { useChatUnread } from '@/hooks/useChatUnread'
+import { useChatUnread, relativeTime } from '@/hooks/useChatUnread'
 import { useGlobalMessages } from '@/hooks/useGlobalMessages'
 import type { UserProfile } from '@/types'
 
@@ -34,7 +34,7 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
   // Non-lus
   const chantierIds = useMemo(() => chantiers.map(c => c.id), [chantiers])
   const groupIds    = useMemo(() => groups.map(g => g.id),    [groups])
-  const { unreadMap, lastActivityMap, markAsRead } = useChatUnread(userId, chantierIds, groupIds)
+  const { unreadMap, lastActivityMap, lastMsgMap, markAsRead } = useChatUnread(userId, chantierIds, groupIds)
   const { unreadCount: globalUnread } = useGlobalMessages(userId, entrepriseId)
 
   const [searchQuery, setSearchQuery]       = useState('')
@@ -151,26 +151,31 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
             </div>
 
             {/* Liste unifiée triée par activité récente */}
-            {sortedConversations.map(conv => (
-              <ConvItem
-                key={`${conv.type}-${conv.id}`}
-                icon={
-                  conv.type === 'chantier'
-                    ? <Layers className="w-4 h-4 text-white" />
-                    : <Users  className="w-4 h-4 text-white" />
-                }
-                iconBg={
-                  conv.type === 'chantier'
-                    ? 'bg-gradient-to-br from-blue-500 to-blue-600'
-                    : 'bg-gradient-to-br from-violet-500 to-violet-600'
-                }
-                label={conv.label}
-                sub={conv.sub}
-                unread={unreadMap[conv.id] ?? 0}
-                active={activeConv.type === conv.type && activeConv.id === conv.id}
-                onClick={() => openConv({ type: conv.type, id: conv.id, label: conv.label })}
-              />
-            ))}
+            {sortedConversations.map(conv => {
+              const preview = lastMsgMap[conv.id]
+              return (
+                <ConvItem
+                  key={`${conv.type}-${conv.id}`}
+                  icon={
+                    conv.type === 'chantier'
+                      ? <Layers className="w-4 h-4 text-white" />
+                      : <Users  className="w-4 h-4 text-white" />
+                  }
+                  iconBg={
+                    conv.type === 'chantier'
+                      ? 'bg-gradient-to-br from-blue-500 to-blue-600'
+                      : 'bg-gradient-to-br from-violet-500 to-violet-600'
+                  }
+                  label={conv.label}
+                  preview={preview?.text}
+                  previewOwn={preview?.isOwn}
+                  time={preview ? relativeTime(preview.time) : undefined}
+                  unread={unreadMap[conv.id] ?? 0}
+                  active={activeConv.type === conv.type && activeConv.id === conv.id}
+                  onClick={() => openConv({ type: conv.type, id: conv.id, label: conv.label })}
+                />
+              )
+            })}
           </>
         )}
       </div>
@@ -273,17 +278,21 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
 
 // ── Composant item conversation dans la sidebar ──────────────────────────────
 function ConvItem({
-  icon, iconBg, label, sub, active, unread = 0, onClick,
+  icon, iconBg, label, sub, preview, previewOwn, time, active, unread = 0, onClick,
 }: {
   icon: React.ReactNode
   iconBg: string
   label: string
   sub?: string
+  preview?: string
+  previewOwn?: boolean
+  time?: string
   active: boolean
   unread?: number
   onClick: () => void
 }) {
   const hasUnread = unread > 0 && !active
+  const showPreview = !!preview
   return (
     <button
       onClick={onClick}
@@ -291,7 +300,7 @@ function ConvItem({
         active ? 'bg-orange-50' : hasUnread ? 'bg-orange-50/40 hover:bg-orange-50/70' : 'hover:bg-slate-50'
       }`}
     >
-      {/* Icône avec point rouge si non lu */}
+      {/* Icône avec badge non-lus */}
       <div className="relative flex-shrink-0">
         <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${iconBg}`}>
           {icon}
@@ -302,19 +311,34 @@ function ConvItem({
           </span>
         )}
       </div>
+
       <div className="flex-1 min-w-0">
-        <p className={`text-sm truncate ${
-          active ? 'font-semibold text-orange-600' : hasUnread ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'
-        }`}>
-          {label}
-        </p>
-        {sub && (
+        {/* Ligne 1 : nom + horodatage */}
+        <div className="flex items-center justify-between gap-1">
+          <p className={`text-sm truncate ${
+            active ? 'font-semibold text-orange-600' : hasUnread ? 'font-bold text-slate-900' : 'font-semibold text-slate-800'
+          }`}>
+            {label}
+          </p>
+          {time && (
+            <span className="text-[10px] text-slate-400 flex-shrink-0 ml-1">{time}</span>
+          )}
+        </div>
+
+        {/* Ligne 2 : aperçu dernier message OU sous-titre */}
+        {showPreview ? (
+          <p className={`text-xs truncate ${hasUnread ? 'text-slate-700 font-medium' : 'text-slate-400'}`}>
+            {previewOwn && <span className="text-slate-400">Vous : </span>}
+            {preview}
+          </p>
+        ) : sub ? (
           <p className={`text-xs truncate ${hasUnread ? 'text-slate-600 font-medium' : 'text-slate-400'}`}>
             {sub}
           </p>
-        )}
+        ) : null}
       </div>
-      {active && (
+
+      {active && !hasUnread && (
         <div className="w-2 h-2 rounded-full bg-orange-500 flex-shrink-0" />
       )}
     </button>
