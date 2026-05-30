@@ -88,7 +88,7 @@ export default async function handler(req: Request) {
 
   const prompt = `${contextClause}Transcription du technicien : "${transcript}"
 
-Réécris ça en 2 à 4 phrases courtes, dans le style d'une note de chantier rédigée directement par le technicien (première personne, ton direct, pas de mise en forme). Garde uniquement ce qui est dit, sans rien ajouter. Pas de titre, pas de liste, pas de formule de politesse.`
+Réécris ça en 2 à 4 phrases courtes, dans le style d'une note de chantier rédigée directement par le technicien (ton direct, pas de mise en forme). Utilise "je" si le technicien parle seul, "on" ou "nous" s'il mentionne une équipe ou plusieurs personnes. Garde uniquement ce qui est dit, sans rien ajouter. Pas de titre, pas de liste, pas de formule de politesse.`
 
   const claudeRes = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
