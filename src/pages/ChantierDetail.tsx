@@ -1119,6 +1119,7 @@ export default function ChantierDetail() {
                     className="absolute opacity-0 w-px h-px overflow-hidden pointer-events-none"
                     tabIndex={-1}
                     disabled={uploadingDoc}
+                    onFocus={e => e.currentTarget.blur()}
                   />
                   {uploadingDoc
                     ? <div className="w-3 h-3 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
