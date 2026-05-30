@@ -1279,27 +1279,34 @@ export default function ManagerDashboard() {
 
         {/* ── KPIs ──────────────────────────────────────────────────────────── */}
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
-          {[
-            { label: 'Total Chantiers', value: stats.total,    sub: 'Sur la période',        border: 'border-l-slate-800',   icon: <Layers className="w-5 h-5 text-slate-700" />,      iconBg: 'bg-slate-100'   },
-            { label: 'En cours',        value: stats.en_cours, sub: 'Actuellement sur site',  border: 'border-l-blue-500',    icon: <RefreshCw className="w-5 h-5 text-blue-600" />,    iconBg: 'bg-blue-50'     },
-            { label: 'Bloqués',         value: stats.bloques,  sub: 'Nécessitent une action', border: 'border-l-red-500',     icon: <AlertTriangle className="w-5 h-5 text-red-600" />, iconBg: 'bg-red-50'      },
-            { label: 'Terminés',        value: stats.termines, sub: 'Ce mois-ci',             border: 'border-l-emerald-500', icon: <CheckCircle2 className="w-5 h-5 text-emerald-600" />, iconBg: 'bg-emerald-50' },
-          ].map((kpi, i) => (
-            <div key={i} className={`bg-white rounded-2xl p-6 shadow-sm border border-slate-100 border-l-4 ${kpi.border} hover:shadow-md hover:-translate-y-0.5 transition-all cursor-default relative overflow-hidden group`}>
-              {/* Filigrane icône en fond */}
-              <div className="absolute -right-3 -bottom-3 opacity-[0.04] group-hover:scale-110 group-hover:-rotate-12 transition-all duration-500 pointer-events-none">
-                {React.cloneElement(kpi.icon as React.ReactElement, { className: 'w-28 h-28' })}
-              </div>
-              <div className="flex justify-between items-start mb-5 relative z-10">
-                <div className={`p-2.5 rounded-xl ${kpi.iconBg}`}>{kpi.icon}</div>
-              </div>
-              <div className="relative z-10">
-                <p className="text-4xl font-black text-slate-800 tracking-tight">{kpi.value}</p>
-                <h3 className="text-sm font-bold text-slate-700 mt-1">{kpi.label}</h3>
-                <p className="text-xs text-slate-400 font-medium mt-0.5">{kpi.sub}</p>
-              </div>
-            </div>
-          ))}
+          {([
+            { label: 'Total Chantiers', value: stats.total,    sub: 'Sur la période',        border: 'border-l-slate-800',   icon: <Layers className="w-5 h-5 text-slate-700" />,         iconBg: 'bg-slate-100',    filter: 'tous'     as FilterStatut },
+            { label: 'En cours',        value: stats.en_cours, sub: 'Actuellement sur site',  border: 'border-l-blue-500',    icon: <RefreshCw className="w-5 h-5 text-blue-600" />,       iconBg: 'bg-blue-50',      filter: 'en_cours' as FilterStatut },
+            { label: 'Bloqués',         value: stats.bloques,  sub: 'Nécessitent une action', border: 'border-l-red-500',     icon: <AlertTriangle className="w-5 h-5 text-red-600" />,   iconBg: 'bg-red-50',       filter: 'bloque'   as FilterStatut },
+            { label: 'Terminés',        value: stats.termines, sub: 'Ce mois-ci',             border: 'border-l-emerald-500', icon: <CheckCircle2 className="w-5 h-5 text-emerald-600" />, iconBg: 'bg-emerald-50',   filter: 'termine'  as FilterStatut },
+          ] as const).map((kpi, i) => {
+            const isActive = filterStatut === kpi.filter
+            return (
+              <button
+                key={i}
+                onClick={() => setFilterStatut(isActive ? 'tous' : kpi.filter)}
+                className={`text-left w-full bg-white rounded-2xl p-6 shadow-sm border border-l-4 ${kpi.border} hover:shadow-md hover:-translate-y-0.5 transition-all relative overflow-hidden group ${isActive ? 'border-slate-200 ring-2 ring-offset-1 ring-orange-400' : 'border-slate-100'}`}>
+                {/* Filigrane icône en fond */}
+                <div className="absolute -right-3 -bottom-3 opacity-[0.04] group-hover:scale-110 group-hover:-rotate-12 transition-all duration-500 pointer-events-none">
+                  {React.cloneElement(kpi.icon as React.ReactElement, { className: 'w-28 h-28' })}
+                </div>
+                <div className="flex justify-between items-start mb-5 relative z-10">
+                  <div className={`p-2.5 rounded-xl ${kpi.iconBg}`}>{kpi.icon}</div>
+                  {isActive && <span className="text-[10px] font-bold text-orange-500 bg-orange-50 px-2 py-0.5 rounded-full">Filtre actif</span>}
+                </div>
+                <div className="relative z-10">
+                  <p className="text-4xl font-black text-slate-800 tracking-tight">{kpi.value}</p>
+                  <h3 className="text-sm font-bold text-slate-700 mt-1">{kpi.label}</h3>
+                  <p className="text-xs text-slate-400 font-medium mt-0.5">{kpi.sub}</p>
+                </div>
+              </button>
+            )
+          })}
         </div>
 
         {/* ── Anomalies ouvertes ────────────────────────────────────────────── */}
