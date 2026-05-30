@@ -37,13 +37,14 @@ export function useChatGroups(userId: string, entrepriseId: string) {
       .insert({ name, entreprise_id: entrepriseId, created_by: userId })
       .select()
       .single()
-    if (error || !group) return { error: error?.message ?? 'Erreur création' }
+    if (error || !group) return { error: error?.message ?? 'Erreur création groupe' }
 
-    // 2. Ajouter le créateur + les membres choisis
+    // 2. Ajouter le créateur + les membres choisis (créateur toujours inclus)
     const allMembers = [...new Set([userId, ...memberIds])]
-    await supabase.from('chat_group_members').insert(
-      allMembers.map(uid => ({ group_id: group.id, user_id: uid }))
-    )
+    const { error: membersError } = await supabase
+      .from('chat_group_members')
+      .insert(allMembers.map(uid => ({ group_id: group.id, user_id: uid })))
+    if (membersError) return { error: membersError.message }
 
     await fetchGroups()
     return { group: group as ChatGroup }

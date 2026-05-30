@@ -278,9 +278,9 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
           userId={userId}
           entrepriseId={entrepriseId}
           onClose={() => setShowCreateModal(false)}
-          onCreated={groupId => {
+          onCreated={async groupId => {
             setShowCreateModal(false)
-            refetchGroups()
+            await refetchGroups()
             openConv({ type: 'group', id: groupId, label: '…' })
           }}
           onCreate={createGroup}
