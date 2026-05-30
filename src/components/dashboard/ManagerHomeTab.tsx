@@ -232,7 +232,7 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
   const greeting  = hour < 12 ? 'Bonjour' : hour < 18 ? 'Bon après-midi' : 'Bonsoir'
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 lg:space-y-7">
 
       {/* ── Greeting + actions rapides ─────────────────────────────────────── */}
       <div
@@ -332,7 +332,7 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
       )}
 
       {/* ── KPI Cards ─────────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
         <KpiCard
           icon={<Layers className="w-5 h-5" />}
           label="Chantiers en cours"
@@ -366,7 +366,7 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
       </div>
 
       {/* ── Stats secondaires ──────────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-5">
         {([
           { label: 'Terminés ce mois', value: terminesCeMois.length, color: 'text-emerald-600 bg-emerald-50', icon: <CheckCircle2 className="w-4 h-4" />, tab: 'chantiers', filter: 'termine' },
           { label: 'Total chantiers',  value: chantiers.length,      color: 'text-slate-600 bg-slate-50',    icon: <Layers className="w-4 h-4" />,       tab: 'chantiers', filter: 'tous'    },
@@ -388,7 +388,7 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
       </div>
 
       {/* ── Alertes + Équipe aujourd'hui ───────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6">
 
         {/* Alertes prioritaires */}
         <SectionCard
@@ -466,7 +466,7 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
       </div>
 
       {/* ── Prochaines interventions + En retard ───────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 lg:gap-6">
 
         {/* Prochaines interventions */}
         <SectionCard

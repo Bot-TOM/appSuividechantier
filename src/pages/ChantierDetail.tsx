@@ -851,7 +851,7 @@ export default function ChantierDetail() {
           : { background: '#ffffff', borderBottom: '1px solid #f3f4f6' }
         }
       >
-        <div className="max-w-2xl md:max-w-5xl mx-auto">
+        <div className="max-w-2xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto">
           {/* Ligne titre */}
           <div className="flex items-start justify-between gap-3 mb-3">
             <div className="flex items-start gap-2.5 min-w-0">
@@ -970,7 +970,7 @@ export default function ChantierDetail() {
 
       {/* ── Actions rapides terrain (technicien) ─────────────────────────── */}
       {!isManager && activeTab === 'etapes' && (
-        <div className="px-4 pt-3 pb-0 max-w-2xl md:max-w-5xl mx-auto w-full">
+        <div className="px-4 pt-3 pb-0 max-w-2xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto w-full">
           <div className="flex gap-2.5">
             <a
               href={`https://maps.google.com/?q=${encodeURIComponent(chantier.client_adresse)}`}
@@ -1001,7 +1001,7 @@ export default function ChantierDetail() {
       )}
 
       {/* ── Contenu onglets ───────────────────────────────────────────────── */}
-      <main className="flex-1 max-w-2xl md:max-w-5xl mx-auto w-full px-4 py-4 space-y-3 pb-safe-4" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
+      <main className="flex-1 max-w-2xl md:max-w-5xl lg:max-w-6xl xl:max-w-7xl mx-auto w-full px-4 py-4 space-y-3 pb-safe-4" style={{ paddingBottom: 'max(2rem, env(safe-area-inset-bottom, 1rem))' }}>
 
         {/* ── ÉTAPES ────────────────────────────────────────────────────────── */}
         {activeTab === 'etapes' && (

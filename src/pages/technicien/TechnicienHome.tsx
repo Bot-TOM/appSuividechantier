@@ -487,7 +487,7 @@ export default function TechnicienHome() {
       <div className="md:flex md:flex-1 md:overflow-hidden">
 
         {/* ── Sidebar desktop ──────────────────────────────────────────────── */}
-        <aside className="hidden md:flex md:flex-col w-60 bg-white border-r border-slate-100 shrink-0">
+        <aside className="hidden md:flex md:flex-col w-64 lg:w-72 bg-white border-r border-slate-100 shrink-0">
           <nav className="flex-1 py-4 px-3 space-y-1">
 
             <button onClick={() => setActiveTab('chantiers')}
@@ -547,7 +547,7 @@ export default function TechnicienHome() {
         </aside>
 
         {/* ── Contenu ──────────────────────────────────────────────────────── */}
-        <main className="px-4 py-6 max-w-lg mx-auto md:flex-1 md:max-w-none md:px-8 md:py-8 md:overflow-y-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
+        <main className="px-4 py-6 max-w-lg mx-auto md:flex-1 md:max-w-none md:px-8 lg:px-10 xl:px-14 md:py-8 md:overflow-y-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
 
         {activeTab === 'chantiers' && (
           <>
@@ -577,7 +577,7 @@ export default function TechnicienHome() {
                 </p>
               </div>
             ) : (
-              <div className="space-y-4 mt-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 mt-2">
                 {chantiers.map(c => (
                   <ChantierCard
                     key={c.id}

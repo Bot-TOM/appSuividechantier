@@ -367,7 +367,7 @@ export default function ManagerDashboard() {
 
       {/* ── Header ──────────────────────────────────────────────────────────── */}
       <header className="bg-white border-b border-slate-200 sticky top-0 z-20">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="px-4 sm:px-6 lg:px-8 xl:px-12">
           {/* Ligne principale */}
           <div className="flex justify-between items-center h-16">
             {/* Logo */}
@@ -547,7 +547,7 @@ export default function ManagerDashboard() {
       <div className="md:flex md:flex-1 md:overflow-hidden">
 
         {/* ── Sidebar desktop ───────────────────────────────────────────────── */}
-        <aside className="hidden md:flex md:flex-col w-60 bg-white border-r border-slate-100 shrink-0">
+        <aside className="hidden md:flex md:flex-col w-64 lg:w-72 bg-white border-r border-slate-100 shrink-0">
           <nav className="flex flex-col gap-1 p-3 flex-1 pt-4">
             {([
               { key: 'accueil',     label: 'Accueil',      Icon: Sun           },
@@ -597,7 +597,7 @@ export default function ManagerDashboard() {
           </div>
         </aside>
 
-        <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6 md:flex-1 md:max-w-none md:overflow-y-auto">
+        <main className="px-4 sm:px-6 lg:px-8 xl:px-12 py-6 lg:py-8 space-y-5 lg:space-y-7 md:flex-1 md:overflow-y-auto">
 
         {/* ── Onglet Accueil ────────────────────────────────────────────────── */}
         {activeTab === 'accueil' && (
@@ -824,7 +824,7 @@ export default function ManagerDashboard() {
           <div className="space-y-6 pb-6">
 
             {/* ── KPI Cards Bento ─────────────────────────────────────────── */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
               {([
                 { label: 'kWc En cours',       value: String(enhancedStats.kwc_en_cours || '—'), subtext: 'Chantiers actifs',                icon: Zap,          color: 'text-orange-600', bg: 'bg-orange-100', accent: 'bg-orange-400' },
                 { label: 'kWc Installés',       value: String(enhancedStats.kwc_installe || '—'), subtext: 'Chantiers terminés',              icon: CheckCircle2, color: 'text-emerald-600', bg: 'bg-emerald-100', accent: 'bg-emerald-400' },
@@ -1304,7 +1304,7 @@ export default function ManagerDashboard() {
         {activeTab === 'chantiers' && (<>
 
         {/* ── KPIs ──────────────────────────────────────────────────────────── */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 lg:gap-6">
           {([
             { label: 'Total Chantiers', value: stats.total,    sub: 'Sur la période',        border: 'border-l-slate-800',   icon: <Layers className="w-5 h-5 text-slate-700" />,         iconBg: 'bg-slate-100',    filter: 'tous'     as FilterStatut },
             { label: 'En cours',        value: stats.en_cours, sub: 'Actuellement sur site',  border: 'border-l-blue-500',    icon: <RefreshCw className="w-5 h-5 text-blue-600" />,       iconBg: 'bg-blue-50',      filter: 'en_cours' as FilterStatut },
