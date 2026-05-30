@@ -404,6 +404,21 @@ export default function ChantierDetail() {
       ? t as InnerTab
       : 'etapes'
   })
+  const highlightRapportId = searchParams.get('r')
+
+  // Scroll vers le rapport mis en évidence dès que la liste est chargée
+  useEffect(() => {
+    if (!highlightRapportId || activeTab !== 'rapport' || rapports.length === 0) return
+    const el = document.getElementById(`rapport-${highlightRapportId}`)
+    if (el) {
+      setTimeout(() => {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' })
+        el.classList.add('ring-2', 'ring-orange-400', 'ring-offset-2')
+        setTimeout(() => el.classList.remove('ring-2', 'ring-orange-400', 'ring-offset-2'), 2500)
+      }, 150)
+    }
+  }, [highlightRapportId, activeTab, rapports])
+
   const [rapportLightbox, setRapportLightbox] = useState<{ photos: RapportPhoto[]; index: number } | null>(null)
   const [uploadingDoc, setUploadingDoc] = useState(false)
   const [uploadDocError, setUploadDocError] = useState('')
@@ -1361,7 +1376,7 @@ export default function ChantierDetail() {
                 {rapports.map(rapport => {
                   const photos = rapport.rapport_photos ?? []
                   return (
-                    <div key={rapport.id} className="bg-white rounded-2xl overflow-hidden" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                    <div key={rapport.id} id={`rapport-${rapport.id}`} className="bg-white rounded-2xl overflow-hidden transition-all duration-300" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-2 mb-2">
                           <div>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import type { Chantier, Anomalie } from '@/types'
@@ -183,6 +183,9 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
   const [recentRapports, setRecentRapports] = useState<Rapport[]>([])
   const [loadingRapports, setLoadingRapports] = useState(true)
 
+  // Identifiant stable des chantiers pour déclencher le refetch sans boucle infinie
+  const chantierIds = useMemo(() => chantiers.map(c => c.id).join(','), [chantiers])
+
   useEffect(() => {
     // Planning aujourd'hui
     supabase
@@ -193,8 +196,9 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
       .then(({ data }) => setPlanningToday((data ?? []) as unknown as PlanningEntry[]))
 
     // Derniers rapports terrain
-    const ids = chantiers.map(c => c.id)
+    const ids = chantierIds ? chantierIds.split(',') : []
     if (ids.length === 0) { setLoadingRapports(false); return }
+    setLoadingRapports(true)
     supabase
       .from('rapports')
       .select('id, message, created_at, chantier_id, chantiers(nom), profiles(full_name)')
@@ -202,7 +206,7 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
       .order('created_at', { ascending: false })
       .limit(6)
       .then(({ data }) => { setRecentRapports((data ?? []) as unknown as Rapport[]); setLoadingRapports(false) })
-  }, [today]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [today, chantierIds])
 
   // ── Notifications ────────────────────────────────────────────────────────
   const unreadNotifs = notifications.filter(n => !n.lu)
@@ -547,7 +551,7 @@ export default function ManagerHomeTab({ chantiers, anomalies, notifications, ma
             {recentRapports.map(r => (
               <button
                 key={r.id}
-                onClick={() => navigate(`/chantier/${r.chantier_id}`)}
+                onClick={() => navigate(`/chantier/${r.chantier_id}?tab=rapport&r=${r.id}`)}
                 className="w-full text-left px-5 py-4 flex items-start gap-3 hover:bg-slate-50 transition-colors group">
                 <div className="w-8 h-8 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 text-xs font-bold shrink-0 mt-0.5">
                   {r.profiles?.full_name?.charAt(0) ?? '?'}
