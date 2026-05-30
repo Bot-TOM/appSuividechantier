@@ -1290,7 +1290,7 @@ export default function ManagerDashboard() {
               <button
                 key={i}
                 onClick={() => setFilterStatut(isActive ? 'tous' : kpi.filter)}
-                className={`text-left w-full bg-white rounded-2xl p-6 shadow-sm border border-l-4 ${kpi.border} hover:shadow-md hover:-translate-y-0.5 transition-all relative overflow-hidden group ${isActive ? 'border-slate-200 ring-2 ring-offset-1 ring-orange-400' : 'border-slate-100'}`}>
+                className={`text-left w-full bg-white rounded-2xl p-6 shadow-sm border border-slate-100 border-l-4 ${kpi.border} hover:shadow-md hover:-translate-y-0.5 transition-all relative overflow-hidden group`}>
                 {/* Filigrane icône en fond */}
                 <div className="absolute -right-3 -bottom-3 opacity-[0.04] group-hover:scale-110 group-hover:-rotate-12 transition-all duration-500 pointer-events-none">
                   {React.cloneElement(kpi.icon as React.ReactElement, { className: 'w-28 h-28' })}
