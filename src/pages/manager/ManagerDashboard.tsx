@@ -337,7 +337,12 @@ export default function ManagerDashboard() {
     if (filterStatut !== 'tous') result = result.filter(c => c.statut === filterStatut)
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase()
-      result = result.filter(c => c.nom.toLowerCase().includes(q) || c.client_nom.toLowerCase().includes(q))
+      result = result.filter(c =>
+        c.nom.toLowerCase().includes(q) ||
+        (c.client_nom  ?? '').toLowerCase().includes(q) ||
+        (c.client_adresse   ?? '').toLowerCase().includes(q) ||
+        (c.client_telephone ?? '').toLowerCase().includes(q)
+      )
     }
     result.sort((a, b) => {
       if (sortKey === 'date')   return new Date(a.date_prevue).getTime() - new Date(b.date_prevue).getTime()
@@ -1374,13 +1379,22 @@ export default function ManagerDashboard() {
         {/* ── Recherche + tri + action ──────────────────────────────────────── */}
         <div className="flex gap-3 items-center">
           <div className="relative flex-1">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
             <input
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Rechercher un chantier..."
-              className="w-full pl-9 pr-4 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
+              placeholder="Nom, client, adresse, téléphone…"
+              className="w-full pl-9 pr-8 py-2.5 rounded-xl border border-gray-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-orange-400 focus:border-transparent"
             />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                aria-label="Effacer la recherche"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            )}
           </div>
           <select
             value={sortKey}
@@ -1450,11 +1464,21 @@ export default function ManagerDashboard() {
           <div className="bg-white rounded-2xl p-14 text-center" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
             <div className="text-5xl mb-4">🏗️</div>
             <p className="font-semibold text-gray-700 mb-1">
-              {searchQuery ? 'Aucun résultat' : 'Aucun chantier ici'}
+              {searchQuery ? `Aucun résultat pour « ${searchQuery} »` : 'Aucun chantier ici'}
             </p>
             <p className="text-sm text-gray-400">
-              {searchQuery ? 'Essayez un autre terme de recherche' : 'Créez votre premier chantier pour commencer'}
+              {searchQuery
+                ? 'Essayez avec le nom, le client, l\'adresse ou le téléphone'
+                : 'Créez votre premier chantier pour commencer'}
             </p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="mt-4 text-sm text-orange-500 hover:text-orange-600 font-medium transition-colors"
+              >
+                Effacer la recherche
+              </button>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5 pb-8">
