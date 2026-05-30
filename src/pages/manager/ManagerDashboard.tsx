@@ -1522,7 +1522,11 @@ export default function ManagerDashboard() {
 
         {/* ── Onglet Chat général ───────────────────────────────────────────── */}
         {activeTab === 'chat' && profile?.id && (
-          <ChatLayout profile={profile} isActive={activeTab === 'chat'} />
+          <ChatLayout
+            profile={profile}
+            isActive={activeTab === 'chat'}
+            entrepriseIdOverride={selectedEntreprise?.id}
+          />
         )}
       </main>
       </div>{/* fin body wrapper */}

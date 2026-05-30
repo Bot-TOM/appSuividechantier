@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Search, Plus, ChevronLeft, MessageSquare, Users, Layers } from 'lucide-react'
 import GlobalChatTab from '@/components/chat/GlobalChatTab'
 import ChatTab from '@/components/chat/ChatTab'
@@ -21,15 +21,17 @@ interface ActiveConv {
 interface Props {
   profile: UserProfile
   isActive?: boolean
+  /** Surcharge l'entreprise active — utilisé par l'admin quand il filtre sur une autre entreprise */
+  entrepriseIdOverride?: string
 }
 
-export default function ChatLayout({ profile, isActive = true }: Props) {
-  const userId      = profile.id
-  const entrepriseId = profile.entreprise_id ?? ''
+export default function ChatLayout({ profile, isActive = true, entrepriseIdOverride }: Props) {
+  const userId       = profile.id
+  const entrepriseId = entrepriseIdOverride ?? profile.entreprise_id ?? ''
 
   const { groups, loading: groupsLoading, createGroup, leaveGroup, refetch: refetchGroups } =
     useChatGroups(userId, entrepriseId)
-  const { chantiers, loading: chantiersLoading } = useChantiers()
+  const { chantiers, loading: chantiersLoading } = useChantiers(entrepriseIdOverride)
 
   // Non-lus
   const chantierIds = useMemo(() => chantiers.map(c => c.id), [chantiers])
@@ -41,6 +43,13 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
   const [activeConv, setActiveConv]         = useState<ActiveConv>({ type: 'global', id: 'global', label: 'Équipe' })
   const [showConvOnMobile, setShowConvOnMobile] = useState(false)
   const [showCreateModal, setShowCreateModal]   = useState(false)
+
+  // Quand l'admin change d'entreprise, revenir au chat Équipe de la nouvelle entreprise
+  useEffect(() => {
+    setActiveConv({ type: 'global', id: 'global', label: 'Équipe' })
+    setShowConvOnMobile(false)
+    setSearchQuery('')
+  }, [entrepriseId])
 
   // Filtre sidebar
   const showGlobal = !searchQuery.trim() ||
@@ -92,7 +101,12 @@ export default function ChatLayout({ profile, isActive = true }: Props) {
     <div className="flex flex-col bg-white h-full border-r border-slate-100 overflow-hidden">
       {/* Header sidebar */}
       <div className="px-4 pt-4 pb-3 shrink-0">
-        <h2 className="text-base font-bold text-slate-900 mb-3">Messages</h2>
+        <h2 className="text-base font-bold text-slate-900 mb-1">Messages</h2>
+        {entrepriseIdOverride && (
+          <p className="text-[11px] font-semibold text-orange-500 mb-2 truncate">
+            Vue entreprise filtrée
+          </p>
+        )}
         <div className="relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
           <input
