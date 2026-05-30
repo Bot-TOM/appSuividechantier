@@ -50,16 +50,9 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
     const channelName = `global-chat-${entrepriseId}`
     const channel = supabase
       .channel(channelName)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'global_messages',
-        // Pas de filtre server-side : postgres_changes + filtre + RLS peut bloquer
-        // les événements. On filtre côté client à la place.
-      }, (payload) => {
-        const row = (payload.new ?? payload.old) as { entreprise_id?: string } | null
-        if (row?.entreprise_id === entrepriseId) fetchMessages()
-      })
+      // payload.new = {} vide avec RLS → ne pas inspecter le payload
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'global_messages' }, fetchMessages)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'global_messages' }, fetchMessages)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',

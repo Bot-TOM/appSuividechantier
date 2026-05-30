@@ -25,16 +25,11 @@ export function useMessages(chantierId: string, userId: string) {
   useEffect(() => { fetchMessages() }, [fetchMessages])
 
   useEffect(() => {
+    // payload.new = {} vide avec RLS → ne pas inspecter le payload
     const channel = supabase
       .channel(`chat-${chantierId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'messages' },
-        (payload) => {
-          const row = (payload.new ?? payload.old) as { chantier_id?: string } | null
-          if (row?.chantier_id === chantierId) fetchMessages()
-        }
-      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, fetchMessages)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'messages' }, fetchMessages)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reactions' }, fetchMessages)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'message_reads' },     fetchMessages)
       .subscribe()

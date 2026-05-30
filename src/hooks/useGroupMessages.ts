@@ -30,21 +30,14 @@ export function useGroupMessages(groupId: string, userId: string) {
     // Note: on n'utilise PAS de filtre server-side (group_id=eq.X) car
     // les postgres_changes avec filtre + RLS peuvent bloquer les événements
     // dans certaines versions de Supabase. On filtre côté client à la place.
+    // Supabase Realtime avec RLS retourne payload.new = {} vide pour les tables
+    // protégées → ne jamais inspecter le payload, appeler fetchMessages directement.
+    // fetchMessages filtre déjà par groupId dans la requête.
     const channel = supabase
       .channel(`group-chat-${groupId}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'group_messages' },
-        (payload) => {
-          const row = (payload.new ?? payload.old) as { group_id?: string } | null
-          if (row?.group_id === groupId) fetchMessages()
-        }
-      )
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'group_message_reactions' },
-        fetchMessages
-      )
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'group_messages' }, fetchMessages)
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'group_messages' }, fetchMessages)
+      .on('postgres_changes', { event: '*',      schema: 'public', table: 'group_message_reactions' }, fetchMessages)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [groupId, fetchMessages])
