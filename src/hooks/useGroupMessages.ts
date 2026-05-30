@@ -36,13 +36,19 @@ export function useGroupMessages(groupId: string, userId: string) {
   }, [groupId, fetchMessages])
 
   const sendMessage = useCallback(async (content: string, replyToId?: string) => {
-    await supabase.from('group_messages').insert({
+    const { data, error } = await supabase.from('group_messages').insert({
       group_id: groupId,
       user_id: userId,
       content,
       reply_to_id: replyToId ?? null,
-    })
-  }, [groupId, userId])
+    }).select().single()
+    if (error) { console.error('[group-chat] sendMessage:', error); return }
+    // Rafraîchissement immédiat + notif push aux membres du groupe
+    fetchMessages()
+    supabase.functions.invoke('send-push', {
+      body: { table: 'group_messages', record: data },
+    }).catch(() => {})
+  }, [groupId, userId, fetchMessages])
 
   const sendFile = useCallback(async (file: File, replyToId?: string) => {
     setUploading(true)
@@ -52,18 +58,24 @@ export function useGroupMessages(groupId: string, userId: string) {
       const { data: upload, error } = await supabase.storage.from('chat-files').upload(path, file)
       if (error) throw error
       const { data: { publicUrl } } = supabase.storage.from('chat-files').getPublicUrl(upload.path)
-      await supabase.from('group_messages').insert({
-        group_id:   groupId,
-        user_id:    userId,
-        file_url:   publicUrl,
-        file_name:  file.name,
-        file_type:  file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'audio' : 'document',
+      const { data: fileData, error: insertErr } = await supabase.from('group_messages').insert({
+        group_id:    groupId,
+        user_id:     userId,
+        file_url:    publicUrl,
+        file_name:   file.name,
+        file_type:   file.type.startsWith('image/') ? 'image' : file.type.startsWith('audio/') ? 'audio' : 'document',
         reply_to_id: replyToId ?? null,
-      })
+      }).select().single()
+      if (!insertErr && fileData) {
+        fetchMessages()
+        supabase.functions.invoke('send-push', {
+          body: { table: 'group_messages', record: fileData },
+        }).catch(() => {})
+      }
     } finally {
       setUploading(false)
     }
-  }, [groupId, userId])
+  }, [groupId, userId, fetchMessages])
 
   const deleteMessage = useCallback(async (id: string) => {
     await supabase.from('group_messages').delete().eq('id', id)

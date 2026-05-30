@@ -42,10 +42,12 @@ export function useMessages(chantierId: string, userId: string) {
       reply_to_id: replyToId ?? null,
     }).select().single()
     if (error) { console.error('[chat] sendMessage:', error); return }
+    // Rafraîchissement immédiat — ne pas attendre uniquement le realtime
+    fetchMessages()
     supabase.functions.invoke('send-push', {
       body: { table: 'messages', record: data },
     }).catch(() => {})
-  }, [chantierId, userId])
+  }, [chantierId, userId, fetchMessages])
 
   const sendFile = useCallback(async (file: File, replyToId?: string) => {
     setUploading(true)
@@ -65,6 +67,7 @@ export function useMessages(chantierId: string, userId: string) {
       }).select().single()
       if (insertErr) { console.error('[chat] sendFile insert:', insertErr) }
       else {
+        fetchMessages()
         supabase.functions.invoke('send-push', {
           body: { table: 'messages', record: fileData },
         }).catch(() => {})
@@ -72,7 +75,7 @@ export function useMessages(chantierId: string, userId: string) {
     } finally {
       setUploading(false)
     }
-  }, [chantierId, userId])
+  }, [chantierId, userId, fetchMessages])
 
   const deleteMessage = useCallback(async (id: string) => {
     await supabase.from('messages').delete().eq('id', id)

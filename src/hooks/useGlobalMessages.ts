@@ -74,11 +74,12 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
       reply_to_id:   replyToId ?? null,
     }).select().single()
     if (error) { console.error('[global-chat] sendMessage:', error); return }
-    // Notif push à tous les membres de l'entreprise (sauf l'expéditeur)
+    // Rafraîchissement immédiat — ne pas attendre uniquement le realtime
+    fetchMessages()
     supabase.functions.invoke('send-push', {
       body: { table: 'global_messages', record: data },
     }).catch(() => {})
-  }, [userId, entrepriseId])
+  }, [userId, entrepriseId, fetchMessages])
 
   const sendFile = useCallback(async (file: File, replyToId?: string) => {
     if (!entrepriseId) return
@@ -99,6 +100,7 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
       }).select().single()
       if (insertErr) { console.error('[global-chat] sendFile insert:', insertErr) }
       else {
+        fetchMessages()
         supabase.functions.invoke('send-push', {
           body: { table: 'global_messages', record: fileData },
         }).catch(() => {})
@@ -106,7 +108,7 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
     } finally {
       setUploading(false)
     }
-  }, [userId, entrepriseId])
+  }, [userId, entrepriseId, fetchMessages])
 
   const deleteMessage = useCallback(async (id: string) => {
     await supabase.from('global_messages').delete().eq('id', id)

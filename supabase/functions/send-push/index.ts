@@ -106,6 +106,63 @@ Deno.serve(async (req) => {
     url = record.chantier_id ? `/chantier/${record.chantier_id}?tab=autocontrole` : '/'
     notifType = 'autocontrole'; notifChantier = record.chantier_id ?? null
 
+  } else if (table === 'group_messages') {
+    // Chat de groupe custom — notif uniquement aux membres du groupe
+    chatOnly = true
+    const { data: sender } = await supabase
+      .from('profiles').select('full_name').eq('id', record.user_id).single()
+    const senderName = sender?.full_name ?? 'Quelqu\'un'
+
+    // Nom du groupe
+    const { data: grp } = await supabase
+      .from('chat_groups').select('name').eq('id', record.group_id).single()
+    const groupName = grp?.name ?? 'Groupe'
+
+    title = `💬 ${groupName}`
+    body  = `${senderName} : ${record.content?.slice(0, 60) ?? '📎 Fichier'}`
+
+    // Membres du groupe (hors expéditeur)
+    const { data: members } = await supabase
+      .from('chat_group_members')
+      .select('user_id, profiles(role)')
+      .eq('group_id', record.group_id)
+    const allMemberIds = (members ?? []).map((m: { user_id: string }) => m.user_id)
+    recipientIds = allMemberIds.filter((id: string) => id !== record.user_id)
+
+    // URLs adaptées par rôle
+    const { data: recipientProfiles } = await supabase
+      .from('profiles').select('id, role').in('id', recipientIds)
+    const managerRecipientIds = (recipientProfiles ?? [])
+      .filter((p: { role: string }) => ['manager', 'admin'].includes(p.role))
+      .map((p: { id: string }) => p.id)
+    const techRecipientIds = (recipientProfiles ?? [])
+      .filter((p: { role: string }) => p.role === 'technicien')
+      .map((p: { id: string }) => p.id)
+
+    // Envoi séparé par rôle avec URL adaptée
+    const sendGroupPush = async (ids: string[], targetUrl: string) => {
+      if (!ids.length) return
+      const { data: subs } = await supabase
+        .from('push_subscriptions')
+        .select('endpoint, p256dh, auth')
+        .in('user_id', ids)
+        .eq('chat_notif_enabled', true)
+      if (!subs?.length) return
+      const pushPayload = JSON.stringify({ title, body, url: targetUrl })
+      await Promise.allSettled(
+        subs.map((s: { endpoint: string; p256dh: string; auth: string }) =>
+          webpush.sendNotification({ endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } }, pushPayload)
+        )
+      )
+    }
+    await Promise.all([
+      sendGroupPush(managerRecipientIds, '/manager?tab=chat'),
+      sendGroupPush(techRecipientIds,    '/technicien?tab=chat'),
+    ])
+    return new Response(JSON.stringify({ sent: recipientIds.length }), {
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    })
+
   } else if (table === 'messages') {
     // Chat par chantier
     chatOnly = true
