@@ -258,9 +258,8 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
   return (
     <>
       {/* ── Layout desktop : sidebar gauche + conversation droite ──────── */}
-      <div className="hidden md:flex rounded-2xl overflow-hidden border border-slate-100 bg-white"
-        style={{ height: 'calc(100dvh - 270px)', minHeight: 420 }}>
-        <div className="w-64 shrink-0 flex flex-col border-r border-slate-100">
+      <div className="hidden md:flex flex-1 min-h-0 rounded-2xl overflow-hidden border border-slate-100 bg-white">
+        <div className="w-72 shrink-0 flex flex-col border-r border-slate-100">
           {sidebar}
         </div>
         {conversation}

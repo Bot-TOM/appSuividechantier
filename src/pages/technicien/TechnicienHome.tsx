@@ -547,7 +547,14 @@ export default function TechnicienHome() {
         </aside>
 
         {/* ── Contenu ──────────────────────────────────────────────────────── */}
-        <main className="px-4 py-6 max-w-lg mx-auto md:flex-1 md:max-w-none md:px-8 lg:px-10 xl:px-14 md:py-8 md:overflow-y-auto" style={{ paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' }}>
+        <main
+          className={`md:flex-1 min-h-0 ${
+            activeTab === 'chat'
+              ? 'flex flex-col overflow-hidden p-3 lg:p-4'
+              : 'px-4 py-6 max-w-lg mx-auto md:max-w-none md:px-8 lg:px-10 xl:px-14 md:py-8 md:overflow-y-auto'
+          }`}
+          style={activeTab !== 'chat' ? { paddingBottom: 'calc(5rem + env(safe-area-inset-bottom, 0px))' } : undefined}
+        >
 
         {activeTab === 'chantiers' && (
           <>

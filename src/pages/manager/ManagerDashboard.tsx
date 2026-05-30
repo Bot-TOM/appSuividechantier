@@ -597,7 +597,11 @@ export default function ManagerDashboard() {
           </div>
         </aside>
 
-        <main className="px-4 sm:px-6 lg:px-8 xl:px-12 py-6 lg:py-8 space-y-5 lg:space-y-7 md:flex-1 md:overflow-y-auto">
+        <main className={`md:flex-1 min-h-0 ${
+          activeTab === 'chat'
+            ? 'flex flex-col overflow-hidden p-3 lg:p-4'
+            : 'px-4 sm:px-6 lg:px-8 xl:px-12 py-6 lg:py-8 space-y-5 lg:space-y-7 overflow-y-auto'
+        }`}>
 
         {/* ── Onglet Accueil ────────────────────────────────────────────────── */}
         {activeTab === 'accueil' && (
