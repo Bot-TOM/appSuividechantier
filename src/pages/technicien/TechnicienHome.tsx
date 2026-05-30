@@ -11,7 +11,7 @@ import { usePermissions } from '@/hooks/usePermissions'
 import PlanningTechTab from '@/components/planning/PlanningTechTab'
 import VTListTab from '@/components/vt/VTListTab'
 import BugReportButton from '@/components/BugReportButton'
-import GlobalChatTab from '@/components/chat/GlobalChatTab'
+import ChatLayout from '@/components/chat/ChatLayout'
 import { useGlobalMessages } from '@/hooks/useGlobalMessages'
 import { useNotifPreferences } from '@/hooks/useNotifPreferences'
 
@@ -663,7 +663,7 @@ export default function TechnicienHome() {
         )}
 
         {activeTab === 'chat' && profile?.id && (
-          <GlobalChatTab userId={profile.id} entrepriseId={profile?.entreprise_id ?? ''} isActive={activeTab === 'chat'} />
+          <ChatLayout profile={profile as UserProfile} isActive={activeTab === 'chat'} />
         )}
 
         {activeTab === 'profil' && (

@@ -17,7 +17,7 @@ import GestionEquipe from '@/pages/manager/GestionEquipe'
 import AdminEntreprisesTab from '@/components/admin/AdminEntreprisesTab'
 import AdminBugReportsTab from '@/components/admin/AdminBugReportsTab'
 import BugReportButton from '@/components/BugReportButton'
-import GlobalChatTab from '@/components/chat/GlobalChatTab'
+import ChatLayout from '@/components/chat/ChatLayout'
 import VTListTab from '@/components/vt/VTListTab'
 import ImportChantierModal from '@/components/chantier/ImportChantierModal'
 import { useGlobalMessages } from '@/hooks/useGlobalMessages'
@@ -1522,7 +1522,7 @@ export default function ManagerDashboard() {
 
         {/* ── Onglet Chat général ───────────────────────────────────────────── */}
         {activeTab === 'chat' && profile?.id && (
-          <GlobalChatTab userId={profile.id} entrepriseId={profile.entreprise_id ?? ''} isActive={activeTab === 'chat'} />
+          <ChatLayout profile={profile} isActive={activeTab === 'chat'} />
         )}
       </main>
       </div>{/* fin body wrapper */}

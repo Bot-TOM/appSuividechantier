@@ -182,6 +182,36 @@ export interface AutoControle {
 // Chat
 export type MessageFileType = 'image' | 'document' | 'audio'
 
+export interface ChatGroup {
+  id: string
+  name: string
+  entreprise_id: string
+  created_by: string | null
+  created_at: string
+  members?: ChatGroupMember[]
+}
+
+export interface ChatGroupMember {
+  group_id: string
+  user_id: string
+  added_at: string
+  profiles?: { full_name: string; avatar_url?: string | null; poste?: string | null; role?: string | null } | null
+}
+
+export interface GroupMessage {
+  id: string
+  group_id: string
+  user_id: string
+  content: string | null
+  file_url: string | null
+  file_name: string | null
+  file_type: MessageFileType | null
+  reply_to_id: string | null
+  created_at: string
+  profiles?: { full_name: string; avatar_url?: string | null; poste?: string | null; role?: string | null } | null
+  group_message_reactions?: { id: string; user_id: string; emoji: string }[]
+}
+
 export interface MessageReaction {
   id: string
   message_id: string
