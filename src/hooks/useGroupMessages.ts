@@ -27,10 +27,24 @@ export function useGroupMessages(groupId: string, userId: string) {
 
   useEffect(() => {
     if (!groupId) return
+    // Note: on n'utilise PAS de filtre server-side (group_id=eq.X) car
+    // les postgres_changes avec filtre + RLS peuvent bloquer les événements
+    // dans certaines versions de Supabase. On filtre côté client à la place.
     const channel = supabase
       .channel(`group-chat-${groupId}`)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_messages', filter: `group_id=eq.${groupId}` }, fetchMessages)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'group_message_reactions' }, fetchMessages)
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'group_messages' },
+        (payload) => {
+          const row = (payload.new ?? payload.old) as { group_id?: string } | null
+          if (row?.group_id === groupId) fetchMessages()
+        }
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'group_message_reactions' },
+        fetchMessages
+      )
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [groupId, fetchMessages])

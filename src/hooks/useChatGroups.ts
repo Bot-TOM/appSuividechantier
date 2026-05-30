@@ -10,7 +10,7 @@ export function useChatGroups(userId: string, entrepriseId: string) {
     if (!userId || !entrepriseId) return
     const { data } = await supabase
       .from('chat_groups')
-      .select('*, chat_group_members(user_id, profiles(full_name, avatar_url, poste, role))')
+      .select('*, members:chat_group_members(user_id, profiles(full_name, avatar_url, poste, role))')
       .eq('entreprise_id', entrepriseId)
       .order('created_at', { ascending: true })
     setGroups((data ?? []) as ChatGroup[])
