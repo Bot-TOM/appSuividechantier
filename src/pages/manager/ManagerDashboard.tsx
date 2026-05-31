@@ -20,7 +20,7 @@ import BugReportButton from '@/components/BugReportButton'
 import ChatLayout from '@/components/chat/ChatLayout'
 import VTListTab from '@/components/vt/VTListTab'
 import ImportChantierModal from '@/components/chantier/ImportChantierModal'
-import { useGlobalMessages } from '@/hooks/useGlobalMessages'
+import { useNavChatBadge } from '@/hooks/useNavChatBadge'
 import { usePlan } from '@/hooks/usePlan'
 import UpgradeModal, { UpgradeReason } from '@/components/upgrade/UpgradeModal'
 import PlanSection from '@/components/upgrade/PlanSection'
@@ -224,7 +224,7 @@ export default function ManagerDashboard() {
   const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
   const { prefs: notifPrefs, toggle: toggleNotifPref } = useNotifPreferences(pushStatus === 'subscribed')
   const { notifications, unreadCount, markAllRead, markRead, clearAll } = useNotifications()
-  const { unreadCount: chatUnread } = useGlobalMessages(profile?.id ?? '', profile?.entreprise_id ?? '')
+  const chatUnread = useNavChatBadge(profile?.id ?? '', profile?.entreprise_id ?? '')
   const [showNotifPanel, setShowNotifPanel] = useState(false)
   const notifPanelRef = useRef<HTMLDivElement>(null)
 

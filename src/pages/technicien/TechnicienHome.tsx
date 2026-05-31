@@ -12,7 +12,7 @@ import PlanningTechTab from '@/components/planning/PlanningTechTab'
 import VTListTab from '@/components/vt/VTListTab'
 import BugReportButton from '@/components/BugReportButton'
 import ChatLayout from '@/components/chat/ChatLayout'
-import { useGlobalMessages } from '@/hooks/useGlobalMessages'
+import { useNavChatBadge } from '@/hooks/useNavChatBadge'
 import { useNotifPreferences } from '@/hooks/useNotifPreferences'
 
 const STATUT_LABEL: Record<ChantierStatut, string> = {
@@ -370,7 +370,7 @@ export default function TechnicienHome() {
     const t = searchParams.get('tab')
     return (t && VALID_TECH_TABS.includes(t as TechTab)) ? t as TechTab : 'chantiers'
   })
-  const { unreadCount: chatUnread } = useGlobalMessages(profile?.id ?? '', profile?.entreprise_id ?? '')
+  const chatUnread = useNavChatBadge(profile?.id ?? '', profile?.entreprise_id ?? '')
   const [teamMembers, setTeamMembers] = useState<UserProfile[]>([])
 
   useEffect(() => {
