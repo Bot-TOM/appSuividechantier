@@ -144,6 +144,8 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
 
   const markAllRead = useCallback(() => {
     localStorage.setItem(storageKey, new Date().toISOString())
+    // Notifie useNavChatBadge que le chat Équipe a été lu
+    window.dispatchEvent(new CustomEvent('chat-read'))
   }, [storageKey])
 
   const unreadCount = messages.filter(

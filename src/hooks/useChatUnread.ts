@@ -119,6 +119,8 @@ export function useChatUnread(
   const markAsRead = useCallback((id: string, type: 'chantier' | 'group') => {
     localStorage.setItem(lastSeenKey(type, id), new Date().toISOString())
     setUnreadMap(prev => ({ ...prev, [id]: 0 }))
+    // Notifie useNavChatBadge (et tout autre listener) que l'état de lecture a changé
+    window.dispatchEvent(new CustomEvent('chat-read'))
   }, [])
 
   const totalUnread = useMemo(

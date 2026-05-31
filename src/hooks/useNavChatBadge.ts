@@ -96,5 +96,12 @@ export function useNavChatBadge(userId: string, entrepriseId: string) {
     return () => document.removeEventListener('visibilitychange', onVisible)
   }, [compute])
 
+  // Recalcule immédiatement quand une conversation est marquée comme lue
+  // (événement dispatché par markAsRead dans useChatUnread et markAllRead dans useGlobalMessages)
+  useEffect(() => {
+    window.addEventListener('chat-read', compute)
+    return () => window.removeEventListener('chat-read', compute)
+  }, [compute])
+
   return total
 }
