@@ -34,7 +34,7 @@ interface Props {
   onDelete?: () => void
 }
 
-export default function GroupChatTab({ group, userId, userRole, isActive = true, onLeave, onDelete }: Props) {
+export default function GroupChatTab({ group, userId, isActive = true, onLeave, onDelete }: Props) {
   const { messages, loading, uploading, sendMessage, sendFile, deleteMessage, toggleReaction } =
     useGroupMessages(group.id, userId)
 
