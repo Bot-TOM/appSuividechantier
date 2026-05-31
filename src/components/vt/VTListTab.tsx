@@ -5,10 +5,11 @@ import { useVisitesTechniques } from '@/hooks/useVisitesTechniques'
 import Avatar from '@/components/Avatar'
 import { VTType, VTStatut } from '@/types'
 
-const TYPE_LABEL: Record<VTType, string> = { btoc: 'BtoC', btob: 'BtoB' }
+const TYPE_LABEL: Record<VTType, string> = { btoc: 'BtoC', btob: 'BtoB', custom: 'Custom' }
 const TYPE_COLOR: Record<VTType, string> = {
-  btoc: 'bg-purple-50 text-purple-700 border border-purple-200',
-  btob: 'bg-blue-50 text-blue-700 border border-blue-200',
+  btoc:   'bg-purple-50 text-purple-700 border border-purple-200',
+  btob:   'bg-blue-50 text-blue-700 border border-blue-200',
+  custom: 'bg-orange-50 text-orange-700 border border-orange-200',
 }
 const STATUT_LABEL: Record<VTStatut, string> = {
   brouillon: 'Brouillon',

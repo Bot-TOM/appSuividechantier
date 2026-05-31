@@ -2,7 +2,9 @@ import { useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { useVisiteTechnique } from '@/hooks/useVisitesTechniques'
+import { useDocumentTemplates } from '@/hooks/useDocumentTemplates'
 import { isManagerRole } from '@/types'
+import type { VTTemplateData } from '@/types'
 import { ChevronLeft, CheckCircle, FileDown, X, Pencil, Trash2 } from 'lucide-react'
 import Avatar from '@/components/Avatar'
 import { pdf } from '@react-pdf/renderer'
@@ -33,10 +35,11 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   )
 }
 
-const TYPE_LABEL = { btoc: 'BtoC', btob: 'BtoB' }
+const TYPE_LABEL = { btoc: 'BtoC', btob: 'BtoB', custom: 'Modèle custom' }
 const TYPE_COLOR = {
-  btoc: 'bg-purple-50 text-purple-700 border border-purple-200',
-  btob: 'bg-blue-50 text-blue-700 border border-blue-200',
+  btoc:   'bg-purple-50 text-purple-700 border border-purple-200',
+  btob:   'bg-blue-50 text-blue-700 border border-blue-200',
+  custom: 'bg-orange-50 text-orange-700 border border-orange-200',
 }
 const STATUT_LABEL = { brouillon: 'Brouillon', complete: 'Complété', valide: 'Validé' }
 const STATUT_COLOR = {
@@ -52,6 +55,9 @@ export default function VTDetail() {
   const navigate = useNavigate()
   const { profile } = useAuth()
   const { vt, loading, valider, deleteVT } = useVisiteTechnique(id ?? '')
+
+  // Modèles de l'entreprise (pour affichage dynamique si template_id != null)
+  const { templates: vtTemplates } = useDocumentTemplates(profile?.entreprise_id, 'vt')
 
   const [validating, setValidating] = useState(false)
   const [exporting, setExporting] = useState(false)
@@ -117,6 +123,14 @@ export default function VTDetail() {
   const allPhotos = Object.entries(photos).flatMap(([zone, urls]) =>
     (urls ?? []).map(url => ({ zone, url }))
   )
+
+  // Template custom (si vt.template_id != null)
+  const vtTemplate = vt.template_id
+    ? vtTemplates.find(t => t.id === vt.template_id) ?? null
+    : null
+  const templateSteps = vtTemplate
+    ? ((vtTemplate.template_data as VTTemplateData).steps ?? [])
+    : []
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -226,8 +240,21 @@ export default function VTDetail() {
           </div>
         )}
 
+        {/* ── Rendu dynamique (template custom) ────────────────────────── */}
+        {vt.template_id && templateSteps.length > 0 && templateSteps.map(tplStep => (
+          <Section key={tplStep.key} title={tplStep.label}>
+            {tplStep.fields.map(field => {
+              const val = data[field.key]
+              if (field.type === 'photo') return null // photos gérées plus bas
+              const display = Array.isArray(val) ? (val as string[]).join(', ') : (val !== undefined && val !== null ? String(val) : '')
+              if (!display) return null
+              return <InfoRow key={field.key} label={field.label} value={display} />
+            })}
+          </Section>
+        ))}
+
         {/* Sections données BtoC */}
-        {isBtoc && (
+        {!vt.template_id && isBtoc && (
           <>
             <Section title="Informations générales">
               <InfoRow label="Nom du projet" value={data['nom_projet']} />
@@ -296,7 +323,7 @@ export default function VTDetail() {
         )}
 
         {/* Sections données BtoB */}
-        {!isBtoc && (
+        {!vt.template_id && !isBtoc && (
           <>
             <Section title="Informations générales">
               <InfoRow label="Nom du projet" value={data['nom_projet']} />

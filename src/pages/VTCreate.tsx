@@ -2,21 +2,31 @@ import { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { createVisiteTechnique } from '@/hooks/useVisitesTechniques'
+import { useDocumentTemplates } from '@/hooks/useDocumentTemplates'
 import { supabase } from '@/lib/supabase'
 import { VTType, isManagerRole } from '@/types'
-import { ChevronLeft, ChevronRight, Save, CheckCircle, Building, Home, User } from 'lucide-react'
+import type { VTTemplateData } from '@/types'
+import { ChevronLeft, ChevronRight, Save, CheckCircle, Building, Home, User, ClipboardList, Star } from 'lucide-react'
 import {
   BToCStep1, BToCStep2, BToCStep3, BToCStep4, BToCStep5,
   BToBStep1, BToBStep2, BToBStep3, BToBStep4, BToBStep5, BToBStep6, BToBStep7, BToBPhotosStep,
 } from '@/components/vt/VTFormSteps'
+import DynamicVTStep from '@/components/vt/DynamicVTStep'
 
 export default function VTCreate() {
   const { profile } = useAuth()
   const navigate = useNavigate()
   const isManager = isManagerRole(profile?.role)
 
+  // Modèles personnalisés de l'entreprise
+  const { templates: vtTemplates, loading: templatesLoading } = useDocumentTemplates(
+    profile?.entreprise_id,
+    'vt',
+  )
+
   const [step, setStep] = useState(0)
   const [vtType, setVtType] = useState<VTType | null>(null)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [vtId, setVtId] = useState<string | null>(null)
   const [formData, setFormData] = useState<Record<string, unknown>>({})
   const [saving, setSaving] = useState(false)
@@ -40,7 +50,6 @@ export default function VTCreate() {
       .then(({ data }) => {
         if (data) {
           setTechniciens(data as { id: string; full_name: string }[])
-          // Pré-sélectionner le premier technicien (non-manager) ou soi-même
           const first = (data as { id: string; full_name: string }[]).find(t => t.id !== profile.id)
           setSelectedTechId(first?.id ?? profile.id)
         }
@@ -51,17 +60,22 @@ export default function VTCreate() {
     return () => { if (saveTimeout.current) clearTimeout(saveTimeout.current) }
   }, [])
 
-  async function handleTypeSelect(type: VTType) {
+  // Template sélectionné (si custom)
+  const activeTemplate = selectedTemplateId
+    ? vtTemplates.find(t => t.id === selectedTemplateId) ?? null
+    : null
+  const templateSteps = activeTemplate
+    ? ((activeTemplate.template_data as VTTemplateData).steps ?? [])
+    : []
+
+  async function handleTypeSelect(type: VTType, templateId?: string) {
     if (!profile?.id || creating) return
     setCreating(true)
-    // Manager → crée la VT pour le technicien sélectionné ; technicien → pour soi-même
     const techId = isManager && selectedTechId ? selectedTechId : profile.id
-    const id = await createVisiteTechnique(type, techId)
-    if (!id) {
-      setCreating(false)
-      return
-    }
+    const id = await createVisiteTechnique(type, techId, templateId ?? null)
+    if (!id) { setCreating(false); return }
     setVtType(type)
+    setSelectedTemplateId(templateId ?? null)
     setVtId(id)
     setStep(1)
     setCreating(false)
@@ -95,35 +109,57 @@ export default function VTCreate() {
       updated_at: new Date().toISOString(),
     }).eq('id', vtId)
     setSaving(false)
-    if (error) {
-      setSaveError(true)
-      return
-    }
+    if (error) { setSaveError(true); return }
     navigate(`/vt/${vtId}`)
   }
 
-  // Définition des étapes
+  // ── Étapes standard BtoC / BtoB ──────────────────────────────────────────────
   const btocSteps = [
-    { label: 'Général',     component: <BToCStep1 data={formData} onChange={handleDataChange} /> },
-    { label: 'Électrique',  component: <BToCStep2 data={formData} onChange={handleDataChange} /> },
-    { label: 'Couverture',  component: <BToCStep3 data={formData} onChange={handleDataChange} /> },
-    { label: 'Calepinage',  component: <BToCStep4 data={formData} onChange={handleDataChange} /> },
-    { label: 'Photos',      component: <BToCStep5 data={formData} onChange={handleDataChange} vtId={vtId ?? ''} /> },
+    { label: 'Général',    component: <BToCStep1 data={formData} onChange={handleDataChange} /> },
+    { label: 'Électrique', component: <BToCStep2 data={formData} onChange={handleDataChange} /> },
+    { label: 'Couverture', component: <BToCStep3 data={formData} onChange={handleDataChange} /> },
+    { label: 'Calepinage', component: <BToCStep4 data={formData} onChange={handleDataChange} /> },
+    { label: 'Photos',     component: <BToCStep5 data={formData} onChange={handleDataChange} vtId={vtId ?? ''} /> },
   ]
   const btobSteps = [
-    { label: 'Général',     component: <BToBStep1 data={formData} onChange={handleDataChange} /> },
-    { label: 'Couverture',  component: <BToBStep2 data={formData} onChange={handleDataChange} /> },
-    { label: 'Structure',   component: <BToBStep3 data={formData} onChange={handleDataChange} /> },
-    { label: 'Électrique',  component: <BToBStep4 data={formData} onChange={handleDataChange} /> },
-    { label: 'Shelter',     component: <BToBStep5 data={formData} onChange={handleDataChange} /> },
-    { label: 'Sécurité',    component: <BToBStep6 data={formData} onChange={handleDataChange} /> },
-    { label: 'Admin',       component: <BToBStep7 data={formData} onChange={handleDataChange} /> },
-    { label: 'Photos',      component: <BToBPhotosStep data={formData} onChange={handleDataChange} vtId={vtId ?? ''} /> },
+    { label: 'Général',    component: <BToBStep1 data={formData} onChange={handleDataChange} /> },
+    { label: 'Couverture', component: <BToBStep2 data={formData} onChange={handleDataChange} /> },
+    { label: 'Structure',  component: <BToBStep3 data={formData} onChange={handleDataChange} /> },
+    { label: 'Électrique', component: <BToBStep4 data={formData} onChange={handleDataChange} /> },
+    { label: 'Shelter',    component: <BToBStep5 data={formData} onChange={handleDataChange} /> },
+    { label: 'Sécurité',   component: <BToBStep6 data={formData} onChange={handleDataChange} /> },
+    { label: 'Admin',      component: <BToBStep7 data={formData} onChange={handleDataChange} /> },
+    { label: 'Photos',     component: <BToBPhotosStep data={formData} onChange={handleDataChange} vtId={vtId ?? ''} /> },
   ]
 
-  const steps = vtType === 'btoc' ? btocSteps : btobSteps
+  // ── Étapes custom (template) ──────────────────────────────────────────────────
+  const customSteps = templateSteps.map(tplStep => ({
+    label: tplStep.label,
+    component: (
+      <DynamicVTStep
+        step={tplStep}
+        data={formData}
+        onChange={handleDataChange}
+        vtId={vtId ?? ''}
+      />
+    ),
+  }))
+
+  const steps = vtType === 'custom'
+    ? customSteps
+    : vtType === 'btoc'
+      ? btocSteps
+      : btobSteps
+
   const currentStep = step > 0 ? steps[step - 1] : null
-  const isLastStep = step > 0 && step === steps.length
+  const isLastStep  = step > 0 && step === steps.length
+
+  // ── Titre de l'étape dans le header ──────────────────────────────────────────
+  function headerTitle() {
+    if (step === 0) return 'Nouvelle Visite Technique'
+    if (vtType === 'custom') return `${activeTemplate?.name ?? 'Custom'} — ${currentStep?.label}`
+    return `${vtType === 'btoc' ? 'BtoC' : 'BtoB'} — ${currentStep?.label}`
+  }
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
@@ -138,9 +174,7 @@ export default function VTCreate() {
             <span className="text-sm font-medium">{step > 1 ? 'Précédent' : 'Retour'}</span>
           </button>
           <div className="text-center">
-            <h1 className="font-bold text-slate-900 text-base">
-              {step === 0 ? 'Nouvelle Visite Technique' : `${vtType === 'btoc' ? 'BtoC' : 'BtoB'} — ${currentStep?.label}`}
-            </h1>
+            <h1 className="font-bold text-slate-900 text-base">{headerTitle()}</h1>
             {step > 0 && (
               <p className="text-xs text-slate-400 mt-0.5">Étape {step} / {steps.length}</p>
             )}
@@ -201,33 +235,77 @@ export default function VTCreate() {
               </div>
             )}
 
-            {/* Choix BtoC / BtoB */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <button
-                onClick={() => handleTypeSelect('btoc')}
-                disabled={creating}
-                className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-left hover:shadow-md hover:border-purple-200 hover:-translate-y-0.5 transition-all group disabled:opacity-50"
-              >
-                <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-purple-100 transition-colors">
-                  <Home className="w-6 h-6 text-purple-600" />
+            {/* Modèles personnalisés de l'entreprise */}
+            {!templatesLoading && vtTemplates.length > 0 && (
+              <div>
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                  Modèles de votre entreprise
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {vtTemplates.map(tpl => {
+                    const tplSteps = ((tpl.template_data as VTTemplateData).steps ?? [])
+                    const totalFields = tplSteps.reduce((s, st) => s + st.fields.length, 0)
+                    return (
+                      <button
+                        key={tpl.id}
+                        onClick={() => handleTypeSelect('custom', tpl.id)}
+                        disabled={creating}
+                        className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 text-left hover:shadow-md hover:border-orange-200 hover:-translate-y-0.5 transition-all group disabled:opacity-50"
+                      >
+                        <div className="w-11 h-11 bg-orange-50 rounded-xl flex items-center justify-center mb-4 group-hover:bg-orange-100 transition-colors">
+                          <ClipboardList className="w-5 h-5 text-orange-500" />
+                        </div>
+                        <div className="flex items-center gap-1.5 mb-0.5">
+                          <h3 className="font-bold text-slate-900 text-base truncate">{tpl.name}</h3>
+                          {tpl.is_default && <Star className="w-3.5 h-3.5 text-orange-400 flex-shrink-0" />}
+                        </div>
+                        {tpl.description && (
+                          <p className="text-xs text-slate-400 mb-1 truncate">{tpl.description}</p>
+                        )}
+                        <p className="text-xs text-slate-400">
+                          {tplSteps.length} section{tplSteps.length > 1 ? 's' : ''} · {totalFields} champ{totalFields > 1 ? 's' : ''}
+                        </p>
+                      </button>
+                    )
+                  })}
                 </div>
-                <h3 className="font-bold text-slate-900 text-lg mb-1">BtoC</h3>
-                <p className="text-sm text-slate-500">Résidentiel — Particuliers</p>
-                <p className="text-xs text-slate-400 mt-2">5 étapes</p>
-              </button>
+              </div>
+            )}
 
-              <button
-                onClick={() => handleTypeSelect('btob')}
-                disabled={creating}
-                className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-left hover:shadow-md hover:border-blue-200 hover:-translate-y-0.5 transition-all group disabled:opacity-50"
-              >
-                <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
-                  <Building className="w-6 h-6 text-blue-600" />
-                </div>
-                <h3 className="font-bold text-slate-900 text-lg mb-1">BtoB</h3>
-                <p className="text-sm text-slate-500">Professionnel — Entreprises</p>
-                <p className="text-xs text-slate-400 mt-2">8 étapes</p>
-              </button>
+            {/* Formulaires standard BtoC / BtoB */}
+            <div>
+              {vtTemplates.length > 0 && (
+                <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">
+                  Formulaires standard
+                </p>
+              )}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <button
+                  onClick={() => handleTypeSelect('btoc')}
+                  disabled={creating}
+                  className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-left hover:shadow-md hover:border-purple-200 hover:-translate-y-0.5 transition-all group disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-purple-100 transition-colors">
+                    <Home className="w-6 h-6 text-purple-600" />
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-lg mb-1">BtoC</h3>
+                  <p className="text-sm text-slate-500">Résidentiel — Particuliers</p>
+                  <p className="text-xs text-slate-400 mt-2">5 étapes</p>
+                </button>
+
+                <button
+                  onClick={() => handleTypeSelect('btob')}
+                  disabled={creating}
+                  className="bg-white rounded-2xl shadow-sm border border-slate-100 p-8 text-left hover:shadow-md hover:border-blue-200 hover:-translate-y-0.5 transition-all group disabled:opacity-50"
+                >
+                  <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-blue-100 transition-colors">
+                    <Building className="w-6 h-6 text-blue-600" />
+                  </div>
+                  <h3 className="font-bold text-slate-900 text-lg mb-1">BtoB</h3>
+                  <p className="text-sm text-slate-500">Professionnel — Entreprises</p>
+                  <p className="text-xs text-slate-400 mt-2">8 étapes</p>
+                </button>
+              </div>
             </div>
 
             {creating && (

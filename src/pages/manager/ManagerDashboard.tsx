@@ -26,7 +26,7 @@ import UpgradeModal, { UpgradeReason } from '@/components/upgrade/UpgradeModal'
 import PlanSection from '@/components/upgrade/PlanSection'
 import OnboardingModal from '@/components/onboarding/OnboardingModal'
 import ManagerHomeTab from '@/components/dashboard/ManagerHomeTab'
-import ModeleChantierTab from '@/components/chantier/ModeleChantierTab'
+import DocumentTemplatesTab from '@/components/chantier/DocumentTemplatesTab'
 import { getChantierColorByIndex } from '@/lib/chantierColors'
 import type { Notification } from '@/hooks/useNotifications'
 
@@ -1572,7 +1572,7 @@ export default function ManagerDashboard() {
 
         {/* ── Onglet Bugs (admin seulement) ────────────────────────────────── */}
         {activeTab === 'modele' && profile?.entreprise_id && (
-          <ModeleChantierTab entrepriseId={profile.entreprise_id} />
+          <DocumentTemplatesTab entrepriseId={profile.entreprise_id} />
         )}
 
         {activeTab === 'bugs' && profile?.role === 'admin' && (

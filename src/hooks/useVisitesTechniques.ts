@@ -102,10 +102,20 @@ export function useVisiteTechnique(id: string) {
 }
 
 // ─── Créer une VT ─────────────────────────────────────────────────────────────
-export async function createVisiteTechnique(type: VTType, technicienId: string): Promise<string | null> {
+export async function createVisiteTechnique(
+  type: VTType,
+  technicienId: string,
+  templateId?: string | null,
+): Promise<string | null> {
   const { data, error } = await supabase
     .from('visites_techniques')
-    .insert({ type, technicien_id: technicienId, statut: 'brouillon', data: {} })
+    .insert({
+      type,
+      technicien_id: technicienId,
+      statut: 'brouillon',
+      data: {},
+      ...(templateId ? { template_id: templateId } : {}),
+    })
     .select('id')
     .single()
   if (error || !data) return null

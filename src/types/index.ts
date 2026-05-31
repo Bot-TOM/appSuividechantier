@@ -262,6 +262,54 @@ export interface Anomalie {
   resolved_at?: string | null
 }
 
+// ── Templates de documents (VT + Fiches chantier nommés) ──────────────────────
+export type DocumentTemplateCategory = 'vt' | 'chantier'
+
+export type VTFieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'radio' | 'boolean' | 'photo'
+
+export interface VTTemplateField {
+  key:          string
+  label:        string
+  type:         VTFieldType
+  options?:     string[]
+  required?:    boolean
+  placeholder?: string
+}
+
+export interface VTTemplateStep {
+  key:    string
+  label:  string
+  fields: VTTemplateField[]
+}
+
+export interface VTTemplateData {
+  steps: VTTemplateStep[]
+}
+
+export interface ChantierTemplateData {
+  fields: {
+    field_key:     string
+    field_label:   string
+    field_type:    ChantierFieldType
+    field_options: string[] | null
+    section:       string | null
+    required:      boolean
+    active:        boolean
+  }[]
+}
+
+export interface DocumentTemplate {
+  id:            string
+  entreprise_id: string
+  category:      DocumentTemplateCategory
+  name:          string
+  description:   string | null
+  template_data: VTTemplateData | ChantierTemplateData
+  is_default:    boolean
+  position:      number
+  created_at:    string
+}
+
 // ── Champs personnalisés de fiche chantier ────────────────────────────────────
 export type ChantierFieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'boolean'
 
@@ -280,7 +328,7 @@ export interface ChantierFieldDef {
 }
 
 // Visites Techniques
-export type VTType = 'btoc' | 'btob'
+export type VTType = 'btoc' | 'btob' | 'custom'
 export type VTStatut = 'brouillon' | 'complete' | 'valide'
 
 export interface VisiteTechnique {
@@ -288,6 +336,7 @@ export interface VisiteTechnique {
   technicien_id: string
   type: VTType
   statut: VTStatut
+  template_id: string | null
   client_nom: string | null
   client_adresse: string | null
   data: Record<string, unknown>
