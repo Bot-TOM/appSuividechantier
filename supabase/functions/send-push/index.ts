@@ -113,7 +113,7 @@ Deno.serve(async (req) => {
       .from('profiles').select('full_name, role').eq('id', record.sender_id).single()
     const senderName = sender?.full_name ?? 'Quelqu\'un'
 
-    title = '💌 Nouveau message privé'
+    title = '💬 Nouveau message privé'
     body  = `${senderName} a ouvert une conversation avec vous`
     recipientIds = [record.recipient_id]
 
@@ -139,7 +139,7 @@ Deno.serve(async (req) => {
 
     // Pour les DMs : titre avec le nom de l'expéditeur. Pour les groupes : nom du groupe.
     title = isDM
-      ? `💌 ${senderName}`
+      ? `💬 ${senderName}`
       : `💬 ${grp?.name?.trim() || 'Groupe'}`
     body  = isDM
       ? (record.content?.slice(0, 80) ?? '📎 Fichier')
