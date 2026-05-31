@@ -38,7 +38,7 @@ export function usePushNotifications() {
           const keys = json.keys as { p256dh: string; auth: string }
           await supabase.from('push_subscriptions').upsert(
             { user_id: user.id, endpoint: sub.endpoint, p256dh: keys.p256dh, auth: keys.auth },
-            { onConflict: 'endpoint' },
+            { onConflict: 'endpoint,user_id' },
           )
         }
       } else {
@@ -75,7 +75,7 @@ export function usePushNotifications() {
         p256dh:   keys.p256dh,
         auth:     keys.auth,
       },
-      { onConflict: 'endpoint' },
+      { onConflict: 'endpoint,user_id' },
     )
 
     setStatus('subscribed')

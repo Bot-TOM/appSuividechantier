@@ -1113,11 +1113,36 @@ export default function ManagerDashboard() {
                 <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden" style={{ boxShadow: '0 1px 4px rgba(0,0,0,0.06)' }}>
                   <div className="px-5 py-4 sm:px-8 sm:py-6 border-b border-slate-100">
                     <h2 className="text-base sm:text-lg font-semibold text-slate-800">Préférences de notifications</h2>
-                    <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
-                      {pushStatus === 'subscribed'
-                        ? 'Gérez ce que vous souhaitez recevoir sur cet appareil.'
-                        : 'Activez les notifications push (bouton cloche) pour gérer vos préférences.'}
-                    </p>
+                    {pushStatus === 'subscribed' ? (
+                      <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+                        Gérez ce que vous souhaitez recevoir sur cet appareil.
+                      </p>
+                    ) : pushStatus === 'denied' ? (
+                      <div className="mt-3 flex items-start gap-3 bg-red-50 rounded-xl px-4 py-3">
+                        <span className="text-red-500 text-lg leading-none mt-0.5">🚫</span>
+                        <div>
+                          <p className="text-sm font-semibold text-red-700">Notifications bloquées</p>
+                          <p className="text-xs text-red-500 mt-0.5">Autorisez les notifications dans les paramètres de votre navigateur puis rechargez la page.</p>
+                        </div>
+                      </div>
+                    ) : pushStatus === 'unsupported' ? (
+                      <p className="text-xs sm:text-sm text-slate-500 font-medium mt-1">
+                        Les notifications push ne sont pas supportées par ce navigateur.
+                      </p>
+                    ) : (
+                      <div className="mt-3">
+                        <p className="text-xs text-slate-500 font-medium mb-3">
+                          Activez les notifications push pour gérer vos préférences et recevoir des alertes en temps réel.
+                        </p>
+                        <button
+                          onClick={subscribePush}
+                          className="flex items-center gap-2 px-4 py-2.5 bg-orange-500 hover:bg-orange-600 text-white text-sm font-semibold rounded-xl transition-colors shadow-sm"
+                        >
+                          <Bell className="w-4 h-4" />
+                          Activer les notifications push
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <div className="p-1.5 sm:p-2">

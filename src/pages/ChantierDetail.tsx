@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
@@ -81,9 +81,35 @@ function Lightbox({ photos, initialIndex, onClose, onDelete }: {
 }) {
   const [index, setIndex] = useState(initialIndex)
   const photo = photos[index]
+  const touchStartX = useRef<number | null>(null)
+  const didSwipe = useRef(false)
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft')  setIndex(i => Math.max(0, i - 1))
+      if (e.key === 'ArrowRight') setIndex(i => Math.min(photos.length - 1, i + 1))
+      if (e.key === 'Escape')     onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [photos.length, onClose])
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 bg-black/95 flex flex-col"
+      onClick={() => { if (didSwipe.current) { didSwipe.current = false; return } onClose() }}
+      onTouchStart={e => { touchStartX.current = e.touches[0].clientX }}
+      onTouchEnd={e => {
+        if (touchStartX.current === null) return
+        const delta = e.changedTouches[0].clientX - touchStartX.current
+        touchStartX.current = null
+        if (Math.abs(delta) > 50) {
+          didSwipe.current = true
+          if (delta < 0) setIndex(i => Math.min(photos.length - 1, i + 1))
+          else           setIndex(i => Math.max(0, i - 1))
+        }
+      }}
+    >
       {/* Header */}
       <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
         <span className="text-white/60 text-sm">{index + 1} / {photos.length}</span>
@@ -114,8 +140,14 @@ function Lightbox({ photos, initialIndex, onClose, onDelete }: {
       </div>
 
       {/* Image */}
-      <div className="flex-1 flex items-center justify-center px-4" onClick={e => e.stopPropagation()}>
-        <img src={photo.url} alt="Photo" className="max-w-full max-h-full rounded-xl object-contain" />
+      <div className="flex-1 flex items-center justify-center px-4 min-h-0" onClick={e => e.stopPropagation()}>
+        <img
+          src={photo.url}
+          alt="Photo"
+          className="max-w-full rounded-xl object-contain select-none"
+          style={{ maxHeight: 'calc(100dvh - 140px)' }}
+          draggable={false}
+        />
       </div>
 
       {/* Navigation */}
@@ -152,9 +184,35 @@ function RapportLightbox({ photos, initialIndex, onClose, onDelete }: {
 }) {
   const [index, setIndex] = useState(initialIndex)
   const photo = photos[index]
+  const touchStartX = useRef<number | null>(null)
+  const didSwipe = useRef(false)
+
+  useEffect(() => {
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft')  setIndex(i => Math.max(0, i - 1))
+      if (e.key === 'ArrowRight') setIndex(i => Math.min(photos.length - 1, i + 1))
+      if (e.key === 'Escape')     onClose()
+    }
+    window.addEventListener('keydown', handleKey)
+    return () => window.removeEventListener('keydown', handleKey)
+  }, [photos.length, onClose])
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/95 flex flex-col" onClick={onClose}>
+    <div
+      className="fixed inset-0 z-50 bg-black/95 flex flex-col"
+      onClick={() => { if (didSwipe.current) { didSwipe.current = false; return } onClose() }}
+      onTouchStart={e => { touchStartX.current = e.touches[0].clientX }}
+      onTouchEnd={e => {
+        if (touchStartX.current === null) return
+        const delta = e.changedTouches[0].clientX - touchStartX.current
+        touchStartX.current = null
+        if (Math.abs(delta) > 50) {
+          didSwipe.current = true
+          if (delta < 0) setIndex(i => Math.min(photos.length - 1, i + 1))
+          else           setIndex(i => Math.max(0, i - 1))
+        }
+      }}
+    >
       <div className="flex items-center justify-between px-5 pt-5 pb-3 flex-shrink-0" onClick={e => e.stopPropagation()}>
         <span className="text-white/60 text-sm">{index + 1} / {photos.length}</span>
         <div className="flex items-center gap-3">
@@ -175,8 +233,14 @@ function RapportLightbox({ photos, initialIndex, onClose, onDelete }: {
           <button onClick={onClose} className="w-9 h-9 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors text-lg">✕</button>
         </div>
       </div>
-      <div className="flex-1 flex items-center justify-center px-4" onClick={e => e.stopPropagation()}>
-        <img src={photo.url} alt="Photo" className="max-w-full max-h-full rounded-xl object-contain" />
+      <div className="flex-1 flex items-center justify-center px-4 min-h-0" onClick={e => e.stopPropagation()}>
+        <img
+          src={photo.url}
+          alt="Photo"
+          className="max-w-full rounded-xl object-contain select-none"
+          style={{ maxHeight: 'calc(100dvh - 140px)' }}
+          draggable={false}
+        />
       </div>
       {photos.length > 1 && (
         <div className="flex justify-center gap-3 py-5 flex-shrink-0" onClick={e => e.stopPropagation()}>
