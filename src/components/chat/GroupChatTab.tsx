@@ -61,8 +61,8 @@ export default function GroupChatTab({ group, userId, isActive = true, onLeave, 
   const [showScrollBtn,   setShowScrollBtn]   = useState(false)
   const [confirmDelete,   setConfirmDelete]   = useState(false)
 
-  // Seul le créateur du groupe peut le supprimer (pas les DMs, pas les autres membres)
-  const canDelete = group.created_by === userId && !group.is_dm
+  // Seul le créateur peut supprimer — groupes normaux ET DMs
+  const canDelete = group.created_by === userId
 
   useEffect(() => {
     const el = msgsContainerRef.current
@@ -194,41 +194,41 @@ export default function GroupChatTab({ group, userId, isActive = true, onLeave, 
           </button>
         )}
 
-        {!group.is_dm && (
-          <div className="flex items-center gap-2">
-            {onLeave && !canDelete && (
+        <div className="flex items-center gap-2">
+          {/* Bouton Quitter — uniquement pour les groupes normaux dont on n'est pas créateur */}
+          {!group.is_dm && onLeave && !canDelete && (
+            <button
+              onClick={onLeave}
+              className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
+            >
+              Quitter
+            </button>
+          )}
+          {/* Bouton Supprimer — créateur uniquement (groupes ET DMs) */}
+          {canDelete && onDelete && (
+            confirmDelete ? (
+              <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
+                <span className="text-xs text-red-600 font-medium">Supprimer définitivement ?</span>
+                <button onClick={onDelete}
+                  className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors">
+                  Oui
+                </button>
+                <button onClick={() => setConfirmDelete(false)}
+                  className="text-xs font-medium px-2.5 py-1 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
+                  Non
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={onLeave}
+                onClick={() => setConfirmDelete(true)}
                 className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
               >
-                Quitter
+                <Trash2 className="w-3.5 h-3.5" />
+                Supprimer
               </button>
-            )}
-            {canDelete && onDelete && (
-              confirmDelete ? (
-                <div className="flex items-center gap-1.5" onClick={e => e.stopPropagation()}>
-                  <span className="text-xs text-red-600 font-medium">Supprimer définitivement ?</span>
-                  <button onClick={onDelete}
-                    className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-500 text-white hover:bg-red-600 transition-colors">
-                    Oui
-                  </button>
-                  <button onClick={() => setConfirmDelete(false)}
-                    className="text-xs font-medium px-2.5 py-1 rounded-full border border-slate-200 text-slate-500 hover:bg-slate-50 transition-colors">
-                    Non
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="flex items-center gap-1 text-xs font-medium px-3 py-1.5 rounded-full border border-red-100 bg-red-50 text-red-500 hover:bg-red-100 transition-colors"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  Supprimer le groupe
-                </button>
-              )
-            )}
-          </div>
-        )}
+            )
+          )}
+        </div>
       </div>
 
       {/* ── Panneau membres (groupes seulement) ───────────────────────── */}
