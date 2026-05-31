@@ -67,8 +67,26 @@ export function useNavChatBadge(userId: string, entrepriseId: string) {
     setTotal(count)
   }, [userId, entrepriseId])
 
-  // Calcul initial
-  useEffect(() => { compute() }, [compute])
+  // Calcul initial — sync DB → localStorage d'abord pour restaurer l'état cross-device
+  useEffect(() => {
+    if (!userId) return
+    supabase
+      .from('chat_last_seen')
+      .select('conv_type, conv_id, last_seen_at')
+      .eq('user_id', userId)
+      .then(({ data }) => {
+        for (const row of (data ?? [])) {
+          const key = row.conv_type === 'global'
+            ? `global-chat-last-seen-${row.conv_id}`
+            : `chat-last-seen-${row.conv_type}-${row.conv_id}`
+          const local = localStorage.getItem(key)
+          if (!local || row.last_seen_at > local) {
+            localStorage.setItem(key, row.last_seen_at)
+          }
+        }
+        compute()
+      })
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Polling 30 s — filet de sécurité si le realtime rate un event
   useEffect(() => {

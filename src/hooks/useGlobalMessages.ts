@@ -27,6 +27,26 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
   const msgsRef      = useRef<GlobalMessage[]>([])
   const channelRef   = useRef<ReturnType<typeof supabase.channel> | null>(null)
 
+  // Sync DB → localStorage au montage (restaure l'état lu cross-device / après reconnexion)
+  useEffect(() => {
+    if (!userId || !entrepriseId) return
+    supabase
+      .from('chat_last_seen')
+      .select('last_seen_at')
+      .eq('user_id', userId)
+      .eq('conv_type', 'global')
+      .eq('conv_id', entrepriseId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (!data) return
+        const key   = `global-chat-last-seen-${entrepriseId}`
+        const local = localStorage.getItem(key)
+        if (!local || data.last_seen_at > local) {
+          localStorage.setItem(key, data.last_seen_at)
+        }
+      })
+  }, [userId, entrepriseId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   const fetchMessages = useCallback(async () => {
     if (!entrepriseId) return          // pas d'entreprise connue → rien à charger
     const { data, error } = await supabase
@@ -143,10 +163,16 @@ export function useGlobalMessages(userId: string, entrepriseId: string) {
   }, [storageKey])
 
   const markAllRead = useCallback(() => {
-    localStorage.setItem(storageKey, new Date().toISOString())
+    const now = new Date().toISOString()
+    localStorage.setItem(storageKey, now)
     // Notifie useNavChatBadge que le chat Équipe a été lu
     window.dispatchEvent(new CustomEvent('chat-read'))
-  }, [storageKey])
+    // Persiste en DB pour la synchronisation cross-device / cross-session
+    supabase.from('chat_last_seen').upsert(
+      { user_id: userId, conv_type: 'global', conv_id: entrepriseId, last_seen_at: now },
+      { onConflict: 'user_id,conv_type,conv_id' },
+    ).then(null, (e: unknown) => console.error('[chat-last-seen] global upsert:', e))
+  }, [storageKey, userId, entrepriseId])
 
   const unreadCount = messages.filter(
     m => m.user_id !== userId && m.created_at > getLastSeen()

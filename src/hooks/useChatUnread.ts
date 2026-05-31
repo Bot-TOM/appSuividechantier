@@ -104,6 +104,29 @@ export function useChatUnread(
     setLastMsgMap(nextLastMsg)
   }, [userId, chantiersKey, groupsKey]) // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Sync DB → localStorage au montage (restaure l'état lu cross-device / après reconnexion)
+  useEffect(() => {
+    if (!userId) return
+    supabase
+      .from('chat_last_seen')
+      .select('conv_type, conv_id, last_seen_at')
+      .eq('user_id', userId)
+      .in('conv_type', ['chantier', 'group'])
+      .then(({ data }) => {
+        if (!data?.length) return
+        let changed = false
+        for (const row of data) {
+          const key   = lastSeenKey(row.conv_type as 'chantier' | 'group', row.conv_id)
+          const local = localStorage.getItem(key)
+          if (!local || row.last_seen_at > local) {
+            localStorage.setItem(key, row.last_seen_at)
+            changed = true
+          }
+        }
+        if (changed) checkUnread()
+      })
+  }, [userId]) // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => { checkUnread() }, [checkUnread])
 
   useEffect(() => {
@@ -117,11 +140,17 @@ export function useChatUnread(
   }, [userId, checkUnread])
 
   const markAsRead = useCallback((id: string, type: 'chantier' | 'group') => {
-    localStorage.setItem(lastSeenKey(type, id), new Date().toISOString())
+    const now = new Date().toISOString()
+    localStorage.setItem(lastSeenKey(type, id), now)
     setUnreadMap(prev => ({ ...prev, [id]: 0 }))
     // Notifie useNavChatBadge (et tout autre listener) que l'état de lecture a changé
     window.dispatchEvent(new CustomEvent('chat-read'))
-  }, [])
+    // Persiste en DB pour la synchronisation cross-device / cross-session
+    supabase.from('chat_last_seen').upsert(
+      { user_id: userId, conv_type: type, conv_id: id, last_seen_at: now },
+      { onConflict: 'user_id,conv_type,conv_id' },
+    ).then(null, (e: unknown) => console.error('[chat-last-seen] upsert:', e))
+  }, [userId])
 
   const totalUnread = useMemo(
     () => Object.values(unreadMap).reduce((s, n) => s + n, 0),
