@@ -8,11 +8,12 @@ export function useChatGroups(userId: string, entrepriseId: string) {
 
   const fetchGroups = useCallback(async () => {
     if (!userId || !entrepriseId) return
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('chat_groups')
       .select('*, members:chat_group_members(user_id, profiles(full_name, avatar_url, poste, role))')
       .eq('entreprise_id', entrepriseId)
       .order('created_at', { ascending: true })
+    if (error) console.error('[useChatGroups] fetchGroups error:', error)
     setGroups((data ?? []) as ChatGroup[])
     setLoading(false)
   }, [userId, entrepriseId])
@@ -30,24 +31,40 @@ export function useChatGroups(userId: string, entrepriseId: string) {
     return () => { supabase.removeChannel(channel) }
   }, [entrepriseId, fetchGroups])
 
+  /** Crée un groupe normal.
+   *  Utilise un UUID généré côté client pour éviter le .select() après INSERT
+   *  (contournement des cas où le SELECT RLS ne renvoie pas la ligne immédiatement). */
   const createGroup = useCallback(async (name: string, memberIds: string[]) => {
-    // 1. Créer le groupe
-    const { data: group, error } = await supabase
-      .from('chat_groups')
-      .insert({ name, entreprise_id: entrepriseId, created_by: userId })
-      .select()
-      .single()
-    if (error || !group) return { error: error?.message ?? 'Erreur création groupe' }
+    const newId = crypto.randomUUID()
 
-    // 2. Ajouter le créateur + les membres choisis (créateur toujours inclus)
+    const { error } = await supabase
+      .from('chat_groups')
+      .insert({ id: newId, name, entreprise_id: entrepriseId, created_by: userId })
+    if (error) {
+      console.error('[createGroup] insert error:', error)
+      return { error: error.message }
+    }
+
     const allMembers = [...new Set([userId, ...memberIds])]
     const { error: membersError } = await supabase
       .from('chat_group_members')
-      .insert(allMembers.map(uid => ({ group_id: group.id, user_id: uid })))
-    if (membersError) return { error: membersError.message }
+      .insert(allMembers.map(uid => ({ group_id: newId, user_id: uid })))
+    if (membersError) {
+      console.error('[createGroup] members error:', membersError)
+      return { error: membersError.message }
+    }
 
-    await fetchGroups()
-    return { group: group as ChatGroup }
+    // Mise à jour optimiste : on ajoute le groupe minimal à l'état local
+    const optimistic: ChatGroup = {
+      id: newId, name, entreprise_id: entrepriseId, created_by: userId,
+      created_at: new Date().toISOString(), is_dm: false, members: [],
+    }
+    setGroups(prev => [...prev, optimistic])
+
+    // Refetch en arrière-plan pour avoir les membres complets
+    fetchGroups()
+
+    return { group: optimistic }
   }, [userId, entrepriseId, fetchGroups])
 
   const deleteGroup = useCallback(async (groupId: string) => {
@@ -66,33 +83,50 @@ export function useChatGroups(userId: string, entrepriseId: string) {
     await fetchGroups()
   }, [fetchGroups])
 
+  /** Crée (ou retrouve) un DM avec un autre utilisateur.
+   *  UUID généré côté client → pas de .select() après INSERT. */
   const createDM = useCallback(async (otherUserId: string): Promise<{ group: ChatGroup | null; error?: string }> => {
-    // Vérifier si un DM existe déjà avec cet utilisateur
+    // Vérifie si un DM existe déjà
     const existing = groups.find(g =>
       g.is_dm === true &&
       (g.members ?? []).some(m => m.user_id === otherUserId)
     )
     if (existing) return { group: existing }
 
-    // Créer un nouveau groupe DM (name vide, is_dm = true)
-    const { data: group, error } = await supabase
-      .from('chat_groups')
-      .insert({ name: '', entreprise_id: entrepriseId, created_by: userId, is_dm: true })
-      .select()
-      .single()
-    if (error || !group) return { group: null, error: error?.message ?? 'Erreur création DM' }
+    const newId = crypto.randomUUID()
 
-    // Ajouter les deux membres
+    const { error: groupError } = await supabase
+      .from('chat_groups')
+      .insert({ id: newId, name: '', entreprise_id: entrepriseId, created_by: userId, is_dm: true })
+    if (groupError) {
+      console.error('[createDM] group insert error:', groupError)
+      return { group: null, error: groupError.message }
+    }
+
     const { error: membersError } = await supabase
       .from('chat_group_members')
       .insert([
-        { group_id: group.id, user_id: userId },
-        { group_id: group.id, user_id: otherUserId },
+        { group_id: newId, user_id: userId },
+        { group_id: newId, user_id: otherUserId },
       ])
-    if (membersError) return { group: null, error: membersError.message }
+    if (membersError) {
+      console.error('[createDM] members insert error:', membersError)
+      // Nettoyage best-effort
+      await supabase.from('chat_groups').delete().eq('id', newId)
+      return { group: null, error: membersError.message }
+    }
 
-    await fetchGroups()
-    return { group: group as ChatGroup }
+    // Mise à jour optimiste : conversation disponible immédiatement
+    const optimistic: ChatGroup = {
+      id: newId, name: '', entreprise_id: entrepriseId, created_by: userId,
+      created_at: new Date().toISOString(), is_dm: true, members: [],
+    }
+    setGroups(prev => [...prev, optimistic])
+
+    // Refetch en arrière-plan pour avoir le nom + avatar de l'autre membre
+    fetchGroups()
+
+    return { group: optimistic }
   }, [userId, entrepriseId, groups, fetchGroups])
 
   return { groups, loading, createGroup, deleteGroup, leaveGroup, addMember, createDM, refetch: fetchGroups }

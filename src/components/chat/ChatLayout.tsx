@@ -48,6 +48,8 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
   const [dmSearchQuery, setDMSearchQuery]       = useState('')
   const [dmUsers, setDMUsers]                   = useState<{ id: string; full_name: string; avatar_url?: string | null; poste?: string | null }[]>([])
   const [dmUsersLoading, setDMUsersLoading]     = useState(false)
+  const [dmCreating, setDMCreating]             = useState(false)
+  const [dmError, setDMError]                   = useState<string | null>(null)
 
   // Quand l'admin change d'entreprise, revenir au chat Équipe de la nouvelle entreprise
   useEffect(() => {
@@ -280,17 +282,30 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
                             <button
                               key={u.id}
                               type="button"
+                              disabled={dmCreating}
                               onClick={async () => {
-                                setShowDMSearch(false)
-                                setDMSearchQuery('')
-                                const { group } = await createDM(u.id)
-                                if (group) openConv({ type: 'group', id: group.id, label: u.full_name })
+                                setDMError(null)
+                                setDMCreating(true)
+                                const { group, error } = await createDM(u.id)
+                                setDMCreating(false)
+                                if (group) {
+                                  setShowDMSearch(false)
+                                  setDMSearchQuery('')
+                                  openConv({ type: 'group', id: group.id, label: u.full_name })
+                                } else {
+                                  setDMError(error ?? 'Impossible de démarrer la conversation')
+                                }
                               }}
-                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-orange-50 transition-colors text-left"
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-orange-50 transition-colors text-left disabled:opacity-50"
                             >
-                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
-                                {u.full_name.charAt(0).toUpperCase()}
-                              </div>
+                              {dmCreating
+                                ? <div className="w-6 h-6 flex items-center justify-center flex-shrink-0">
+                                    <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                                  </div>
+                                : <div className="w-6 h-6 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                                    {u.full_name.charAt(0).toUpperCase()}
+                                  </div>
+                              }
                               <div className="flex-1 min-w-0">
                                 <p className="text-xs font-semibold text-slate-800 truncate">{u.full_name}</p>
                                 {u.poste && <p className="text-[10px] text-slate-400 truncate">{u.poste}</p>}
@@ -299,6 +314,11 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
                           ))
                       )}
                     </div>
+                  {dmError && (
+                    <p className="text-[10px] text-red-500 font-medium px-3 py-1.5 bg-red-50">
+                      ⚠ {dmError}
+                    </p>
+                  )}
                   </div>
                 )}
 
