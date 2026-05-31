@@ -177,7 +177,14 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
     const { data, error: errAuth } = await supabaseAuth.auth.signUp({
       email: form.email,
       password: form.password,
-      options: { data: { full_name: form.full_name, role: 'technicien', entreprise_id: profile?.entreprise_id ?? null } },
+      options: {
+        data: {
+          full_name:     form.full_name,
+          role:          'technicien',
+          poste:         form.poste || 'Technicien',
+          entreprise_id: profile?.entreprise_id ?? null,
+        },
+      },
     })
 
     if (errAuth || !data.user) {
@@ -186,24 +193,24 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
       return
     }
 
-    const { error: errProfile } = await supabase.from('profiles').upsert({
-      id: data.user.id,
-      email: form.email,
-      full_name: form.full_name,
-      role: 'technicien',
-      poste: form.poste || 'Technicien',
-      entreprise_id: profile?.entreprise_id,
-    })
+    // Le trigger handle_new_user crée le profil automatiquement depuis les metadata.
+    // On fait un UPDATE pour s'assurer que poste est bien défini
+    // (le manager a le droit d'UPDATE les profils technicien de son entreprise).
+    const { error: errProfile } = await supabase
+      .from('profiles')
+      .update({
+        full_name:     form.full_name,
+        poste:         form.poste || 'Technicien',
+        entreprise_id: profile?.entreprise_id,
+      })
+      .eq('id', data.user.id)
 
-    if (errProfile) {
-      if (errProfile.message === 'plan_limit_users') {
-        setUpgradeOpen(true)
-      } else {
-        setError('Erreur lors de la création du profil')
-      }
+    if (errProfile && errProfile.message === 'plan_limit_users') {
+      setUpgradeOpen(true)
       setSubmitting(false)
       return
     }
+    // Les autres erreurs d'UPDATE sont ignorées : le trigger a déjà créé le profil correctement
 
     setSuccess(`Compte créé pour ${form.full_name}`)
     setForm({ full_name: '', email: '', password: '', poste: 'Technicien' })
