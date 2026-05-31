@@ -2,7 +2,6 @@ import { useState, useEffect, FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuth } from '@/contexts/AuthContext'
 import { supabase } from '@/lib/supabase'
-import { supabaseAuth } from '@/lib/supabaseAuth'
 import { UserProfile, POSTES_OPTIONS, PERMISSION_LABELS, type PermissionKey } from '@/types'
 import { useRolePermissions } from '@/hooks/useRolePermissions'
 import { usePlan } from '@/hooks/usePlan'
@@ -174,43 +173,34 @@ export default function GestionEquipe({ embedded = false, entrepriseId }: { embe
     setSuccess('')
     setSubmitting(true)
 
-    const { data, error: errAuth } = await supabaseAuth.auth.signUp({
-      email: form.email,
-      password: form.password,
-      options: {
-        data: {
-          full_name:     form.full_name,
-          role:          'technicien',
-          poste:         form.poste || 'Technicien',
-          entreprise_id: profile?.entreprise_id ?? null,
-        },
+    // Utilise l'endpoint admin (service_role) → email_confirm: true → compte actif immédiatement
+    const res = await fetch('/api/create-technician', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${session?.access_token ?? ''}`,
       },
+      body: JSON.stringify({
+        email:     form.email,
+        password:  form.password,
+        full_name: form.full_name,
+        poste:     form.poste || 'Technicien',
+      }),
     })
 
-    if (errAuth || !data.user) {
-      setError(errAuth?.message ?? 'Erreur lors de la création du compte')
+    const json = await res.json() as { ok?: boolean; error?: string; userId?: string }
+
+    if (!res.ok || !json.ok) {
+      if (json.error?.toLowerCase().includes('already') || json.error?.toLowerCase().includes('déjà')) {
+        setError('Cet email est déjà utilisé')
+      } else if (json.error === 'plan_limit_users') {
+        setUpgradeOpen(true)
+      } else {
+        setError(json.error ?? 'Erreur lors de la création du compte')
+      }
       setSubmitting(false)
       return
     }
-
-    // Le trigger handle_new_user crée le profil automatiquement depuis les metadata.
-    // On fait un UPDATE pour s'assurer que poste est bien défini
-    // (le manager a le droit d'UPDATE les profils technicien de son entreprise).
-    const { error: errProfile } = await supabase
-      .from('profiles')
-      .update({
-        full_name:     form.full_name,
-        poste:         form.poste || 'Technicien',
-        entreprise_id: profile?.entreprise_id,
-      })
-      .eq('id', data.user.id)
-
-    if (errProfile && errProfile.message === 'plan_limit_users') {
-      setUpgradeOpen(true)
-      setSubmitting(false)
-      return
-    }
-    // Les autres erreurs d'UPDATE sont ignorées : le trigger a déjà créé le profil correctement
 
     setSuccess(`Compte créé pour ${form.full_name}`)
     setForm({ full_name: '', email: '', password: '', poste: 'Technicien' })
