@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from 'react'
-import { Search, Plus, ChevronLeft, MessageSquare, Users, Layers, User } from 'lucide-react'
+import { Search, Plus, ChevronLeft, MessageSquare, Users, Layers, User, X } from 'lucide-react'
 import GlobalChatTab from '@/components/chat/GlobalChatTab'
 import ChatTab from '@/components/chat/ChatTab'
 import GroupChatTab from '@/components/chat/GroupChatTab'
 import CreateGroupModal from '@/components/chat/CreateGroupModal'
-import NewDMModal from '@/components/chat/NewDMModal'
+import { supabase } from '@/lib/supabase'
 import { useChatGroups } from '@/hooks/useChatGroups'
 import { useChantiers } from '@/hooks/useChantiers'
 import { useChatUnread, relativeTime } from '@/hooks/useChatUnread'
@@ -44,14 +44,35 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
   const [activeConv, setActiveConv]         = useState<ActiveConv>({ type: 'global', id: 'global', label: 'Équipe' })
   const [showConvOnMobile, setShowConvOnMobile] = useState(false)
   const [showCreateModal, setShowCreateModal]   = useState(false)
-  const [showDMModal, setShowDMModal]           = useState(false)
+  const [showDMSearch, setShowDMSearch]         = useState(false)
+  const [dmSearchQuery, setDMSearchQuery]       = useState('')
+  const [dmUsers, setDMUsers]                   = useState<{ id: string; full_name: string; avatar_url?: string | null; poste?: string | null }[]>([])
+  const [dmUsersLoading, setDMUsersLoading]     = useState(false)
 
   // Quand l'admin change d'entreprise, revenir au chat Équipe de la nouvelle entreprise
   useEffect(() => {
     setActiveConv({ type: 'global', id: 'global', label: 'Équipe' })
     setShowConvOnMobile(false)
     setSearchQuery('')
+    setShowDMSearch(false)
   }, [entrepriseId])
+
+  // Charger les collègues quand le panneau DM s'ouvre
+  useEffect(() => {
+    if (!showDMSearch || !entrepriseId) return
+    setDMUsersLoading(true)
+    supabase
+      .from('profiles')
+      .select('id, full_name, avatar_url, poste')
+      .eq('entreprise_id', entrepriseId)
+      .neq('id', userId)
+      .order('full_name')
+      .then(({ data }) => {
+        setDMUsers((data ?? []) as typeof dmUsers)
+        setDMUsersLoading(false)
+      })
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [showDMSearch, entrepriseId, userId])
 
   // Filtre sidebar
   const showGlobal = !searchQuery.trim() ||
@@ -220,17 +241,71 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
                     Privés
                   </p>
                   <button
-                    onClick={() => setShowDMModal(true)}
+                    type="button"
+                    onClick={() => { setShowDMSearch(s => !s); setDMSearchQuery('') }}
                     className="flex items-center gap-0.5 text-[10px] font-semibold text-orange-500 hover:text-orange-600 transition-colors"
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    Nouveau
+                    {showDMSearch ? <X className="w-3.5 h-3.5" /> : <Plus className="w-3.5 h-3.5" />}
+                    {showDMSearch ? 'Fermer' : 'Nouveau'}
                   </button>
                 </div>
 
-                {sortedDMs.length === 0 ? (
+                {/* ── Panneau inline de recherche de collègue ── */}
+                {showDMSearch && (
+                  <div className="mb-2 rounded-xl bg-slate-50 border border-slate-200 overflow-hidden">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-slate-400 pointer-events-none" />
+                      <input
+                        autoFocus
+                        type="text"
+                        value={dmSearchQuery}
+                        onChange={e => setDMSearchQuery(e.target.value)}
+                        placeholder="Rechercher un collègue…"
+                        className="w-full pl-8 pr-3 py-2 text-xs bg-transparent border-none focus:outline-none focus:ring-0 text-slate-700 placeholder-slate-400"
+                      />
+                    </div>
+                    <div className="max-h-40 overflow-y-auto border-t border-slate-200">
+                      {dmUsersLoading ? (
+                        <div className="flex justify-center py-3">
+                          <div className="w-4 h-4 border-2 border-orange-400 border-t-transparent rounded-full animate-spin" />
+                        </div>
+                      ) : dmUsers.filter(u => !dmSearchQuery.trim() || u.full_name.toLowerCase().includes(dmSearchQuery.toLowerCase())).length === 0 ? (
+                        <p className="text-center text-slate-400 text-xs py-3">
+                          {dmSearchQuery ? 'Aucun résultat' : 'Aucun collègue'}
+                        </p>
+                      ) : (
+                        dmUsers
+                          .filter(u => !dmSearchQuery.trim() || u.full_name.toLowerCase().includes(dmSearchQuery.toLowerCase()))
+                          .map(u => (
+                            <button
+                              key={u.id}
+                              type="button"
+                              onClick={async () => {
+                                setShowDMSearch(false)
+                                setDMSearchQuery('')
+                                const { group } = await createDM(u.id)
+                                if (group) openConv({ type: 'group', id: group.id, label: u.full_name })
+                              }}
+                              className="w-full flex items-center gap-2 px-3 py-2 hover:bg-orange-50 transition-colors text-left"
+                            >
+                              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">
+                                {u.full_name.charAt(0).toUpperCase()}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-semibold text-slate-800 truncate">{u.full_name}</p>
+                                {u.poste && <p className="text-[10px] text-slate-400 truncate">{u.poste}</p>}
+                              </div>
+                            </button>
+                          ))
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {sortedDMs.length === 0 && !showDMSearch ? (
                   <button
-                    onClick={() => setShowDMModal(true)}
+                    type="button"
+                    onClick={() => setShowDMSearch(true)}
                     className="w-full flex items-center gap-2 py-2.5 px-3 rounded-xl border border-dashed border-slate-200 text-slate-400 hover:border-orange-300 hover:text-orange-400 transition-colors"
                   >
                     <Plus className="w-3.5 h-3.5 flex-shrink-0" />
@@ -360,19 +435,6 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
         />
       )}
 
-      {/* ── Modale nouveau DM ──────────────────────────────────────────── */}
-      {showDMModal && (
-        <NewDMModal
-          userId={userId}
-          entrepriseId={entrepriseId}
-          onClose={() => setShowDMModal(false)}
-          onSelect={async (otherUserId, name) => {
-            setShowDMModal(false)
-            const { group } = await createDM(otherUserId)
-            if (group) openConv({ type: 'group', id: group.id, label: name })
-          }}
-        />
-      )}
     </>
   )
 }
