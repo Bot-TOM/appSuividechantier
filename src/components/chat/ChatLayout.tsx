@@ -79,6 +79,28 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [groups])
 
+  // ── Point 2 : informe le service worker de la conversation active ──────────
+  // Le SW supprime la notif push si l'appli est au premier plan dans cette conv
+  useEffect(() => {
+    const sw = 'serviceWorker' in navigator ? navigator.serviceWorker.controller : null
+    if (!sw) return
+    sw.postMessage({
+      type:     'set-active-conv',
+      convId:   isActive ? activeConv.id   : null,
+      convType: isActive ? activeConv.type : null,
+    })
+  }, [activeConv, isActive])
+
+  // ── Point 3 : marque automatiquement comme lu quand un message arrive ──────
+  // dans la conversation active (évite la pastille non-lus inutile)
+  const activeMsgTime = lastMsgMap[activeConv.id]?.time
+  useEffect(() => {
+    if (!isActive || activeConv.type === 'global') return
+    if (activeConv.type === 'chantier') markAsRead(activeConv.id, 'chantier')
+    if (activeConv.type === 'group')    markAsRead(activeConv.id, 'group')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMsgTime, isActive])
+
   // Charger les collègues quand le panneau DM s'ouvre
   useEffect(() => {
     if (!showDMSearch || !entrepriseId) return

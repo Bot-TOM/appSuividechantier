@@ -85,7 +85,6 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
   const [activeMsg, setActiveMsg]     = useState<string | null>(null)
   const [emojiFor, setEmojiFor]       = useState<string | null>(null)
   const [showParticipants, setShowParticipants] = useState(false)
-  const [pdfPreview, setPdfPreview]   = useState<{ url: string; name: string } | null>(null)
   const [forwardMsg, setForwardMsg]   = useState<ChatMessage | null>(null)
   const [forwardDone, setForwardDone] = useState(false)
 
@@ -579,37 +578,20 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
                       </a>
                     )}
 
-                    {msg.file_type === 'document' && msg.file_url && (() => {
-                      const isPdf = msg.file_name?.toLowerCase().endsWith('.pdf')
-                      return isPdf ? (
-                        <button
-                          onClick={e => { e.stopPropagation(); setPdfPreview({ url: msg.file_url!, name: msg.file_name ?? 'Document' }) }}
-                          className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 w-full text-left transition-opacity hover:opacity-80 ${
-                            isOwn ? 'bg-white/20 text-white' : 'bg-red-50 text-red-700 border border-red-100'
-                          }`}
-                        >
-                          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          <span className="truncate max-w-[150px]">{msg.file_name ?? 'Document'}</span>
-                          <svg className="w-3 h-3 flex-shrink-0 ml-auto opacity-60" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
-                          </svg>
-                        </button>
-                      ) : (
-                        <a href={msg.file_url} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
-                          className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 ${
-                            isOwn ? 'bg-white/20 text-white' : 'bg-slate-50 text-slate-700 border border-slate-100'
-                          }`}
-                        >
-                          <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                          </svg>
-                          <span className="truncate max-w-[150px]">{msg.file_name ?? 'Document'}</span>
-                        </a>
-                      )
-                    })()}
+                    {msg.file_type === 'document' && msg.file_url && (
+                      /* window.open avec 3ème arg = seule méthode fiable sur iOS PWA */
+                      <button
+                        onClick={e => { e.stopPropagation(); window.open(msg.file_url!, '_blank', 'noopener,noreferrer') }}
+                        className={`flex items-center gap-2 text-xs font-medium px-2.5 py-2 rounded-xl mb-1 w-full text-left hover:opacity-80 ${
+                          isOwn ? 'bg-white/20 text-white' : 'bg-slate-50 text-slate-700 border border-slate-100'
+                        }`}
+                      >
+                        <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span className="truncate max-w-[150px]">{msg.file_name ?? 'Document'}</span>
+                      </button>
+                    )}
 
                     {msg.content && (
                       <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
@@ -886,39 +868,6 @@ export default function ChatTab({ chantierId, userId, isActive = true }: Props) 
       </div>
     )}
 
-    {/* ── Modale aperçu PDF ─────────────────────────────────────────────── */}
-    {pdfPreview && (
-      <div
-        className="fixed inset-0 z-50 flex flex-col bg-black/80"
-        onClick={() => setPdfPreview(null)}
-      >
-        <div className="flex items-center justify-between px-4 py-3 bg-black/60 flex-shrink-0" onClick={e => e.stopPropagation()}>
-          <span className="text-white text-sm font-medium truncate max-w-[70%]">{pdfPreview.name}</span>
-          <div className="flex items-center gap-2">
-            <a
-              href={pdfPreview.url}
-              target="_blank" rel="noreferrer"
-              onClick={e => e.stopPropagation()}
-              className="text-white/70 hover:text-white text-xs border border-white/20 px-3 py-1.5 rounded-full transition-colors"
-            >
-              Ouvrir ↗
-            </a>
-            <button onClick={() => setPdfPreview(null)} className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white hover:bg-white/20 transition-colors">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
-          </div>
-        </div>
-        <div className="flex-1 min-h-0" onClick={e => e.stopPropagation()}>
-          <iframe
-            src={pdfPreview.url}
-            className="w-full h-full border-0"
-            title={pdfPreview.name}
-          />
-        </div>
-      </div>
-    )}
     </>
   )
 }

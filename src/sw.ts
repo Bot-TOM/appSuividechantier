@@ -6,6 +6,16 @@ import { ExpirationPlugin } from 'workbox-expiration'
 
 declare const self: ServiceWorkerGlobalScope
 
+// ── Conversation active (mis à jour par l'app via postMessage) ───────────────
+// Perdu au redémarrage du SW, mais l'app renvoie l'info à chaque montage.
+let activeConvId: string | null = null
+
+self.addEventListener('message', (event: ExtendableMessageEvent) => {
+  if (event.data?.type === 'set-active-conv') {
+    activeConvId = event.data.convId ?? null
+  }
+})
+
 // Prend le contrôle immédiatement après installation (évite l'écran blanc)
 self.addEventListener('install', () => self.skipWaiting())
 
@@ -41,6 +51,21 @@ self.addEventListener('activate', (event) => {
 })
 
 // ── Push notifications ──────────────────────────────────────────────────────
+
+/** Extrait l'ID de la cible depuis une URL de notification.
+ *  Ex: /manager?tab=chat&group=abc123  → { type: 'group', id: 'abc123' }
+ *      /manager?tab=chat&chantier=xyz  → { type: 'chantier', id: 'xyz' }  */
+function extractTarget(url: string): { type: string; id: string } | null {
+  try {
+    const u = new URL(url, self.location.origin)
+    const group    = u.searchParams.get('group')
+    const chantier = u.searchParams.get('chantier')
+    if (group)    return { type: 'group',    id: group }
+    if (chantier) return { type: 'chantier', id: chantier }
+  } catch { /* ignore */ }
+  return null
+}
+
 self.addEventListener('push', (event) => {
   if (!event.data) return
 
@@ -56,7 +81,18 @@ self.addEventListener('push', (event) => {
   }
 
   event.waitUntil(
-    self.registration.showNotification(title, options).then(() => {
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then(async (clients) => {
+      // Vérifie si l'utilisateur est dans la conversation ciblée ET que l'app est au premier plan
+      const appFocused = clients.some(c => c.focused)
+      if (appFocused && activeConvId) {
+        const target = extractTarget(data.url ?? '/')
+        if (target && target.id === activeConvId) {
+          // L'utilisateur est déjà en train de lire cette conversation → pas de notification
+          return
+        }
+      }
+
+      await self.registration.showNotification(title, options)
       // Badge API — incrémente le compteur sur l'icône PWA (Chrome/Android)
       if ('setAppBadge' in self.registration) {
         (self.registration as any).setAppBadge?.().catch?.(() => {})
