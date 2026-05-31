@@ -61,7 +61,8 @@ export default function GroupChatTab({ group, userId, userRole, isActive = true,
   const [showScrollBtn,   setShowScrollBtn]   = useState(false)
   const [confirmDelete,   setConfirmDelete]   = useState(false)
 
-  const canDelete = (userRole === 'manager' || userRole === 'admin') && !group.is_dm
+  // Seul le créateur du groupe peut le supprimer (pas les DMs, pas les autres membres)
+  const canDelete = group.created_by === userId && !group.is_dm
 
   useEffect(() => {
     const el = msgsContainerRef.current
