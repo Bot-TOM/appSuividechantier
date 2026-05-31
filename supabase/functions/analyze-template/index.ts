@@ -136,18 +136,21 @@ Deno.serve(async (req: Request) => {
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model:      'claude-opus-4-5',
+        model:      'claude-3-5-sonnet-20241022',
         max_tokens: 4096,
         messages:   [{ role: 'user', content: [fileContent, { type: 'text', text: prompt }] }],
       }),
     })
 
     if (!anthropicRes.ok) {
-      const err = await anthropicRes.text()
-      console.error('[analyze-template] Anthropic error:', err)
+      const errText = await anthropicRes.text()
+      console.error('[analyze-template] Anthropic error:', anthropicRes.status, errText)
+      let detail = errText
+      try { detail = JSON.parse(errText)?.error?.message ?? errText } catch { /* ignore */ }
+      // Retourner 200 avec { error } pour que le SDK Supabase transmette le message au frontend
       return new Response(
-        JSON.stringify({ error: "Erreur lors de l'analyse IA" }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({ error: `Erreur Anthropic (${anthropicRes.status}) : ${detail}` }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
@@ -163,8 +166,8 @@ Deno.serve(async (req: Request) => {
     } catch (e) {
       console.error('[analyze-template] JSON parse error:', e, '\nRaw:', rawText)
       return new Response(
-        JSON.stringify({ error: "Impossible de parser la réponse de l'IA", raw: rawText }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+        JSON.stringify({ error: "Impossible de parser la réponse de l'IA" }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       )
     }
 
@@ -199,9 +202,10 @@ Deno.serve(async (req: Request) => {
 
   } catch (err) {
     console.error('[analyze-template] Unexpected error:', err)
+    const msg = err instanceof Error ? err.message : 'Erreur inattendue'
     return new Response(
-      JSON.stringify({ error: 'Erreur inattendue' }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      JSON.stringify({ error: msg }),
+      { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )
   }
 })
