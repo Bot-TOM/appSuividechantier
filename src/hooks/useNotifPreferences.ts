@@ -64,5 +64,26 @@ export function useNotifPreferences(subscribed: boolean) {
       .eq('endpoint', endpoint)
   }, [prefs, endpoint])
 
-  return { prefs, loading, toggle }
+  /** Active ou désactive toutes les notifications en un seul appel DB */
+  const setAll = useCallback(async (value: boolean) => {
+    if (!endpoint) return
+    const newPrefs: NotifPreferences = {
+      chat_notif_enabled:              value,
+      anomalie_notif_enabled:          value,
+      rapport_notif_enabled:           value,
+      chantier_notif_enabled:          value,
+      autocontrole_notif_enabled:      value,
+      global_messages_notif_enabled:   value,
+    }
+    setPrefs(newPrefs)
+    await supabase
+      .from('push_subscriptions')
+      .update(newPrefs)
+      .eq('endpoint', endpoint)
+  }, [endpoint])
+
+  const allEnabled  = Object.values(prefs).every(v => v === true)
+  const allDisabled = Object.values(prefs).every(v => v === false)
+
+  return { prefs, loading, toggle, setAll, allEnabled, allDisabled }
 }

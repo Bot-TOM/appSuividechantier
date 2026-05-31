@@ -222,7 +222,7 @@ export default function ManagerDashboard() {
   const [deleteLoading, setDeleteLoading]     = useState(false)
   const [deleteError, setDeleteError]         = useState<string | null>(null)
   const { status: pushStatus, subscribe: subscribePush, unsubscribe: unsubscribePush } = usePushNotifications()
-  const { prefs: notifPrefs, toggle: toggleNotifPref } = useNotifPreferences(pushStatus === 'subscribed')
+  const { prefs: notifPrefs, toggle: toggleNotifPref, setAll: setAllNotif, allEnabled: allNotifsOn, allDisabled: allNotifsOff } = useNotifPreferences(pushStatus === 'subscribed')
   const { notifications, unreadCount, markAllRead, markRead, clearAll } = useNotifications()
   const chatUnread = useNavChatBadge(profile?.id ?? '', profile?.entreprise_id ?? '')
   const [showNotifPanel, setShowNotifPanel] = useState(false)
@@ -1144,6 +1144,29 @@ export default function ManagerDashboard() {
                       </div>
                     )}
                   </div>
+
+                  {/* ── Actions rapides : tout activer / tout désactiver ── */}
+                  {pushStatus === 'subscribed' && (
+                    <div className="px-5 py-3 border-b border-slate-100 flex items-center justify-between gap-2">
+                      <span className="text-xs text-slate-400 font-medium">Actions rapides</span>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => setAllNotif(true)}
+                          disabled={allNotifsOn}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-orange-50 text-orange-600 hover:bg-orange-100 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Tout activer
+                        </button>
+                        <button
+                          onClick={() => setAllNotif(false)}
+                          disabled={allNotifsOff}
+                          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 hover:bg-slate-200 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                        >
+                          Tout désactiver
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="p-1.5 sm:p-2">
                     {([
