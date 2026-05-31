@@ -30,8 +30,10 @@ export function usePushNotifications() {
     navigator.serviceWorker.ready.then(async (reg) => {
       const sub = await reg.pushManager.getSubscription()
       if (sub) {
-        setStatus('subscribed')
-        // Renouvelle l'endpoint en base à chaque ouverture (évite les endpoints périmés)
+        // Upsert EN PREMIER — garantit que la ligne existe en base AVANT que
+        // useNotifPreferences ne tente de lire ou mettre à jour les préférences.
+        // setStatus('subscribed') déclenche le re-render qui active useNotifPreferences,
+        // donc il doit être appelé APRÈS l'upsert.
         const { data: { user } } = await supabase.auth.getUser()
         if (user) {
           const json = sub.toJSON()
@@ -41,6 +43,7 @@ export function usePushNotifications() {
             { onConflict: 'endpoint,user_id' },
           )
         }
+        setStatus('subscribed')
       } else {
         setStatus('unsubscribed')
       }
