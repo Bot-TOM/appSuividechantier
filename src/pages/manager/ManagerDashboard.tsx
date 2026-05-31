@@ -26,6 +26,7 @@ import UpgradeModal, { UpgradeReason } from '@/components/upgrade/UpgradeModal'
 import PlanSection from '@/components/upgrade/PlanSection'
 import OnboardingModal from '@/components/onboarding/OnboardingModal'
 import ManagerHomeTab from '@/components/dashboard/ManagerHomeTab'
+import ModeleChantierTab from '@/components/chantier/ModeleChantierTab'
 import { getChantierColorByIndex } from '@/lib/chantierColors'
 import type { Notification } from '@/hooks/useNotifications'
 
@@ -44,7 +45,7 @@ function notifUrl(n: Notification): string | null {
 
 type SortKey = 'date' | 'nom' | 'statut'
 type FilterStatut = ChantierStatut | 'tous'
-type Tab = 'accueil' | 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat' | 'vt'
+type Tab = 'accueil' | 'chantiers' | 'anomalies' | 'stats' | 'equipe' | 'profil' | 'planning' | 'entreprises' | 'bugs' | 'chat' | 'vt' | 'modele'
 
 type AnomalieWithRelations = Anomalie & {
   profiles?: { full_name?: string } | null
@@ -182,7 +183,7 @@ export default function ManagerDashboard() {
   const navigate               = useNavigate()
   const [searchParams]         = useSearchParams()
 
-  const VALID_TABS: Tab[] = ['accueil','chantiers','anomalies','stats','equipe','profil','planning','entreprises','bugs','chat','vt']
+  const VALID_TABS: Tab[] = ['accueil','chantiers','anomalies','stats','equipe','profil','planning','entreprises','bugs','chat','vt','modele']
   const [activeTab, setActiveTab] = useState<Tab>(() => {
     const t = searchParams.get('tab')
     return (t && VALID_TABS.includes(t as Tab)) ? t as Tab : 'accueil'
@@ -503,6 +504,7 @@ export default function ManagerDashboard() {
               { key: 'planning',  label: 'Planning' },
               { key: 'equipe',    label: 'Équipe' },
               { key: 'chat',      label: 'Chat', badge: activeTab !== 'chat' ? (chatUnread || undefined) : undefined },
+              { key: 'modele',    label: 'Fiche type' },
               profile?.role === 'admin' ? { key: 'entreprises', label: 'Entreprises' } : null,
               profile?.role === 'admin' ? { key: 'bugs', label: 'Bugs' } : null,
               { key: 'profil',    label: 'Profil' },
@@ -558,6 +560,7 @@ export default function ManagerDashboard() {
               { key: 'planning',    label: 'Planning',     Icon: Calendar      },
               { key: 'equipe',      label: 'Équipe',       Icon: Users         },
               { key: 'chat',        label: 'Chat',         Icon: MessageCircle, badge: activeTab !== 'chat' ? (chatUnread || undefined) : undefined },
+              { key: 'modele',      label: 'Fiche type',   Icon: FileText      },
               ...(profile?.role === 'admin' ? [
                 { key: 'entreprises', label: 'Entreprises', Icon: Building2 },
                 { key: 'bugs',        label: 'Bugs',         Icon: Bug       },
@@ -1568,6 +1571,10 @@ export default function ManagerDashboard() {
         )}
 
         {/* ── Onglet Bugs (admin seulement) ────────────────────────────────── */}
+        {activeTab === 'modele' && profile?.entreprise_id && (
+          <ModeleChantierTab entrepriseId={profile.entreprise_id} />
+        )}
+
         {activeTab === 'bugs' && profile?.role === 'admin' && (
           <AdminBugReportsTab />
         )}

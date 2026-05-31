@@ -16,6 +16,8 @@ import ChatTab from '@/components/chat/ChatTab'
 import { useUnreadMessages } from '@/hooks/useUnreadMessages'
 import VoiceReportButton from '@/components/rapport/VoiceReportButton'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useChantierFields } from '@/hooks/useChantierFields'
+import CustomFieldsSection from '@/components/chantier/CustomFieldsSection'
 import { usePlan } from '@/hooks/usePlan'
 import UpgradeModal from '@/components/upgrade/UpgradeModal'
 
@@ -453,6 +455,7 @@ export default function ChantierDetail() {
   const navigate = useNavigate()
   const { profile, session } = useAuth()
   const { chantier, etapes, notes, photos, loading, updateStatut, advanceEtape, updateConsigne, updatePourcentage, addNote, deleteNote, uploadEtapePhoto, deleteEtapePhoto, deleteChantier, refetch: refetchChantier } = useChantierDetail(id!)
+  const { activeFields: customFields } = useChantierFields(profile?.entreprise_id)
   const { anomalies }   = useAnomalies(id!)
   const { items: matItems, total: matTotal, checked: matChecked, toggleItem: toggleMat, addItem: addMat, deleteItem: deleteMat } = useChecklistMateriel(id!)
   const { autocontrole, save: saveAC, signer: signerAC } = useAutoControle(id!)
@@ -1899,6 +1902,18 @@ export default function ChantierDetail() {
                 ))}
               </div>
             </section>
+
+            {/* ── Champs personnalisés ──────────────────────────────────── */}
+            {customFields.length > 0 && chantier && (
+              <section className="bg-white rounded-2xl p-4 space-y-3" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.08)' }}>
+                <h2 className="font-semibold text-gray-900 text-sm">Infos spécifiques</h2>
+                <CustomFieldsSection
+                  fields={customFields}
+                  values={(chantier as unknown as { custom_data?: Record<string, unknown> }).custom_data ?? {}}
+                  readOnly
+                />
+              </section>
+            )}
 
             {can('modifier_chantier') && (
               <button

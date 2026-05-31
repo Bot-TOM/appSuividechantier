@@ -4,7 +4,10 @@ import { supabase } from '@/lib/supabase'
 import { useTechniciens } from '@/hooks/useTechniciens'
 import { useChantierTechniciens } from '@/hooks/useChantierTechniciens'
 import { usePermissions } from '@/hooks/usePermissions'
+import { useAuth } from '@/contexts/AuthContext'
 import { ChantierStatut, Etape } from '@/types'
+import { useChantierFields } from '@/hooks/useChantierFields'
+import CustomFieldsSection from '@/components/chantier/CustomFieldsSection'
 
 const TYPES_INSTALLATION = [
   'Résidentiel',
@@ -44,8 +47,11 @@ export default function EditChantier() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { can } = usePermissions()
+  const { profile } = useAuth()
   const { techniciens } = useTechniciens()
   const { assignedIds } = useChantierTechniciens(id!)
+  const { activeFields } = useChantierFields(profile?.entreprise_id)
+  const [customData, setCustomData] = useState<Record<string, unknown>>({})
 
   const [loading, setLoading]       = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -82,6 +88,9 @@ export default function EditChantier() {
           date_fin_prevue: c.date_fin_prevue ?? '',
           statut: c.statut,
         })
+        if (c.custom_data && typeof c.custom_data === 'object') {
+          setCustomData(c.custom_data as Record<string, unknown>)
+        }
       }
       if (e) {
         setEtapes(e.map((etape: Etape) => ({
@@ -152,6 +161,7 @@ export default function EditChantier() {
         date_prevue: form.date_prevue,
         date_fin_prevue: form.date_fin_prevue || null,
         statut: form.statut,
+        custom_data: Object.keys(customData).length > 0 ? customData : null,
         updated_at: new Date().toISOString(),
       })
       .eq('id', id)
@@ -382,6 +392,21 @@ export default function EditChantier() {
               </button>
             </div>
           </section>
+
+          {/* ── Champs personnalisés ──────────────────────────────────────── */}
+          {activeFields.length > 0 && (
+            <section className="bg-white rounded-2xl p-6 space-y-4" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Infos spécifiques</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Champs personnalisés de votre entreprise</p>
+              </div>
+              <CustomFieldsSection
+                fields={activeFields}
+                values={customData}
+                onChange={(key, val) => setCustomData(prev => ({ ...prev, [key]: val }))}
+              />
+            </section>
+          )}
 
           {/* ── Équipe ────────────────────────────────────────────────────── */}
           {can('assigner_techniciens') && (

@@ -5,6 +5,8 @@ import { useTechniciens } from '@/hooks/useTechniciens'
 import { useAuth } from '@/contexts/AuthContext'
 import { usePermissions } from '@/hooks/usePermissions'
 import { isManagerRole } from '@/types'
+import { useChantierFields } from '@/hooks/useChantierFields'
+import CustomFieldsSection from '@/components/chantier/CustomFieldsSection'
 
 const TYPES_INSTALLATION = [
   'Résidentiel',
@@ -37,6 +39,8 @@ export default function CreateChantier() {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [newEtapeNom, setNewEtapeNom] = useState('')
+  const { activeFields } = useChantierFields(profile?.entreprise_id)
+  const [customData, setCustomData] = useState<Record<string, unknown>>({})
 
   const [form, setForm] = useState({
     nom: '',
@@ -96,6 +100,7 @@ export default function CreateChantier() {
         date_fin_prevue: form.date_fin_prevue || null,
         statut: 'en_attente',
         entreprise_id: profile?.entreprise_id ?? null,
+        custom_data: Object.keys(customData).length > 0 ? customData : null,
       })
       .select()
       .single()
@@ -295,6 +300,21 @@ export default function CreateChantier() {
               </button>
             </div>
           </section>
+
+          {/* ── Champs personnalisés ──────────────────────────────────────── */}
+          {activeFields.length > 0 && (
+            <section className="bg-white rounded-2xl p-6 space-y-4" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
+              <div>
+                <h2 className="text-sm font-semibold text-gray-900 uppercase tracking-wide">Infos spécifiques</h2>
+                <p className="text-xs text-gray-400 mt-0.5">Champs personnalisés de votre entreprise</p>
+              </div>
+              <CustomFieldsSection
+                fields={activeFields}
+                values={customData}
+                onChange={(key, val) => setCustomData(prev => ({ ...prev, [key]: val }))}
+              />
+            </section>
+          )}
 
           {/* ── Équipe assignée ───────────────────────────────────────────── */}
           {can('assigner_techniciens') && (

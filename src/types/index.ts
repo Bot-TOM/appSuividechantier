@@ -262,6 +262,23 @@ export interface Anomalie {
   resolved_at?: string | null
 }
 
+// ── Champs personnalisés de fiche chantier ────────────────────────────────────
+export type ChantierFieldType = 'text' | 'textarea' | 'number' | 'date' | 'select' | 'boolean'
+
+export interface ChantierFieldDef {
+  id:            string
+  entreprise_id: string
+  field_key:     string
+  field_label:   string
+  field_type:    ChantierFieldType
+  field_options: string[] | null   // uniquement pour type 'select'
+  section:       string | null
+  position:      number
+  required:      boolean
+  active:        boolean
+  created_at?:   string
+}
+
 // Visites Techniques
 export type VTType = 'btoc' | 'btob'
 export type VTStatut = 'brouillon' | 'complete' | 'valide'
