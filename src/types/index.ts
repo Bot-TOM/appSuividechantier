@@ -111,6 +111,8 @@ export interface Chantier {
   date_fin_prevue?: string | null
   statut: ChantierStatut
   vt_id?: string | null
+  template_id?: string | null
+  custom_data?: Record<string, unknown> | null
   created_at: string
   updated_at: string
 }
