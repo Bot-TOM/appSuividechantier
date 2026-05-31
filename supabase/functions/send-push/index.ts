@@ -106,6 +106,25 @@ Deno.serve(async (req) => {
     url = record.chantier_id ? `/chantier/${record.chantier_id}?tab=autocontrole` : '/'
     notifType = 'autocontrole'; notifChantier = record.chantier_id ?? null
 
+  } else if (table === 'new_dm') {
+    // Notification à la création d'un nouveau DM — prévient le destinataire
+    chatOnly = true
+    const { data: sender } = await supabase
+      .from('profiles').select('full_name, role').eq('id', record.sender_id).single()
+    const senderName = sender?.full_name ?? 'Quelqu\'un'
+
+    title = '💌 Nouveau message privé'
+    body  = `${senderName} a ouvert une conversation avec vous`
+    recipientIds = [record.recipient_id]
+
+    const { data: recipientProfile } = await supabase
+      .from('profiles').select('role').eq('id', record.recipient_id).single()
+    const recipientRole = recipientProfile?.role ?? 'technicien'
+    const isManager = ['manager', 'admin'].includes(recipientRole)
+    url = isManager
+      ? `/manager?tab=chat&group=${record.group_id}`
+      : `/technicien?tab=chat&group=${record.group_id}`
+
   } else if (table === 'group_messages') {
     // Chat de groupe custom — notif uniquement aux membres du groupe
     chatOnly = true
@@ -113,13 +132,18 @@ Deno.serve(async (req) => {
       .from('profiles').select('full_name').eq('id', record.user_id).single()
     const senderName = sender?.full_name ?? 'Quelqu\'un'
 
-    // Nom du groupe
+    // Infos du groupe (nom + is_dm pour adapter le titre)
     const { data: grp } = await supabase
-      .from('chat_groups').select('name').eq('id', record.group_id).single()
-    const groupName = grp?.name ?? 'Groupe'
+      .from('chat_groups').select('name, is_dm').eq('id', record.group_id).single()
+    const isDM = grp?.is_dm === true
 
-    title = `💬 ${groupName}`
-    body  = `${senderName} : ${record.content?.slice(0, 60) ?? '📎 Fichier'}`
+    // Pour les DMs : titre avec le nom de l'expéditeur. Pour les groupes : nom du groupe.
+    title = isDM
+      ? `💌 ${senderName}`
+      : `💬 ${grp?.name?.trim() || 'Groupe'}`
+    body  = isDM
+      ? (record.content?.slice(0, 80) ?? '📎 Fichier')
+      : `${senderName} : ${record.content?.slice(0, 60) ?? '📎 Fichier'}`
 
     // Membres du groupe (hors expéditeur)
     const { data: members } = await supabase
@@ -129,7 +153,7 @@ Deno.serve(async (req) => {
     const allMemberIds = (members ?? []).map((m: { user_id: string }) => m.user_id)
     recipientIds = allMemberIds.filter((id: string) => id !== record.user_id)
 
-    // URLs adaptées par rôle
+    // URLs adaptées par rôle (inclut l'ID du groupe pour navigation directe)
     const { data: recipientProfiles } = await supabase
       .from('profiles').select('id, role').in('id', recipientIds)
     const managerRecipientIds = (recipientProfiles ?? [])
@@ -156,8 +180,8 @@ Deno.serve(async (req) => {
       )
     }
     await Promise.all([
-      sendGroupPush(managerRecipientIds, '/manager?tab=chat'),
-      sendGroupPush(techRecipientIds,    '/technicien?tab=chat'),
+      sendGroupPush(managerRecipientIds, `/manager?tab=chat&group=${record.group_id}`),
+      sendGroupPush(techRecipientIds,    `/technicien?tab=chat&group=${record.group_id}`),
     ])
     return new Response(JSON.stringify({ sent: recipientIds.length }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

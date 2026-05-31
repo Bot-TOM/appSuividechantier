@@ -14,7 +14,7 @@ export function useChatGroups(userId: string, entrepriseId: string) {
       .eq('entreprise_id', entrepriseId)
       .order('created_at', { ascending: true })
     if (error) console.error('[useChatGroups] fetchGroups error:', error)
-    setGroups((data ?? []) as ChatGroup[])
+    else setGroups((data ?? []) as ChatGroup[])
     setLoading(false)
   }, [userId, entrepriseId])
 
@@ -24,12 +24,19 @@ export function useChatGroups(userId: string, entrepriseId: string) {
   useEffect(() => {
     if (!entrepriseId) return
     const channel = supabase
-      .channel('chat-groups-list')
+      .channel(`chat-groups-list-${entrepriseId}`)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_groups' }, fetchGroups)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'chat_group_members' }, fetchGroups)
       .subscribe()
     return () => { supabase.removeChannel(channel) }
   }, [entrepriseId, fetchGroups])
+
+  // Polling 15 s — filet de sécurité si le réaltime manque un événement (mobile, réseau instable)
+  useEffect(() => {
+    if (!userId || !entrepriseId) return
+    const poll = setInterval(fetchGroups, 15_000)
+    return () => clearInterval(poll)
+  }, [userId, entrepriseId, fetchGroups])
 
   /** Crée un groupe normal.
    *  Utilise un UUID généré côté client pour éviter le .select() après INSERT
@@ -125,6 +132,11 @@ export function useChatGroups(userId: string, entrepriseId: string) {
 
     // Refetch en arrière-plan pour avoir le nom + avatar de l'autre membre
     fetchGroups()
+
+    // Notif push au destinataire pour qu'il sache qu'une conversation a été ouverte
+    supabase.functions.invoke('send-push', {
+      body: { table: 'new_dm', record: { group_id: newId, sender_id: userId, recipient_id: otherUserId } },
+    }).catch(() => {})
 
     return { group: optimistic }
   }, [userId, entrepriseId, groups, fetchGroups])

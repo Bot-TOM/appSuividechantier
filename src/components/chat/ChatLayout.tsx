@@ -59,6 +59,26 @@ export default function ChatLayout({ profile, isActive = true, entrepriseIdOverr
     setShowDMSearch(false)
   }, [entrepriseId])
 
+  // Ouvre automatiquement le groupe ciblé si l'URL contient ?group=<id>
+  // (ex. après un clic sur une notification push)
+  useEffect(() => {
+    const params  = new URLSearchParams(window.location.search)
+    const groupId = params.get('group')
+    if (!groupId || !groups.length) return
+    const target = groups.find(g => g.id === groupId)
+    if (!target) return
+    const label = target.is_dm
+      ? ((target.members ?? []).find(m => m.user_id !== userId)?.profiles?.full_name ?? 'Message privé')
+      : (target.name || 'Groupe')
+    setActiveConv({ type: 'group', id: groupId, label })
+    setShowConvOnMobile(true)
+    // Retire le paramètre de l'URL sans recharger la page
+    const clean = new URL(window.location.href)
+    clean.searchParams.delete('group')
+    window.history.replaceState({}, '', clean.toString())
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [groups])
+
   // Charger les collègues quand le panneau DM s'ouvre
   useEffect(() => {
     if (!showDMSearch || !entrepriseId) return
