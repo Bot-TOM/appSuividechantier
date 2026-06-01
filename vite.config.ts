@@ -4,8 +4,6 @@ import { VitePWA } from 'vite-plugin-pwa'
 import path from 'path'
 
 export default defineConfig({
-  // Cache hors OneDrive pour éviter les blocages EPERM
-  cacheDir: 'C:/Users/tomro/AppData/Local/Temp/vite-pvpilot',
   plugins: [
     react(),
     VitePWA({
