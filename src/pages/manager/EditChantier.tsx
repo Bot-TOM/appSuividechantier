@@ -7,7 +7,10 @@ import { usePermissions } from '@/hooks/usePermissions'
 import { useAuth } from '@/contexts/AuthContext'
 import { ChantierStatut, Etape } from '@/types'
 import { useChantierFields } from '@/hooks/useChantierFields'
+import { useDocumentTemplates } from '@/hooks/useDocumentTemplates'
 import CustomFieldsSection from '@/components/chantier/CustomFieldsSection'
+import type { ChantierTemplateData, DocumentTemplate } from '@/types'
+import { Star, FileText, X } from 'lucide-react'
 
 const TYPES_INSTALLATION = [
   'Résidentiel',
@@ -35,7 +38,7 @@ const STATUTS: { value: ChantierStatut; label: string }[] = [
 ]
 
 interface EtapeEdit {
-  id: string          // UUID existant ou 'new-{timestamp}' pour les nouvelles
+  id: string
   nom: string
   ordre: number
   statut: Etape['statut']
@@ -43,6 +46,76 @@ interface EtapeEdit {
   isNew?: boolean
 }
 
+// ── Picker modal ──────────────────────────────────────────────────────────────
+function TemplatePicker({
+  templates,
+  onSelect,
+  onSkip,
+}: {
+  templates: DocumentTemplate[]
+  onSelect:  (tpl: DocumentTemplate) => void
+  onSkip:    () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-50 bg-black/50 flex items-end sm:items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+          <div>
+            <h2 className="font-bold text-gray-900 text-base">Changer le modèle de fiche</h2>
+            <p className="text-xs text-gray-400 mt-0.5">Sélectionnez le modèle adapté à ce chantier</p>
+          </div>
+          <button onClick={onSkip}
+            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:bg-gray-100 transition-colors">
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="p-4 space-y-2 max-h-80 overflow-y-auto">
+          {templates.map(tpl => {
+            const fields = (tpl.template_data as ChantierTemplateData).fields ?? []
+            return (
+              <button
+                key={tpl.id}
+                onClick={() => onSelect(tpl)}
+                className="w-full flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-orange-300 hover:bg-orange-50/30 transition-all text-left group"
+              >
+                <div className="w-10 h-10 rounded-xl bg-orange-50 flex items-center justify-center flex-shrink-0 group-hover:bg-orange-100 transition-colors">
+                  <FileText className="w-5 h-5 text-orange-500" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-sm text-gray-900 truncate">{tpl.name}</span>
+                    {tpl.is_default && (
+                      <span className="flex items-center gap-0.5 text-[10px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded-full flex-shrink-0">
+                        <Star className="w-2.5 h-2.5" /> Défaut
+                      </span>
+                    )}
+                  </div>
+                  {tpl.description && (
+                    <p className="text-xs text-gray-400 truncate">{tpl.description}</p>
+                  )}
+                  <p className="text-xs text-gray-400">
+                    {fields.length} champ{fields.length > 1 ? 's' : ''}
+                  </p>
+                </div>
+                <svg className="w-4 h-4 text-gray-300 group-hover:text-orange-500 flex-shrink-0 transition-colors" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
+            )
+          })}
+        </div>
+        <div className="px-4 pb-4">
+          <button onClick={onSkip}
+            className="w-full py-3 rounded-xl text-sm font-medium text-gray-500 border border-gray-200 hover:bg-gray-50 transition-colors">
+            Continuer sans modèle
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Page principale ───────────────────────────────────────────────────────────
 export default function EditChantier() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -50,8 +123,13 @@ export default function EditChantier() {
   const { profile } = useAuth()
   const { techniciens } = useTechniciens()
   const { assignedIds } = useChantierTechniciens(id!)
-  const { activeFields } = useChantierFields(profile?.entreprise_id)
+  const { activeFields: legacyFields } = useChantierFields(profile?.entreprise_id)
   const [customData, setCustomData] = useState<Record<string, unknown>>({})
+
+  // Templates
+  const { templates: chantierTemplates } = useDocumentTemplates(profile?.entreprise_id, 'chantier')
+  const [selectedTemplate, setSelectedTemplate] = useState<DocumentTemplate | null>(null)
+  const [pickerOpen, setPickerOpen]             = useState(false)
 
   const [loading, setLoading]       = useState(true)
   const [submitting, setSubmitting] = useState(false)
@@ -91,6 +169,11 @@ export default function EditChantier() {
         if (c.custom_data && typeof c.custom_data === 'object') {
           setCustomData(c.custom_data as Record<string, unknown>)
         }
+        // Pré-sélectionne le template existant du chantier
+        if (c.template_id && chantierTemplates.length > 0) {
+          const tpl = chantierTemplates.find(t => t.id === c.template_id) ?? null
+          setSelectedTemplate(tpl)
+        }
       }
       if (e) {
         setEtapes(e.map((etape: Etape) => ({
@@ -105,10 +188,30 @@ export default function EditChantier() {
     })
   }, [id])
 
+  // Ré-applique le template si les templates chargent après le chantier
+  useEffect(() => {
+    if (chantierTemplates.length === 0 || loading) return
+    supabase.from('chantiers').select('template_id').eq('id', id!).single()
+      .then(({ data }) => {
+        if (data?.template_id) {
+          const tpl = chantierTemplates.find(t => t.id === data.template_id) ?? null
+          setSelectedTemplate(tpl)
+        }
+      })
+  }, [chantierTemplates.length])
+
   // Pré-sélection techniciens
   useEffect(() => {
     if (assignedIds.length > 0) setSelectedTechs(assignedIds)
   }, [assignedIds.join(',')])
+
+  // Champs actifs = depuis template sélectionné, sinon ancien système
+  const templateFields = selectedTemplate
+    ? ((selectedTemplate.template_data as ChantierTemplateData).fields ?? [])
+        .filter(f => f.active !== false)
+        .map(f => ({ ...f, id: f.field_key, entreprise_id: profile?.entreprise_id ?? '', position: 0, created_at: '' }))
+    : null
+  const activeFields = templateFields ?? legacyFields
 
   function handleChange(e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -144,10 +247,9 @@ export default function EditChantier() {
     e.preventDefault()
     setError('')
     setSubmitting(true)
-    // Capture les assignations originales avant toute modification DB
     const originalAssignedIds = [...assignedIds]
 
-    // 1. Mettre à jour le chantier
+    // 1. Mettre à jour le chantier (avec template_id)
     const { error: errUpdate } = await supabase
       .from('chantiers')
       .update({
@@ -161,6 +263,7 @@ export default function EditChantier() {
         date_prevue: form.date_prevue,
         date_fin_prevue: form.date_fin_prevue || null,
         statut: form.statut,
+        template_id: selectedTemplate?.id ?? null,
         custom_data: Object.keys(customData).length > 0 ? customData : null,
         updated_at: new Date().toISOString(),
       })
@@ -175,9 +278,9 @@ export default function EditChantier() {
     await Promise.all(
       existantes.map(etape =>
         supabase.from('etapes').update({
-          nom:     etape.nom.trim(),
+          nom:      etape.nom.trim(),
           consigne: etape.consigne.trim() || null,
-          ordre:   etape.ordre,
+          ordre:    etape.ordre,
         }).eq('id', etape.id)
       )
     )
@@ -204,7 +307,6 @@ export default function EditChantier() {
       await supabase.from('chantier_techniciens').insert(
         selectedTechs.map(tid => ({ chantier_id: id, technicien_id: tid }))
       )
-      // Notification push uniquement aux techniciens nouvellement assignés
       const newlyAssigned = selectedTechs.filter(tid => !originalAssignedIds.includes(tid))
       if (newlyAssigned.length > 0) {
         supabase.functions.invoke('send-push', {
@@ -233,6 +335,16 @@ export default function EditChantier() {
 
   return (
     <div className="min-h-screen bg-[#F8FAFC]">
+
+      {/* Picker modal */}
+      {pickerOpen && chantierTemplates.length > 0 && (
+        <TemplatePicker
+          templates={chantierTemplates}
+          onSelect={tpl => { setSelectedTemplate(tpl); setCustomData({}); setPickerOpen(false) }}
+          onSkip={() => { setPickerOpen(false) }}
+        />
+      )}
+
       <header className="bg-white border-b border-gray-100 sticky top-0 z-10">
         <div className="max-w-2xl md:max-w-5xl mx-auto px-4 py-5 flex items-center gap-3">
           <button
@@ -245,6 +357,23 @@ export default function EditChantier() {
 
       <main className="max-w-2xl md:max-w-5xl mx-auto px-4 py-8">
         <form onSubmit={handleSubmit} className="space-y-5">
+
+          {/* ── Modèle sélectionné (badge) ─────────────────────────────────── */}
+          {chantierTemplates.length > 0 && (
+            <div className="flex items-center gap-3 px-4 py-3 bg-orange-50 rounded-xl border border-orange-100">
+              <FileText className="w-4 h-4 text-orange-500 flex-shrink-0" />
+              <p className="text-sm text-gray-700 flex-1">
+                Modèle :&nbsp;
+                <span className="font-semibold text-orange-700">
+                  {selectedTemplate ? selectedTemplate.name : 'Aucun'}
+                </span>
+              </p>
+              <button type="button" onClick={() => setPickerOpen(true)}
+                className="text-xs font-semibold text-orange-600 hover:text-orange-700 underline underline-offset-2">
+                Changer
+              </button>
+            </div>
+          )}
 
           {/* ── Informations chantier ──────────────────────────────────────── */}
           <section className="bg-white rounded-2xl p-6 space-y-4" style={{ boxShadow: '0 2px 8px rgba(0,0,0,0.07), 0 1px 2px rgba(0,0,0,0.04)' }}>
@@ -371,7 +500,6 @@ export default function EditChantier() {
               })}
             </div>
 
-            {/* Ajouter une étape */}
             <div className="flex gap-2 pt-1">
               <input
                 type="text"
