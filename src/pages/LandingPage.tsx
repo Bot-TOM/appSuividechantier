@@ -110,35 +110,6 @@ const STEPS = [
   },
 ]
 
-const PRICING = [
-  {
-    name: 'Starter',
-    price: 'Gratuit',
-    sub: 'Pour démarrer',
-    highlight: false,
-    features: ["1 chantier actif", "3 utilisateurs", "Suivi des étapes", "Chat d'équipe", "Rapport PDF basique"],
-    cta: 'Commencer gratuitement',
-    href: '/signup',
-  },
-  {
-    name: 'Pro',
-    price: '49€',
-    sub: '/mois · facturation mensuelle',
-    highlight: true,
-    features: ["Chantiers illimités", "10 utilisateurs", "Planning équipe & import Excel", "Rapport vocal assisté par IA", "Export Excel & PDF avancé", "Notifications push", "Gestion des anomalies", "Auto-contrôle terrain", "Import matériel IA"],
-    cta: 'Essayer 14 jours gratuits',
-    href: '/signup',
-  },
-  {
-    name: 'Business',
-    price: '99€',
-    sub: '/mois · facturation mensuelle',
-    highlight: false,
-    features: ["Utilisateurs illimités", "Chantiers illimités", "Tout ce qu'inclut Pro", "Multi-entreprise isolé", "Support prioritaire", "Onboarding personnalisé", "Facturation annuelle disponible"],
-    cta: "Contacter l'équipe",
-    href: 'mailto:contact@chantierpv.fr',
-  },
-]
 
 const FAQS = [
   { q: "Faut-il se former pour utiliser ChantierPV ?", a: "Non, l'application a été conçue pour être la plus intuitive possible. Un technicien peut la prendre en main en moins de 5 minutes sur le terrain." },
@@ -179,7 +150,7 @@ export default function LandingPage() {
 
             {/* Desktop nav */}
             <div className="hidden md:flex space-x-8">
-              {[['#fonctionnalites','Fonctionnalités'],['#apercu','Aperçu'],['#tarifs','Tarifs'],['#faq','FAQ']].map(([href, label]) => (
+              {[['#fonctionnalites','Fonctionnalités'],['#apercu','Aperçu'],['#beta','Accès bêta'],['#faq','FAQ']].map(([href, label]) => (
                 <a key={href} href={href} className="text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors">{label}</a>
               ))}
             </div>
@@ -202,7 +173,7 @@ export default function LandingPage() {
         {/* Mobile nav */}
         {mobileOpen && (
           <div className="md:hidden bg-white border-b border-slate-100 px-4 pt-2 pb-6 space-y-4 shadow-lg absolute w-full">
-            {[['#fonctionnalites','Fonctionnalités'],['#apercu','Aperçu'],['#tarifs','Tarifs'],['#faq','FAQ']].map(([href, label]) => (
+            {[['#fonctionnalites','Fonctionnalités'],['#apercu','Aperçu'],['#beta','Accès bêta'],['#faq','FAQ']].map(([href, label]) => (
               <a key={href} href={href} className="block text-base font-medium text-slate-600" onClick={() => setMobileOpen(false)}>{label}</a>
             ))}
             <div className="pt-4 flex flex-col space-y-3">
@@ -424,61 +395,44 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* ── Tarifs ────────────────────────────────────────────────────────── */}
-      <section id="tarifs" className="py-24 bg-slate-50 border-t border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <p className="text-orange-500 font-bold tracking-widest uppercase text-xs mb-3">Tarifs</p>
-            <h2 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-tight mb-4">Simple et transparent</h2>
-            <p className="text-lg text-slate-500 font-medium">Sans engagement. Annulez à tout moment.</p>
-          </div>
+      {/* ── Accès bêta ────────────────────────────────────────────────────── */}
+      <section id="beta" className="py-24 bg-slate-50 border-t border-slate-100">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <p className="text-orange-500 font-bold tracking-widest uppercase text-xs mb-3">Accès bêta</p>
+          <h2 className="text-3xl md:text-5xl font-bold text-slate-900 tracking-tight mb-4">
+            Rejoignez les premiers testeurs
+          </h2>
+          <p className="text-lg text-slate-500 font-medium max-w-2xl mx-auto mb-12">
+            ChantierPV est en phase bêta. On embarque un nombre limité d'entreprises PV pour affiner l'outil avec de vrais utilisateurs terrain. L'accès est <span className="text-slate-900 font-semibold">gratuit pendant toute la bêta</span>.
+          </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto items-center">
-            {PRICING.map(plan => (
-              <div key={plan.name}
-                className={`bg-white rounded-3xl p-8 flex flex-col h-full ${
-                  plan.highlight
-                    ? 'shadow-2xl shadow-orange-500/10 border-2 border-orange-500 relative md:-translate-y-4'
-                    : 'shadow-sm border border-slate-200'
-                }`}>
-
-                {plan.highlight && (
-                  <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-orange-500 text-white px-4 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest">
-                    Recommandé
-                  </div>
-                )}
-
-                <h3 className="text-xl font-bold text-slate-900 mb-2">{plan.name}</h3>
-                <div className="text-4xl font-black text-slate-900 mb-1">{plan.price}</div>
-                <p className="text-sm text-slate-500 font-medium mb-8">{plan.sub}</p>
-
-                <ul className="space-y-4 mb-8 flex-1">
-                  {plan.features.map((f, i) => (
-                    <li key={i} className="flex items-center text-slate-700 text-sm font-medium">
-                      <Check className="w-5 h-5 text-emerald-500 mr-3 shrink-0" />
-                      {f}
-                    </li>
-                  ))}
-                </ul>
-
-                {plan.href.startsWith('mailto') ? (
-                  <a href={plan.href}
-                    className="w-full block text-center bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-800 font-bold py-3.5 rounded-xl transition-colors">
-                    {plan.cta}
-                  </a>
-                ) : (
-                  <Link to={plan.href}
-                    className={`w-full block text-center font-bold py-3.5 rounded-xl transition-all ${
-                      plan.highlight
-                        ? 'bg-orange-500 hover:bg-orange-600 text-white shadow-md shadow-orange-500/20'
-                        : 'bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-800'
-                    }`}>
-                    {plan.cta}
-                  </Link>
-                )}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-14">
+            {[
+              { emoji: '🚀', title: 'Accès complet gratuit', desc: 'Toutes les fonctionnalités disponibles pendant la phase bêta, sans carte bancaire.' },
+              { emoji: '🎯', title: 'Conçu avec vous', desc: 'Vos retours terrain façonnent directement les prochaines évolutions. Vous êtes acteur du produit.' },
+              { emoji: '🔒', title: 'Tarif bêta garanti', desc: 'Les entreprises bêta bénéficieront d\'un tarif préférentiel lors du lancement commercial.' },
+            ].map((item) => (
+              <div key={item.title} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200 text-left">
+                <div className="text-3xl mb-3">{item.emoji}</div>
+                <h3 className="font-bold text-slate-900 mb-2">{item.title}</h3>
+                <p className="text-sm text-slate-500 font-medium leading-relaxed">{item.desc}</p>
               </div>
             ))}
           </div>
+
+          <div className="flex flex-col sm:flex-row justify-center gap-4">
+            <a
+              href="mailto:contact@chantierpv.fr?subject=Demande%20d%27acc%C3%A8s%20b%C3%AAta%20ChantierPV&body=Bonjour%2C%0A%0AJe%20suis%20int%C3%A9ress%C3%A9%20par%20un%20acc%C3%A8s%20b%C3%AAta%20%C3%A0%20ChantierPV.%0A%0ANom%20de%20l%27entreprise%20%3A%0ANombre%20de%20techniciens%20%3A%0ATel%20%3A%0A%0AMerci%20!"
+              className="bg-orange-500 hover:bg-orange-600 text-white px-8 py-4 rounded-full text-base font-bold transition-all shadow-lg shadow-orange-500/20 hover:shadow-orange-500/40 flex items-center justify-center gap-2">
+              Demander un accès bêta <ArrowRight className="w-4 h-4" />
+            </a>
+            <a
+              href="mailto:contact@chantierpv.fr?subject=Demande%20de%20d%C3%A9mo%20ChantierPV"
+              className="bg-white border-2 border-slate-200 hover:border-orange-300 text-slate-800 hover:text-orange-600 px-8 py-4 rounded-full text-base font-bold transition-all flex items-center justify-center">
+              Voir une démo en direct
+            </a>
+          </div>
+          <p className="text-slate-400 text-sm font-medium mt-6">Réponse sous 24h · Aucun engagement</p>
         </div>
       </section>
 
@@ -518,16 +472,16 @@ export default function LandingPage() {
             Prêt à moderniser la gestion de vos chantiers ?
           </h2>
           <p className="text-xl text-orange-100 mb-10 font-medium">
-            Rejoignez les installateurs PV qui ont dit adieu aux tableaux Excel et aux appels terrain.
+            Rejoignez les premiers installateurs PV qui testent ChantierPV et façonnent l'outil de demain.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <Link to="/signup"
+            <a href="mailto:contact@chantierpv.fr?subject=Demande%20d%27acc%C3%A8s%20b%C3%AAta%20ChantierPV&body=Bonjour%2C%0A%0AJe%20suis%20int%C3%A9ress%C3%A9%20par%20un%20acc%C3%A8s%20b%C3%AAta%20%C3%A0%20ChantierPV.%0A%0ANom%20de%20l%27entreprise%20%3A%0ANombre%20de%20techniciens%20%3A%0ATel%20%3A%0A%0AMerci%20!"
               className="bg-white text-orange-600 hover:bg-orange-50 px-8 py-4 rounded-full text-base font-bold transition-all shadow-lg hover:shadow-xl flex items-center justify-center">
-              Commencer gratuitement <ArrowRight className="w-4 h-4 ml-2" />
-            </Link>
-            <a href="mailto:contact@chantierpv.fr"
+              Demander un accès bêta <ArrowRight className="w-4 h-4 ml-2" />
+            </a>
+            <a href="mailto:contact@chantierpv.fr?subject=Demande%20de%20d%C3%A9mo%20ChantierPV"
               className="bg-transparent border-2 border-white/30 text-white hover:bg-white/10 px-8 py-4 rounded-full text-base font-bold transition-all flex items-center justify-center">
-              Demander une démo
+              Voir une démo en direct
             </a>
           </div>
         </div>
@@ -554,7 +508,7 @@ export default function LandingPage() {
               <ul className="space-y-3">
                 <li><a href="#fonctionnalites" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">Fonctionnalités</a></li>
                 <li><a href="#apercu" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">Aperçu</a></li>
-                <li><a href="#tarifs" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">Tarifs</a></li>
+                <li><a href="#beta" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">Accès bêta</a></li>
                 <li><Link to="/signup" className="text-slate-400 hover:text-white transition-colors text-sm font-medium">Inscription</Link></li>
               </ul>
             </div>
