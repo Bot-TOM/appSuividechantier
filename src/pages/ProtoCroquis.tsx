@@ -284,8 +284,9 @@ export default function ProtoCroquis() {
 
   function onPointerDown(e: React.PointerEvent) {
     e.preventDefault()
-    ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
     pointersRef.current.set(e.pointerId, toScreen(e))
+    // setPointerCapture peut lever une exception (pointeur déjà levé, id inconnu…)
+    try { (e.target as HTMLElement).setPointerCapture(e.pointerId) } catch { /* non bloquant */ }
 
     // Deuxième doigt → pincement : on abandonne le tracé en cours
     if (pointersRef.current.size === 2) {
