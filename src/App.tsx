@@ -23,6 +23,8 @@ const VTEdit = lazy(() => import('@/pages/VTEdit'))
 const CGUPage = lazy(() => import('@/pages/CGUPage'))
 const ConfidentialitePage = lazy(() => import('@/pages/ConfidentialitePage'))
 const UpgradeSuccessPage = lazy(() => import('@/pages/UpgradeSuccessPage'))
+// Prototype isolé (URL cachée, aucun lien dans l'app) — à retirer après validation
+const ProtoCroquis = lazy(() => import('@/pages/ProtoCroquis'))
 
 // Même spinner que le chargement initial dans index.html
 function PageLoader() {
@@ -84,6 +86,7 @@ export default function App() {
             <Route path="/cgu" element={<CGUPage />} />
             <Route path="/confidentialite" element={<ConfidentialitePage />} />
             <Route path="/upgrade/success" element={<UpgradeSuccessPage />} />
+            <Route path="/proto-croquis" element={<ProtoCroquis />} />
             <Route path="*" element={<Navigate to="/login" replace />} />
           </Routes>
         </Suspense>
