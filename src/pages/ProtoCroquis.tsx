@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pencil, Square, Slash, Move, Eraser, Undo2, Trash2, Camera, X, Download, Check } from 'lucide-react'
+import { Pencil, Square, Slash, Move, Eraser, Undo2, Trash2, Camera, X, Download, Check, Maximize } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROTOTYPE — Croquis de calepinage sur chantier
@@ -11,15 +11,22 @@ type Tool = 'pen' | 'rect' | 'line' | 'move' | 'eraser'
 
 interface Point { x: number; y: number }
 
+interface Label { text: string; pos: Point }
+
 interface Stroke {
   tool: Tool
   color: string
   width: number
   points: Point[] // pen/eraser : tracé ; rect/line : [point départ, point arrivée]
+  label?: Label   // cote affichée (lignes principalement), déplaçable
 }
 
 const COLORS = ['#1e293b', '#ef4444', '#3b82f6', '#f97316']
 const WIDTHS = [2, 4, 7]
+
+// Coordonnées logiques 1000x1414 (ratio A4 portrait) quelle que soit la taille écran
+const LOGICAL_W = 1000
+const LOGICAL_H = 1414
 
 export default function ProtoCroquis() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -35,27 +42,32 @@ export default function ProtoCroquis() {
   const [width, setWidth] = useState(WIDTHS[1])
   const [photo, setPhoto] = useState<HTMLImageElement | null>(null)
   const [exportUrl, setExportUrl] = useState<string | null>(null)
+  const [zoomed, setZoomed] = useState(false)
 
-  // Coordonnées logiques 1000x1414 (ratio A4 portrait) quelle que soit la taille écran
-  const LOGICAL_W = 1000
-  const LOGICAL_H = 1414
+  // Édition de cote : indice du trait + texte en cours de saisie
+  const [labelEdit, setLabelEdit] = useState<{ index: number; text: string } | null>(null)
 
-  function getCtx() {
-    const canvas = canvasRef.current
-    if (!canvas) return null
-    return canvas.getContext('2d')
-  }
+  // Vue : zoom (s) et déplacement (tx, ty) en unités logiques
+  const viewRef = useRef({ s: 1, tx: 0, ty: 0 })
+  // Doigts posés (pour le pincement à deux doigts)
+  const pointersRef = useRef(new Map<number, Point>())
+  const pinchRef = useRef<{ d0: number; s0: number; m0: Point; t0: Point } | null>(null)
+
+  function getCanvas() { return canvasRef.current }
+
+  // ── Rendu ──────────────────────────────────────────────────────────────────
 
   function drawScene(ctx: CanvasRenderingContext2D, all: Stroke[], live: Stroke | null) {
     const bg = photoRef.current
-    ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H)
 
-    // Fond : blanc, puis photo éventuelle, puis quadrillage léger
+    // Page blanche avec bord léger (le fond gris apparaît quand on dézoome)
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
+    ctx.strokeStyle = '#cbd5e1'
+    ctx.lineWidth = 2
+    ctx.strokeRect(0, 0, LOGICAL_W, LOGICAL_H)
 
     if (bg) {
-      // Photo ajustée pour tenir entière (contain), centrée
       const scale = Math.min(LOGICAL_W / bg.width, LOGICAL_H / bg.height)
       const w = bg.width * scale
       const h = bg.height * scale
@@ -75,6 +87,7 @@ export default function ProtoCroquis() {
     }
 
     for (const s of [...all, ...(live ? [live] : [])]) drawStroke(ctx, s)
+    for (const s of all) if (s.label) drawLabel(ctx, s.label, s.color)
   }
 
   function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
@@ -128,9 +141,45 @@ export default function ProtoCroquis() {
     ctx.stroke()
   }
 
+  function labelBox(ctx: CanvasRenderingContext2D, label: Label) {
+    ctx.font = '600 30px system-ui, sans-serif'
+    const w = ctx.measureText(label.text).width + 24
+    const h = 44
+    return { x: label.pos.x - w / 2, y: label.pos.y - h / 2, w, h }
+  }
+
+  function drawLabel(ctx: CanvasRenderingContext2D, label: Label, color: string) {
+    const b = labelBox(ctx, label)
+    ctx.fillStyle = 'rgba(255,255,255,0.92)'
+    ctx.strokeStyle = 'rgba(148,163,184,0.6)'
+    ctx.lineWidth = 1.5
+    ctx.beginPath()
+    // roundRect n'est pas dispo partout : rectangle simple aux coins légèrement arrondis via arc
+    ctx.roundRect ? ctx.roundRect(b.x, b.y, b.w, b.h, 10) : ctx.rect(b.x, b.y, b.w, b.h)
+    ctx.fill()
+    ctx.stroke()
+    ctx.fillStyle = color
+    ctx.font = '600 30px system-ui, sans-serif'
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(label.text, label.pos.x, label.pos.y + 2)
+    ctx.textAlign = 'start'
+    ctx.textBaseline = 'alphabetic'
+  }
+
   function redraw() {
-    const ctx = getCtx()
-    if (ctx) drawScene(ctx, strokesRef.current, currentRef.current)
+    const canvas = getCanvas()
+    const ctx = canvas?.getContext('2d')
+    if (!canvas || !ctx) return
+    const b = canvas.width / LOGICAL_W
+    const v = viewRef.current
+    // Fond gris hors page (visible en dézoom)
+    ctx.setTransform(1, 0, 0, 1, 0, 0)
+    ctx.fillStyle = '#e2e8f0'
+    ctx.fillRect(0, 0, canvas.width, canvas.height)
+    // Transformation vue : zoom + déplacement
+    ctx.setTransform(b * v.s, 0, 0, b * v.s, b * v.tx * v.s, b * v.ty * v.s)
+    drawScene(ctx, strokesRef.current, currentRef.current)
   }
 
   // Garde les refs en phase avec le state, puis redessine
@@ -143,28 +192,27 @@ export default function ProtoCroquis() {
   // Canvas net sur écrans haute densité, redimensionné avec la fenêtre
   useEffect(() => {
     function resize() {
-      const canvas = canvasRef.current
+      const canvas = getCanvas()
       const wrap = wrapRef.current
       if (!canvas || !wrap) return
       const rect = wrap.getBoundingClientRect()
       const dpr = window.devicePixelRatio || 1
-      canvas.width = LOGICAL_W * dpr * (rect.width / LOGICAL_W)
-      canvas.height = LOGICAL_H * dpr * (rect.width / LOGICAL_W)
+      canvas.width = rect.width * dpr
+      canvas.height = rect.width * (LOGICAL_H / LOGICAL_W) * dpr
       canvas.style.width = `${rect.width}px`
       canvas.style.height = `${rect.width * (LOGICAL_H / LOGICAL_W)}px`
-      const ctx = canvas.getContext('2d')
-      if (ctx) {
-        ctx.setTransform((canvas.width / LOGICAL_W), 0, 0, (canvas.height / LOGICAL_H), 0, 0)
-        drawScene(ctx, strokesRef.current, currentRef.current)
-      }
+      redraw()
     }
     resize()
     window.addEventListener('resize', resize)
     return () => window.removeEventListener('resize', resize)
   }, [])
 
-  function toLogical(e: React.PointerEvent): Point {
-    const canvas = canvasRef.current!
+  // ── Coordonnées ────────────────────────────────────────────────────────────
+
+  // Position écran en "unités logiques écran" (avant zoom/déplacement)
+  function toScreen(e: { clientX: number; clientY: number }): Point {
+    const canvas = getCanvas()!
     const rect = canvas.getBoundingClientRect()
     return {
       x: ((e.clientX - rect.left) / rect.width) * LOGICAL_W,
@@ -172,20 +220,40 @@ export default function ProtoCroquis() {
     }
   }
 
-  // Déplacement : indice de la forme attrapée + dernière position du doigt
-  const moveRef = useRef<{ index: number; last: Point } | null>(null)
+  // Position dans le repère du dessin (tient compte du zoom/déplacement)
+  function toLogical(e: { clientX: number; clientY: number }): Point {
+    const p = toScreen(e)
+    const v = viewRef.current
+    return { x: p.x / v.s - v.tx, y: p.y / v.s - v.ty }
+  }
+
+  // ── Détection de forme sous le doigt ───────────────────────────────────────
 
   function distToSegment(p: Point, a: Point, b: Point) {
     const dx = b.x - a.x, dy = b.y - a.y
     const len2 = dx * dx + dy * dy
     const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2))
-    const px = a.x + t * dx, py = a.y + t * dy
-    return Math.hypot(p.x - px, p.y - py)
+    return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
   }
 
-  // Trouve la forme sous le doigt (la plus récente d'abord), marge tactile 20px
+  // Cote sous le doigt ? (prioritaire sur les formes)
+  function hitTestLabel(p: Point): number {
+    const ctx = getCanvas()?.getContext('2d')
+    if (!ctx) return -1
+    const list = strokesRef.current
+    for (let i = list.length - 1; i >= 0; i--) {
+      const l = list[i].label
+      if (!l) continue
+      const b = labelBox(ctx, l)
+      const M = 10 / viewRef.current.s
+      if (p.x > b.x - M && p.x < b.x + b.w + M && p.y > b.y - M && p.y < b.y + b.h + M) return i
+    }
+    return -1
+  }
+
+  // Forme sous le doigt (la plus récente d'abord), marge tactile constante à l'écran
   function hitTest(p: Point): number {
-    const HIT = 20
+    const HIT = 20 / viewRef.current.s
     const list = strokesRef.current
     for (let i = list.length - 1; i >= 0; i--) {
       const s = list[i]
@@ -209,14 +277,42 @@ export default function ProtoCroquis() {
     return -1
   }
 
+  // ── Interactions ───────────────────────────────────────────────────────────
+
+  // Déplacement : forme ou cote attrapée + suivi pour distinguer "tap" et "glisser"
+  const moveRef = useRef<{ index: number; last: Point; kind: 'shape' | 'label'; start: Point; t0: number } | null>(null)
+
   function onPointerDown(e: React.PointerEvent) {
     e.preventDefault()
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
+    pointersRef.current.set(e.pointerId, toScreen(e))
+
+    // Deuxième doigt → pincement : on abandonne le tracé en cours
+    if (pointersRef.current.size === 2) {
+      currentRef.current = null
+      moveRef.current = null
+      const [p1, p2] = [...pointersRef.current.values()]
+      const v = viewRef.current
+      pinchRef.current = {
+        d0: Math.hypot(p2.x - p1.x, p2.y - p1.y),
+        s0: v.s,
+        m0: { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 },
+        t0: { x: v.tx, y: v.ty },
+      }
+      redraw()
+      return
+    }
+
     const p = toLogical(e)
 
     if (tool === 'move') {
+      const li = hitTestLabel(p)
+      if (li >= 0) {
+        moveRef.current = { index: li, last: p, kind: 'label', start: p, t0: Date.now() }
+        return
+      }
       const i = hitTest(p)
-      if (i >= 0) moveRef.current = { index: i, last: p }
+      if (i >= 0) moveRef.current = { index: i, last: p, kind: 'shape', start: p, t0: Date.now() }
       return
     }
 
@@ -226,14 +322,37 @@ export default function ProtoCroquis() {
 
   function onPointerMove(e: React.PointerEvent) {
     e.preventDefault()
+    if (pointersRef.current.has(e.pointerId)) pointersRef.current.set(e.pointerId, toScreen(e))
+
+    // Pincement en cours : zoom autour du milieu des deux doigts
+    const pinch = pinchRef.current
+    if (pinch && pointersRef.current.size >= 2) {
+      const [p1, p2] = [...pointersRef.current.values()]
+      const d = Math.hypot(p2.x - p1.x, p2.y - p1.y)
+      const m = { x: (p1.x + p2.x) / 2, y: (p1.y + p2.y) / 2 }
+      const s = Math.min(4, Math.max(0.4, pinch.s0 * (d / Math.max(pinch.d0, 1))))
+      // Le point du dessin sous le milieu des doigts reste sous les doigts
+      const lx = pinch.m0.x / pinch.s0 - pinch.t0.x
+      const ly = pinch.m0.y / pinch.s0 - pinch.t0.y
+      viewRef.current = { s, tx: m.x / s - lx, ty: m.y / s - ly }
+      setZoomed(Math.abs(s - 1) > 0.01 || Math.abs(viewRef.current.tx) > 1 || Math.abs(viewRef.current.ty) > 1)
+      redraw()
+      return
+    }
+
     const p = toLogical(e)
 
-    // Déplacement d'une forme existante
+    // Déplacement d'une forme ou d'une cote
     const mv = moveRef.current
     if (mv) {
       const dx = p.x - mv.last.x, dy = p.y - mv.last.y
       const s = strokesRef.current[mv.index]
-      s.points = s.points.map(pt => ({ x: pt.x + dx, y: pt.y + dy }))
+      if (mv.kind === 'label' && s.label) {
+        s.label.pos = { x: s.label.pos.x + dx, y: s.label.pos.y + dy }
+      } else {
+        s.points = s.points.map(pt => ({ x: pt.x + dx, y: pt.y + dy }))
+        if (s.label) s.label.pos = { x: s.label.pos.x + dx, y: s.label.pos.y + dy }
+      }
       mv.last = p
       redraw()
       return
@@ -256,23 +375,62 @@ export default function ProtoCroquis() {
     redraw()
   }
 
-  function onPointerUp() {
-    if (moveRef.current) {
+  function onPointerUp(e: React.PointerEvent) {
+    pointersRef.current.delete(e.pointerId)
+    if (pointersRef.current.size < 2) pinchRef.current = null
+
+    const mv = moveRef.current
+    if (mv) {
       moveRef.current = null
-      // Persiste le déplacement dans le state (la ref a déjà bougé)
+      const moved = Math.hypot(mv.last.x - mv.start.x, mv.last.y - mv.start.y)
+      // Tap bref sur une cote (sans la déplacer) → édition du texte
+      if (mv.kind === 'label' && moved < 8 && Date.now() - mv.t0 < 400) {
+        setLabelEdit({ index: mv.index, text: strokesRef.current[mv.index].label?.text ?? '' })
+      }
       setStrokes([...strokesRef.current])
       return
     }
+
     const c = currentRef.current
     if (!c) return
     currentRef.current = null
+
+    // Ligne terminée → proposer la cote (positionnée sous le milieu de la ligne)
+    if (c.tool === 'line' && c.points.length >= 2) {
+      const [a, b] = [c.points[0], c.points[c.points.length - 1]]
+      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
+      // Décalage perpendiculaire pour placer la cote "sous" la ligne
+      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1
+      const off = 42
+      c.label = { text: '', pos: { x: mid.x - ((b.y - a.y) / len) * -off, y: mid.y + ((b.x - a.x) / len) * off } }
+      const nextIndex = strokesRef.current.length
+      setStrokes(s => [...s, c])
+      setLabelEdit({ index: nextIndex, text: '' })
+      return
+    }
+
     setStrokes(s => [...s, c])
+  }
+
+  function applyLabel(index: number, rawText: string) {
+    const text = rawText.trim()
+    setStrokes(s => s.map((st, i) => {
+      if (i !== index) return st
+      if (!text) return { ...st, label: undefined }
+      return { ...st, label: { text, pos: st.label?.pos ?? { x: LOGICAL_W / 2, y: LOGICAL_H / 2 } } }
+    }))
+    setLabelEdit(null)
   }
 
   function undo() { setStrokes(s => s.slice(0, -1)) }
   function clearAll() {
     if (strokes.length && !window.confirm('Effacer tout le croquis ?')) return
     setStrokes([]); setPhoto(null)
+  }
+  function resetView() {
+    viewRef.current = { s: 1, tx: 0, ty: 0 }
+    setZoomed(false)
+    redraw()
   }
 
   function onPhotoPick(e: React.ChangeEvent<HTMLInputElement>) {
@@ -285,12 +443,12 @@ export default function ProtoCroquis() {
   }
 
   function exportPng() {
-    // Rendu propre en pleine résolution logique, indépendant de l'écran
+    // Rendu propre en pleine résolution logique, indépendant du zoom écran
     const off = document.createElement('canvas')
     off.width = LOGICAL_W
     off.height = LOGICAL_H
     const ctx = off.getContext('2d')!
-    drawScene(ctx, strokes, null)
+    drawScene(ctx, strokesRef.current, null)
     off.toBlob(blob => {
       if (blob) setExportUrl(URL.createObjectURL(blob))
     }, 'image/png')
@@ -343,6 +501,11 @@ export default function ProtoCroquis() {
 
         <div className="flex-1" />
 
+        {zoomed && (
+          <button onClick={resetView} className={`${toolBtn(false)}`} aria-label="Recentrer la vue">
+            <Maximize className="w-5 h-5" />
+          </button>
+        )}
         <label className={`${toolBtn(false)} cursor-pointer`} aria-label="Photo de fond">
           <Camera className="w-5 h-5" />
           <input type="file" accept="image/*" className="hidden" onChange={onPhotoPick} />
@@ -371,9 +534,39 @@ export default function ProtoCroquis() {
           onPointerCancel={onPointerUp}
         />
         <p className="text-center text-xs text-slate-400 font-medium py-3">
-          ✏️ Stylo · ⬜ Rectangle (panneaux) · ╱ Ligne droite (s'aimante à l'horizontale/verticale) · ✥ Déplacer une forme · 📷 Photo en fond
+          ✏️ Stylo · ⬜ Rectangle (panneaux) · ╱ Ligne droite avec cote · ✥ Déplacer formes et cotes · 🤏 Pince à deux doigts pour zoomer/dézoomer
         </p>
       </div>
+
+      {/* Saisie de cote */}
+      {labelEdit && (
+        <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end sm:items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl">
+            <h2 className="font-bold text-slate-900 mb-1">Cote de la ligne</h2>
+            <p className="text-xs text-slate-400 font-medium mb-4">Laisse vide si tu ne veux pas de cote. Tu pourras la déplacer avec l'outil ✥.</p>
+            <input
+              autoFocus
+              type="text"
+              inputMode="decimal"
+              placeholder="ex : 5,35 m"
+              value={labelEdit.text}
+              onChange={e => setLabelEdit(le => le ? { ...le, text: e.target.value } : le)}
+              onKeyDown={e => { if (e.key === 'Enter') applyLabel(labelEdit.index, labelEdit.text) }}
+              className="w-full border-2 border-slate-200 focus:border-orange-400 rounded-xl px-4 py-3 text-lg font-semibold text-slate-900 outline-none transition-colors"
+            />
+            <div className="flex gap-3 mt-4">
+              <button onClick={() => applyLabel(labelEdit.index, '')}
+                className="flex-1 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">
+                Sans cote
+              </button>
+              <button onClick={() => applyLabel(labelEdit.index, labelEdit.text)}
+                className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl shadow-md transition-colors">
+                Valider
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Aperçu export */}
       {exportUrl && (
