@@ -25,7 +25,11 @@ export default function ProtoCroquis() {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const wrapRef = useRef<HTMLDivElement>(null)
   const [strokes, setStrokes] = useState<Stroke[]>([])
-  const [current, setCurrent] = useState<Stroke | null>(null)
+  // Le tracé en cours vit dans une ref (pas un state) : les pointermove arrivent
+  // plus vite que les re-rendus React et perdraient des points sinon.
+  const currentRef = useRef<Stroke | null>(null)
+  const strokesRef = useRef<Stroke[]>([])
+  const photoRef = useRef<HTMLImageElement | null>(null)
   const [tool, setTool] = useState<Tool>('pen')
   const [color, setColor] = useState(COLORS[0])
   const [width, setWidth] = useState(WIDTHS[1])
@@ -43,24 +47,25 @@ export default function ProtoCroquis() {
   }
 
   function drawScene(ctx: CanvasRenderingContext2D, all: Stroke[], live: Stroke | null) {
+    const bg = photoRef.current
     ctx.clearRect(0, 0, LOGICAL_W, LOGICAL_H)
 
     // Fond : blanc, puis photo éventuelle, puis quadrillage léger
     ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
 
-    if (photo) {
+    if (bg) {
       // Photo ajustée pour tenir entière (contain), centrée
-      const scale = Math.min(LOGICAL_W / photo.width, LOGICAL_H / photo.height)
-      const w = photo.width * scale
-      const h = photo.height * scale
+      const scale = Math.min(LOGICAL_W / bg.width, LOGICAL_H / bg.height)
+      const w = bg.width * scale
+      const h = bg.height * scale
       ctx.globalAlpha = 0.9
-      ctx.drawImage(photo, (LOGICAL_W - w) / 2, (LOGICAL_H - h) / 2, w, h)
+      ctx.drawImage(bg, (LOGICAL_W - w) / 2, (LOGICAL_H - h) / 2, w, h)
       ctx.globalAlpha = 1
     }
 
     // Quadrillage 50px logique (plus discret sur photo)
-    ctx.strokeStyle = photo ? 'rgba(100,116,139,0.18)' : 'rgba(100,116,139,0.25)'
+    ctx.strokeStyle = bg ? 'rgba(100,116,139,0.18)' : 'rgba(100,116,139,0.25)'
     ctx.lineWidth = 1
     for (let x = 0; x <= LOGICAL_W; x += 50) {
       ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, LOGICAL_H); ctx.stroke()
@@ -111,11 +116,17 @@ export default function ProtoCroquis() {
     ctx.stroke()
   }
 
-  // Redessine à chaque changement
-  useEffect(() => {
+  function redraw() {
     const ctx = getCtx()
-    if (ctx) drawScene(ctx, strokes, current)
-  }, [strokes, current, photo])
+    if (ctx) drawScene(ctx, strokesRef.current, currentRef.current)
+  }
+
+  // Garde les refs en phase avec le state, puis redessine
+  useEffect(() => {
+    strokesRef.current = strokes
+    photoRef.current = photo
+    redraw()
+  }, [strokes, photo])
 
   // Canvas net sur écrans haute densité, redimensionné avec la fenêtre
   useEffect(() => {
@@ -132,13 +143,13 @@ export default function ProtoCroquis() {
       const ctx = canvas.getContext('2d')
       if (ctx) {
         ctx.setTransform((canvas.width / LOGICAL_W), 0, 0, (canvas.height / LOGICAL_H), 0, 0)
-        drawScene(ctx, strokes, current)
+        drawScene(ctx, strokesRef.current, currentRef.current)
       }
     }
     resize()
     window.addEventListener('resize', resize)
     return () => window.removeEventListener('resize', resize)
-  }, [strokes, current, photo])
+  }, [])
 
   function toLogical(e: React.PointerEvent): Point {
     const canvas = canvasRef.current!
@@ -152,20 +163,25 @@ export default function ProtoCroquis() {
   function onPointerDown(e: React.PointerEvent) {
     e.preventDefault()
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-    setCurrent({ tool, color, width, points: [toLogical(e)] })
+    currentRef.current = { tool, color, width, points: [toLogical(e)] }
+    redraw()
   }
 
   function onPointerMove(e: React.PointerEvent) {
-    if (!current) return
+    const c = currentRef.current
+    if (!c) return
     e.preventDefault()
     const p = toLogical(e)
-    setCurrent(c => c ? { ...c, points: tool === 'rect' ? [c.points[0], p] : [...c.points, p] } : c)
+    if (c.tool === 'rect') c.points = [c.points[0], p]
+    else c.points.push(p)
+    redraw()
   }
 
   function onPointerUp() {
-    if (!current) return
-    setStrokes(s => [...s, current])
-    setCurrent(null)
+    const c = currentRef.current
+    if (!c) return
+    currentRef.current = null
+    setStrokes(s => [...s, c])
   }
 
   function undo() { setStrokes(s => s.slice(0, -1)) }
