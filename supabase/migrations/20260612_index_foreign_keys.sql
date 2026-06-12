@@ -1,0 +1,52 @@
+-- Index sur les 48 clés étrangères non indexées (Performance Advisor).
+-- Sans index, chaque jointure ou suppression en cascade scanne la table entière.
+-- Aucun impact fonctionnel : un index ne change que la vitesse.
+
+CREATE INDEX IF NOT EXISTS idx_access_codes_created_by        ON public.access_codes (created_by);
+CREATE INDEX IF NOT EXISTS idx_access_codes_used_by           ON public.access_codes (used_by);
+CREATE INDEX IF NOT EXISTS idx_anomalies_chantier_id          ON public.anomalies (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_anomalies_technicien_id        ON public.anomalies (technicien_id);
+CREATE INDEX IF NOT EXISTS idx_autocontrole_chantier_id       ON public.autocontrole (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_autocontrole_technicien_id     ON public.autocontrole (technicien_id);
+CREATE INDEX IF NOT EXISTS idx_bug_reports_entreprise_id      ON public.bug_reports (entreprise_id);
+CREATE INDEX IF NOT EXISTS idx_bug_reports_user_id            ON public.bug_reports (user_id);
+CREATE INDEX IF NOT EXISTS idx_chantier_techniciens_technicien_id ON public.chantier_techniciens (technicien_id);
+CREATE INDEX IF NOT EXISTS idx_chantiers_entreprise_id        ON public.chantiers (entreprise_id);
+CREATE INDEX IF NOT EXISTS idx_chantiers_template_id          ON public.chantiers (template_id);
+CREATE INDEX IF NOT EXISTS idx_chantiers_vt_id                ON public.chantiers (vt_id);
+CREATE INDEX IF NOT EXISTS idx_chat_group_members_user_id     ON public.chat_group_members (user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_groups_created_by         ON public.chat_groups (created_by);
+CREATE INDEX IF NOT EXISTS idx_chat_groups_entreprise_id      ON public.chat_groups (entreprise_id);
+CREATE INDEX IF NOT EXISTS idx_checklist_materiel_chantier_id ON public.checklist_materiel (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_document_templates_entreprise_id ON public.document_templates (entreprise_id);
+CREATE INDEX IF NOT EXISTS idx_documents_chantier_id          ON public.documents (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_documents_uploaded_by          ON public.documents (uploaded_by);
+CREATE INDEX IF NOT EXISTS idx_etape_photos_chantier_id       ON public.etape_photos (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_etape_photos_etape_id          ON public.etape_photos (etape_id);
+CREATE INDEX IF NOT EXISTS idx_etapes_chantier_id             ON public.etapes (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_global_message_reactions_user_id ON public.global_message_reactions (user_id);
+CREATE INDEX IF NOT EXISTS idx_global_messages_reply_to_id    ON public.global_messages (reply_to_id);
+CREATE INDEX IF NOT EXISTS idx_global_messages_user_id        ON public.global_messages (user_id);
+CREATE INDEX IF NOT EXISTS idx_group_message_reactions_user_id ON public.group_message_reactions (user_id);
+CREATE INDEX IF NOT EXISTS idx_group_messages_group_id        ON public.group_messages (group_id);
+CREATE INDEX IF NOT EXISTS idx_group_messages_reply_to_id     ON public.group_messages (reply_to_id);
+CREATE INDEX IF NOT EXISTS idx_group_messages_user_id         ON public.group_messages (user_id);
+CREATE INDEX IF NOT EXISTS idx_message_reactions_user_id      ON public.message_reactions (user_id);
+CREATE INDEX IF NOT EXISTS idx_message_reads_user_id          ON public.message_reads (user_id);
+CREATE INDEX IF NOT EXISTS idx_messages_reply_to_id           ON public.messages (reply_to_id);
+CREATE INDEX IF NOT EXISTS idx_messages_user_id               ON public.messages (user_id);
+CREATE INDEX IF NOT EXISTS idx_notes_chantier_id              ON public.notes (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_notes_technicien_id            ON public.notes (technicien_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_chantier_id      ON public.notifications (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_manager_id       ON public.notifications (manager_id);
+CREATE INDEX IF NOT EXISTS idx_planning_entries_chantier_id   ON public.planning_entries (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_profiles_entreprise_id         ON public.profiles (entreprise_id);
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_user_id     ON public.push_subscriptions (user_id);
+CREATE INDEX IF NOT EXISTS idx_rapport_photos_chantier_id     ON public.rapport_photos (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_rapport_photos_rapport_id      ON public.rapport_photos (rapport_id);
+CREATE INDEX IF NOT EXISTS idx_rapports_auteur_id             ON public.rapports (auteur_id);
+CREATE INDEX IF NOT EXISTS idx_rapports_chantier_id           ON public.rapports (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_time_entries_chantier_id       ON public.time_entries (chantier_id);
+CREATE INDEX IF NOT EXISTS idx_visites_techniques_technicien_id ON public.visites_techniques (technicien_id);
+CREATE INDEX IF NOT EXISTS idx_visites_techniques_template_id ON public.visites_techniques (template_id);
+CREATE INDEX IF NOT EXISTS idx_visites_techniques_valide_par  ON public.visites_techniques (valide_par);
