@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pencil, Square, Eraser, Undo2, Trash2, Camera, X, Download, Check } from 'lucide-react'
+import { Pencil, Square, Slash, Move, Eraser, Undo2, Trash2, Camera, X, Download, Check } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROTOTYPE — Croquis de calepinage sur chantier
@@ -7,7 +7,7 @@ import { Pencil, Square, Eraser, Undo2, Trash2, Camera, X, Download, Check } fro
 // Aucune écriture en base : le résultat s'exporte en PNG localement.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Tool = 'pen' | 'rect' | 'eraser'
+type Tool = 'pen' | 'rect' | 'line' | 'move' | 'eraser'
 
 interface Point { x: number; y: number }
 
@@ -15,7 +15,7 @@ interface Stroke {
   tool: Tool
   color: string
   width: number
-  points: Point[] // pen/eraser : tracé ; rect : [coin départ, coin opposé]
+  points: Point[] // pen/eraser : tracé ; rect/line : [point départ, point arrivée]
 }
 
 const COLORS = ['#1e293b', '#ef4444', '#3b82f6', '#f97316']
@@ -90,6 +90,18 @@ export default function ProtoCroquis() {
       return
     }
 
+    if (s.tool === 'line') {
+      if (s.points.length < 2) return
+      const [a, b] = [s.points[0], s.points[s.points.length - 1]]
+      ctx.strokeStyle = s.color
+      ctx.lineWidth = s.width
+      ctx.beginPath()
+      ctx.moveTo(a.x, a.y)
+      ctx.lineTo(b.x, b.y)
+      ctx.stroke()
+      return
+    }
+
     // Gomme = tracé blanc épais ; stylo = couleur choisie
     ctx.strokeStyle = s.tool === 'eraser' ? '#ffffff' : s.color
     ctx.lineWidth = s.tool === 'eraser' ? 28 : s.width
@@ -160,24 +172,97 @@ export default function ProtoCroquis() {
     }
   }
 
+  // Déplacement : indice de la forme attrapée + dernière position du doigt
+  const moveRef = useRef<{ index: number; last: Point } | null>(null)
+
+  function distToSegment(p: Point, a: Point, b: Point) {
+    const dx = b.x - a.x, dy = b.y - a.y
+    const len2 = dx * dx + dy * dy
+    const t = len2 === 0 ? 0 : Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len2))
+    const px = a.x + t * dx, py = a.y + t * dy
+    return Math.hypot(p.x - px, p.y - py)
+  }
+
+  // Trouve la forme sous le doigt (la plus récente d'abord), marge tactile 20px
+  function hitTest(p: Point): number {
+    const HIT = 20
+    const list = strokesRef.current
+    for (let i = list.length - 1; i >= 0; i--) {
+      const s = list[i]
+      if (s.points.length < 2) continue
+      const [a, b] = [s.points[0], s.points[s.points.length - 1]]
+      if (s.tool === 'rect') {
+        const x1 = Math.min(a.x, b.x), x2 = Math.max(a.x, b.x)
+        const y1 = Math.min(a.y, b.y), y2 = Math.max(a.y, b.y)
+        // Sur un bord du rectangle (pas l'intérieur, pour pouvoir dessiner dedans)
+        const nearV = (Math.abs(p.x - x1) < HIT || Math.abs(p.x - x2) < HIT) && p.y > y1 - HIT && p.y < y2 + HIT
+        const nearH = (Math.abs(p.y - y1) < HIT || Math.abs(p.y - y2) < HIT) && p.x > x1 - HIT && p.x < x2 + HIT
+        if (nearV || nearH) return i
+      } else if (s.tool === 'line') {
+        if (distToSegment(p, a, b) < HIT) return i
+      } else {
+        for (let j = 0; j < s.points.length - 1; j++) {
+          if (distToSegment(p, s.points[j], s.points[j + 1]) < HIT) return i
+        }
+      }
+    }
+    return -1
+  }
+
   function onPointerDown(e: React.PointerEvent) {
     e.preventDefault()
     ;(e.target as HTMLElement).setPointerCapture(e.pointerId)
-    currentRef.current = { tool, color, width, points: [toLogical(e)] }
+    const p = toLogical(e)
+
+    if (tool === 'move') {
+      const i = hitTest(p)
+      if (i >= 0) moveRef.current = { index: i, last: p }
+      return
+    }
+
+    currentRef.current = { tool, color, width, points: [p] }
     redraw()
   }
 
   function onPointerMove(e: React.PointerEvent) {
-    const c = currentRef.current
-    if (!c) return
     e.preventDefault()
     const p = toLogical(e)
-    if (c.tool === 'rect') c.points = [c.points[0], p]
-    else c.points.push(p)
+
+    // Déplacement d'une forme existante
+    const mv = moveRef.current
+    if (mv) {
+      const dx = p.x - mv.last.x, dy = p.y - mv.last.y
+      const s = strokesRef.current[mv.index]
+      s.points = s.points.map(pt => ({ x: pt.x + dx, y: pt.y + dy }))
+      mv.last = p
+      redraw()
+      return
+    }
+
+    const c = currentRef.current
+    if (!c) return
+    if (c.tool === 'rect') {
+      c.points = [c.points[0], p]
+    } else if (c.tool === 'line') {
+      // Aimantation horizontale/verticale quand on en est proche (~7°)
+      const a = c.points[0]
+      let dx = p.x - a.x, dy = p.y - a.y
+      if (Math.abs(dy) < Math.abs(dx) * 0.12) dy = 0
+      else if (Math.abs(dx) < Math.abs(dy) * 0.12) dx = 0
+      c.points = [a, { x: a.x + dx, y: a.y + dy }]
+    } else {
+      c.points.push(p)
+    }
     redraw()
   }
 
   function onPointerUp() {
+    if (moveRef.current) {
+      moveRef.current = null
+      // Persiste le déplacement dans le state (la ref a déjà bougé)
+      setStrokes([...strokesRef.current])
+      return
+    }
     const c = currentRef.current
     if (!c) return
     currentRef.current = null
@@ -228,6 +313,12 @@ export default function ProtoCroquis() {
         </button>
         <button onClick={() => setTool('rect')} className={toolBtn(tool === 'rect')} aria-label="Rectangle (panneau)">
           <Square className="w-5 h-5" />
+        </button>
+        <button onClick={() => setTool('line')} className={toolBtn(tool === 'line')} aria-label="Ligne droite">
+          <Slash className="w-5 h-5" />
+        </button>
+        <button onClick={() => setTool('move')} className={toolBtn(tool === 'move')} aria-label="Déplacer">
+          <Move className="w-5 h-5" />
         </button>
         <button onClick={() => setTool('eraser')} className={toolBtn(tool === 'eraser')} aria-label="Gomme">
           <Eraser className="w-5 h-5" />
@@ -280,7 +371,7 @@ export default function ProtoCroquis() {
           onPointerCancel={onPointerUp}
         />
         <p className="text-center text-xs text-slate-400 font-medium py-3">
-          ✏️ Stylo pour tracer · ⬜ Rectangle pour les panneaux · 📷 Photo en fond · Astuce : tourne ton téléphone en paysage pour les grands pans
+          ✏️ Stylo · ⬜ Rectangle (panneaux) · ╱ Ligne droite (s'aimante à l'horizontale/verticale) · ✥ Déplacer une forme · 📷 Photo en fond
         </p>
       </div>
 
