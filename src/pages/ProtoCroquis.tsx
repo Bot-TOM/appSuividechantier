@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pencil, Square, Slash, Move, Eraser, Undo2, Trash2, Camera, X, Download, Check, Maximize } from 'lucide-react'
+import { Pencil, Square, Slash, Move, Eraser, Undo2, Trash2, Camera, X, Download, Check, Maximize, MessageSquare } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROTOTYPE — Croquis de calepinage sur chantier
@@ -7,18 +7,16 @@ import { Pencil, Square, Slash, Move, Eraser, Undo2, Trash2, Camera, X, Download
 // Aucune écriture en base : le résultat s'exporte en PNG localement.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Tool = 'pen' | 'rect' | 'line' | 'move' | 'eraser'
+type Tool = 'pen' | 'rect' | 'line' | 'bubble' | 'move' | 'eraser'
 
 interface Point { x: number; y: number }
-
-interface Label { text: string; pos: Point }
 
 interface Stroke {
   tool: Tool
   color: string
   width: number
-  points: Point[] // pen/eraser : tracé ; rect/line : [point départ, point arrivée]
-  label?: Label   // cote affichée (lignes principalement), déplaçable
+  points: Point[] // pen/eraser : tracé ; rect/line : [début, fin] ; bubble : [position]
+  text?: string   // bubble : texte de la mesure (ex « 5,35 m »)
 }
 
 const COLORS = ['#1e293b', '#ef4444', '#3b82f6', '#f97316']
@@ -44,7 +42,7 @@ export default function ProtoCroquis() {
   const [exportUrl, setExportUrl] = useState<string | null>(null)
   const [zoomed, setZoomed] = useState(false)
 
-  // Édition de cote : indice du trait + texte en cours de saisie
+  // Édition de bulle : indice de la bulle + texte en cours de saisie
   const [labelEdit, setLabelEdit] = useState<{ index: number; text: string } | null>(null)
 
   // Vue : zoom (s) et déplacement (tx, ty) en unités logiques
@@ -87,7 +85,6 @@ export default function ProtoCroquis() {
     }
 
     for (const s of [...all, ...(live ? [live] : [])]) drawStroke(ctx, s)
-    for (const s of all) if (s.label) drawLabel(ctx, s.label, s.color)
   }
 
   function drawStroke(ctx: CanvasRenderingContext2D, s: Stroke) {
@@ -112,6 +109,11 @@ export default function ProtoCroquis() {
       ctx.moveTo(a.x, a.y)
       ctx.lineTo(b.x, b.y)
       ctx.stroke()
+      return
+    }
+
+    if (s.tool === 'bubble') {
+      drawBubble(ctx, s)
       return
     }
 
@@ -141,28 +143,48 @@ export default function ProtoCroquis() {
     ctx.stroke()
   }
 
-  function labelBox(ctx: CanvasRenderingContext2D, label: Label) {
+  // Boîte d'une bulle (centrée sur sa position points[0])
+  function bubbleBox(ctx: CanvasRenderingContext2D, s: Stroke) {
     ctx.font = '600 30px system-ui, sans-serif'
-    const w = ctx.measureText(label.text).width + 24
-    const h = 44
-    return { x: label.pos.x - w / 2, y: label.pos.y - h / 2, w, h }
+    const label = s.text && s.text.length ? s.text : '…'
+    const w = ctx.measureText(label).width + 36
+    const h = 56
+    const c = s.points[0]
+    return { x: c.x - w / 2, y: c.y - h / 2, w, h, label }
   }
 
-  function drawLabel(ctx: CanvasRenderingContext2D, label: Label, color: string) {
-    const b = labelBox(ctx, label)
-    ctx.fillStyle = 'rgba(255,255,255,0.92)'
-    ctx.strokeStyle = 'rgba(148,163,184,0.6)'
-    ctx.lineWidth = 1.5
+  function drawBubble(ctx: CanvasRenderingContext2D, s: Stroke) {
+    const b = bubbleBox(ctx, s)
+    // Pastille blanche, contour de la couleur choisie + petit ergot façon bulle
+    ctx.fillStyle = '#ffffff'
+    ctx.strokeStyle = s.color
+    ctx.lineWidth = 2.5
     ctx.beginPath()
-    // roundRect n'est pas dispo partout : rectangle simple aux coins légèrement arrondis via arc
-    ctx.roundRect ? ctx.roundRect(b.x, b.y, b.w, b.h, 10) : ctx.rect(b.x, b.y, b.w, b.h)
+    if (ctx.roundRect) ctx.roundRect(b.x, b.y, b.w, b.h, 14)
+    else ctx.rect(b.x, b.y, b.w, b.h)
     ctx.fill()
     ctx.stroke()
-    ctx.fillStyle = color
+    // Ergot sous la bulle
+    const cx = s.points[0].x
+    ctx.beginPath()
+    ctx.moveTo(cx - 10, b.y + b.h - 1)
+    ctx.lineTo(cx, b.y + b.h + 14)
+    ctx.lineTo(cx + 10, b.y + b.h - 1)
+    ctx.closePath()
+    ctx.fillStyle = '#ffffff'
+    ctx.fill()
+    ctx.strokeStyle = s.color
+    ctx.beginPath()
+    ctx.moveTo(cx - 10, b.y + b.h - 1)
+    ctx.lineTo(cx, b.y + b.h + 14)
+    ctx.lineTo(cx + 10, b.y + b.h - 1)
+    ctx.stroke()
+    // Texte
+    ctx.fillStyle = s.color
     ctx.font = '600 30px system-ui, sans-serif'
     ctx.textAlign = 'center'
     ctx.textBaseline = 'middle'
-    ctx.fillText(label.text, label.pos.x, label.pos.y + 2)
+    ctx.fillText(b.label, s.points[0].x, s.points[0].y + 1)
     ctx.textAlign = 'start'
     ctx.textBaseline = 'alphabetic'
   }
@@ -236,16 +258,15 @@ export default function ProtoCroquis() {
     return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
   }
 
-  // Cote sous le doigt ? (prioritaire sur les formes)
-  function hitTestLabel(p: Point): number {
+  // Bulle sous le doigt ? (prioritaire sur les formes)
+  function hitTestBubble(p: Point): number {
     const ctx = getCanvas()?.getContext('2d')
     if (!ctx) return -1
     const list = strokesRef.current
     for (let i = list.length - 1; i >= 0; i--) {
-      const l = list[i].label
-      if (!l) continue
-      const b = labelBox(ctx, l)
-      const M = 10 / viewRef.current.s
+      if (list[i].tool !== 'bubble') continue
+      const b = bubbleBox(ctx, list[i])
+      const M = 12 / viewRef.current.s
       if (p.x > b.x - M && p.x < b.x + b.w + M && p.y > b.y - M && p.y < b.y + b.h + M) return i
     }
     return -1
@@ -279,8 +300,8 @@ export default function ProtoCroquis() {
 
   // ── Interactions ───────────────────────────────────────────────────────────
 
-  // Déplacement : forme ou cote attrapée + suivi pour distinguer "tap" et "glisser"
-  const moveRef = useRef<{ index: number; last: Point; kind: 'shape' | 'label'; start: Point; t0: number } | null>(null)
+  // Déplacement : forme ou bulle attrapée + suivi pour distinguer "tap" et "glisser"
+  const moveRef = useRef<{ index: number; last: Point; kind: 'shape' | 'bubble'; start: Point; t0: number } | null>(null)
 
   function onPointerDown(e: React.PointerEvent) {
     e.preventDefault()
@@ -307,15 +328,18 @@ export default function ProtoCroquis() {
     const p = toLogical(e)
 
     if (tool === 'move') {
-      const li = hitTestLabel(p)
-      if (li >= 0) {
-        moveRef.current = { index: li, last: p, kind: 'label', start: p, t0: Date.now() }
+      const bi = hitTestBubble(p)
+      if (bi >= 0) {
+        moveRef.current = { index: bi, last: p, kind: 'bubble', start: p, t0: Date.now() }
         return
       }
       const i = hitTest(p)
       if (i >= 0) moveRef.current = { index: i, last: p, kind: 'shape', start: p, t0: Date.now() }
       return
     }
+
+    // Outil bulle : on attend le relâcher (tap) pour créer la bulle — pas de tracé continu
+    if (tool === 'bubble') return
 
     currentRef.current = { tool, color, width, points: [p] }
     redraw()
@@ -343,17 +367,12 @@ export default function ProtoCroquis() {
 
     const p = toLogical(e)
 
-    // Déplacement d'une forme ou d'une cote
+    // Déplacement d'une forme ou d'une bulle (tous deux = déplacer leurs points)
     const mv = moveRef.current
     if (mv) {
       const dx = p.x - mv.last.x, dy = p.y - mv.last.y
       const s = strokesRef.current[mv.index]
-      if (mv.kind === 'label' && s.label) {
-        s.label.pos = { x: s.label.pos.x + dx, y: s.label.pos.y + dy }
-      } else {
-        s.points = s.points.map(pt => ({ x: pt.x + dx, y: pt.y + dy }))
-        if (s.label) s.label.pos = { x: s.label.pos.x + dx, y: s.label.pos.y + dy }
-      }
+      s.points = s.points.map(pt => ({ x: pt.x + dx, y: pt.y + dy }))
       mv.last = p
       redraw()
       return
@@ -384,42 +403,37 @@ export default function ProtoCroquis() {
     if (mv) {
       moveRef.current = null
       const moved = Math.hypot(mv.last.x - mv.start.x, mv.last.y - mv.start.y)
-      // Tap bref sur une cote (sans la déplacer) → édition du texte
-      if (mv.kind === 'label' && moved < 8 && Date.now() - mv.t0 < 400) {
-        setLabelEdit({ index: mv.index, text: strokesRef.current[mv.index].label?.text ?? '' })
+      // Tap bref sur une bulle (sans la déplacer) → réédition du texte
+      if (mv.kind === 'bubble' && moved < 8 && Date.now() - mv.t0 < 400) {
+        setLabelEdit({ index: mv.index, text: strokesRef.current[mv.index].text ?? '' })
       }
       setStrokes([...strokesRef.current])
+      return
+    }
+
+    // Outil bulle : tap simple → crée une bulle à cet endroit et ouvre la saisie
+    if (tool === 'bubble') {
+      const p = toLogical(e)
+      const bubble: Stroke = { tool: 'bubble', color, width, points: [p], text: '' }
+      const nextIndex = strokesRef.current.length
+      setStrokes(s => [...s, bubble])
+      setLabelEdit({ index: nextIndex, text: '' })
       return
     }
 
     const c = currentRef.current
     if (!c) return
     currentRef.current = null
-
-    // Ligne terminée → proposer la cote (positionnée sous le milieu de la ligne)
-    if (c.tool === 'line' && c.points.length >= 2) {
-      const [a, b] = [c.points[0], c.points[c.points.length - 1]]
-      const mid = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }
-      // Décalage perpendiculaire pour placer la cote "sous" la ligne
-      const len = Math.hypot(b.x - a.x, b.y - a.y) || 1
-      const off = 42
-      c.label = { text: '', pos: { x: mid.x - ((b.y - a.y) / len) * -off, y: mid.y + ((b.x - a.x) / len) * off } }
-      const nextIndex = strokesRef.current.length
-      setStrokes(s => [...s, c])
-      setLabelEdit({ index: nextIndex, text: '' })
-      return
-    }
-
     setStrokes(s => [...s, c])
   }
 
   function applyLabel(index: number, rawText: string) {
     const text = rawText.trim()
-    setStrokes(s => s.map((st, i) => {
-      if (i !== index) return st
-      if (!text) return { ...st, label: undefined }
-      return { ...st, label: { text, pos: st.label?.pos ?? { x: LOGICAL_W / 2, y: LOGICAL_H / 2 } } }
-    }))
+    setStrokes(s => {
+      // Texte vide → on retire la bulle (notamment une bulle fraîchement créée)
+      if (!text) return s.filter((_, i) => i !== index)
+      return s.map((st, i) => (i === index ? { ...st, text } : st))
+    })
     setLabelEdit(null)
   }
 
@@ -475,6 +489,9 @@ export default function ProtoCroquis() {
         </button>
         <button onClick={() => setTool('line')} className={toolBtn(tool === 'line')} aria-label="Ligne droite">
           <Slash className="w-5 h-5" />
+        </button>
+        <button onClick={() => setTool('bubble')} className={toolBtn(tool === 'bubble')} aria-label="Bulle de mesure">
+          <MessageSquare className="w-5 h-5" />
         </button>
         <button onClick={() => setTool('move')} className={toolBtn(tool === 'move')} aria-label="Déplacer">
           <Move className="w-5 h-5" />
@@ -535,20 +552,19 @@ export default function ProtoCroquis() {
           onPointerCancel={onPointerUp}
         />
         <p className="text-center text-xs text-slate-400 font-medium py-3">
-          ✏️ Stylo · ⬜ Rectangle (panneaux) · ╱ Ligne droite avec cote · ✥ Déplacer formes et cotes · 🤏 Pince à deux doigts pour zoomer/dézoomer
+          ✏️ Stylo · ⬜ Rectangle (panneaux) · ╱ Ligne droite · 💬 Bulle de mesure (tape pour la poser) · ✥ Déplacer · 🤏 Pince à deux doigts pour zoomer
         </p>
       </div>
 
-      {/* Saisie de cote */}
+      {/* Saisie du texte de la bulle */}
       {labelEdit && (
         <div className="fixed inset-0 bg-slate-900/60 z-50 flex items-end sm:items-center justify-center p-4">
           <div className="bg-white rounded-3xl p-5 max-w-sm w-full shadow-2xl">
-            <h2 className="font-bold text-slate-900 mb-1">Cote de la ligne</h2>
-            <p className="text-xs text-slate-400 font-medium mb-4">Laisse vide si tu ne veux pas de cote. Tu pourras la déplacer avec l'outil ✥.</p>
+            <h2 className="font-bold text-slate-900 mb-1">Bulle de mesure</h2>
+            <p className="text-xs text-slate-400 font-medium mb-4">Écris la mesure ou l'annotation. Ensuite, déplace la bulle où tu veux avec l'outil ✥.</p>
             <input
               autoFocus
               type="text"
-              inputMode="decimal"
               placeholder="ex : 5,35 m"
               value={labelEdit.text}
               onChange={e => setLabelEdit(le => le ? { ...le, text: e.target.value } : le)}
@@ -558,7 +574,7 @@ export default function ProtoCroquis() {
             <div className="flex gap-3 mt-4">
               <button onClick={() => applyLabel(labelEdit.index, '')}
                 className="flex-1 bg-white border-2 border-slate-200 hover:border-slate-300 text-slate-700 font-bold py-3 rounded-xl transition-colors">
-                Sans cote
+                Supprimer
               </button>
               <button onClick={() => applyLabel(labelEdit.index, labelEdit.text)}
                 className="flex-1 bg-orange-500 hover:bg-orange-600 text-white font-bold py-3 rounded-xl shadow-md transition-colors">
