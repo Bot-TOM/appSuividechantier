@@ -55,15 +55,16 @@ export default function ProtoCroquis() {
 
   // ── Rendu ──────────────────────────────────────────────────────────────────
 
-  function drawScene(ctx: CanvasRenderingContext2D, all: Stroke[], live: Stroke | null) {
-    const bg = photoRef.current
+  interface Bounds { minX: number; minY: number; maxX: number; maxY: number }
 
-    // Page blanche avec bord léger (le fond gris apparaît quand on dézoome)
+  function drawScene(ctx: CanvasRenderingContext2D, all: Stroke[], live: Stroke | null, bounds: Bounds) {
+    const bg = photoRef.current
+    const { minX, minY, maxX, maxY } = bounds
+
+    // Surface de travail blanche couvrant toute la zone visible/exportée
+    // (plus de page A4 fixe : dézoomer agrandit l'espace utilisable)
     ctx.fillStyle = '#ffffff'
-    ctx.fillRect(0, 0, LOGICAL_W, LOGICAL_H)
-    ctx.strokeStyle = '#cbd5e1'
-    ctx.lineWidth = 2
-    ctx.strokeRect(0, 0, LOGICAL_W, LOGICAL_H)
+    ctx.fillRect(minX, minY, maxX - minX, maxY - minY)
 
     if (bg) {
       const scale = Math.min(LOGICAL_W / bg.width, LOGICAL_H / bg.height)
@@ -74,14 +75,16 @@ export default function ProtoCroquis() {
       ctx.globalAlpha = 1
     }
 
-    // Quadrillage 50px logique (plus discret sur photo)
+    // Quadrillage 50px aligné, étendu à toute la zone visible
     ctx.strokeStyle = bg ? 'rgba(100,116,139,0.18)' : 'rgba(100,116,139,0.25)'
     ctx.lineWidth = 1
-    for (let x = 0; x <= LOGICAL_W; x += 50) {
-      ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, LOGICAL_H); ctx.stroke()
+    const startX = Math.floor(minX / 50) * 50
+    const startY = Math.floor(minY / 50) * 50
+    for (let x = startX; x <= maxX; x += 50) {
+      ctx.beginPath(); ctx.moveTo(x, minY); ctx.lineTo(x, maxY); ctx.stroke()
     }
-    for (let y = 0; y <= LOGICAL_H; y += 50) {
-      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(LOGICAL_W, y); ctx.stroke()
+    for (let y = startY; y <= maxY; y += 50) {
+      ctx.beginPath(); ctx.moveTo(minX, y); ctx.lineTo(maxX, y); ctx.stroke()
     }
 
     for (const s of [...all, ...(live ? [live] : [])]) drawStroke(ctx, s)
@@ -195,13 +198,20 @@ export default function ProtoCroquis() {
     if (!canvas || !ctx) return
     const b = canvas.width / LOGICAL_W
     const v = viewRef.current
-    // Fond gris hors page (visible en dézoom)
+    // Nettoyage en blanc (évite tout liseré gris en bord de canvas)
     ctx.setTransform(1, 0, 0, 1, 0, 0)
-    ctx.fillStyle = '#e2e8f0'
+    ctx.fillStyle = '#ffffff'
     ctx.fillRect(0, 0, canvas.width, canvas.height)
     // Transformation vue : zoom + déplacement
     ctx.setTransform(b * v.s, 0, 0, b * v.s, b * v.tx * v.s, b * v.ty * v.s)
-    drawScene(ctx, strokesRef.current, currentRef.current)
+    // Zone logique réellement visible (légère marge pour couvrir les bords)
+    const bounds: Bounds = {
+      minX: -v.tx - 2,
+      minY: -v.ty - 2,
+      maxX: LOGICAL_W / v.s - v.tx + 2,
+      maxY: LOGICAL_H / v.s - v.ty + 2,
+    }
+    drawScene(ctx, strokesRef.current, currentRef.current, bounds)
   }
 
   // Garde les refs en phase avec le state, puis redessine
@@ -457,13 +467,41 @@ export default function ProtoCroquis() {
     e.target.value = ''
   }
 
+  // Rectangle englobant tout le contenu dessiné (+ marge), pour recadrer l'export
+  function contentBounds(): Bounds {
+    const all = strokesRef.current
+    if (!all.length && !photoRef.current) {
+      return { minX: 0, minY: 0, maxX: LOGICAL_W, maxY: LOGICAL_H }
+    }
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity
+    for (const s of all) {
+      // Les bulles occupent une boîte autour de leur point : on l'élargit
+      const pad = s.tool === 'bubble' ? 130 : 0
+      for (const p of s.points) {
+        minX = Math.min(minX, p.x - pad); minY = Math.min(minY, p.y - 40)
+        maxX = Math.max(maxX, p.x + pad); maxY = Math.max(maxY, p.y + 40)
+      }
+    }
+    if (photoRef.current) {
+      minX = Math.min(minX, 0); minY = Math.min(minY, 0)
+      maxX = Math.max(maxX, LOGICAL_W); maxY = Math.max(maxY, LOGICAL_H)
+    }
+    const M = 70
+    return { minX: minX - M, minY: minY - M, maxX: maxX + M, maxY: maxY + M }
+  }
+
   function exportPng() {
-    // Rendu propre en pleine résolution logique, indépendant du zoom écran
+    const { minX, minY, maxX, maxY } = contentBounds()
+    const w = Math.max(1, maxX - minX)
+    const h = Math.max(1, maxY - minY)
+    const scale = Math.min(2, 2000 / Math.max(w, h)) // résolution raisonnable
     const off = document.createElement('canvas')
-    off.width = LOGICAL_W
-    off.height = LOGICAL_H
+    off.width = Math.round(w * scale)
+    off.height = Math.round(h * scale)
     const ctx = off.getContext('2d')!
-    drawScene(ctx, strokesRef.current, null)
+    ctx.scale(scale, scale)
+    ctx.translate(-minX, -minY)
+    drawScene(ctx, strokesRef.current, null, { minX, minY, maxX, maxY })
     off.toBlob(blob => {
       if (blob) setExportUrl(URL.createObjectURL(blob))
     }, 'image/png')
