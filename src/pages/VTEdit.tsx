@@ -8,6 +8,8 @@ import {
   BToCStep1, BToCStep2, BToCStep3, BToCStep4, BToCStep5,
   BToBStep1, BToBStep2, BToBStep3, BToBStep4, BToBStep5, BToBStep6, BToBStep7, BToBPhotosStep,
 } from '@/components/vt/VTFormSteps'
+import VTCroquisButton from '@/components/vt/VTCroquisButton'
+import type { CroquisDoc } from '@/components/croquis/CroquisManager'
 
 export default function VTEdit() {
   const { id } = useParams<{ id: string }>()
@@ -222,6 +224,11 @@ export default function VTEdit() {
           </div>
         </div>
       </main>
+
+      <VTCroquisButton
+        value={(formData['__croquis'] as CroquisDoc[] | undefined) ?? []}
+        onChange={docs => handleDataChange({ ...formData, __croquis: docs })}
+      />
     </div>
   )
 }
