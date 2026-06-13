@@ -233,13 +233,17 @@ export default function CroquisCanvas({ initialStrokes, onChange, onClose, title
     onChangeRef.current?.(strokes)
   }, [strokes, photo])
 
-  // Canvas net sur écrans haute densité, redimensionné avec la fenêtre
+  // Canvas net sur écrans haute densité. Un ResizeObserver garantit qu'on
+  // dimensionne quand le conteneur a réellement sa taille (montage en
+  // superposition : le layout n'est pas prêt au tout premier rendu).
   useEffect(() => {
+    const wrap = wrapRef.current
+    if (!wrap) return
     function resize() {
       const canvas = getCanvas()
-      const wrap = wrapRef.current
       if (!canvas || !wrap) return
       const rect = wrap.getBoundingClientRect()
+      if (rect.width < 1) return // pas encore mis en page
       const dpr = window.devicePixelRatio || 1
       canvas.width = rect.width * dpr
       canvas.height = rect.width * (LOGICAL_H / LOGICAL_W) * dpr
@@ -247,9 +251,10 @@ export default function CroquisCanvas({ initialStrokes, onChange, onClose, title
       canvas.style.height = `${rect.width * (LOGICAL_H / LOGICAL_W)}px`
       redraw()
     }
+    const ro = new ResizeObserver(resize)
+    ro.observe(wrap)
     resize()
-    window.addEventListener('resize', resize)
-    return () => window.removeEventListener('resize', resize)
+    return () => ro.disconnect()
   }, [])
 
   // ── Coordonnées ────────────────────────────────────────────────────────────
