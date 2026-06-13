@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Pencil, Square, Slash, Move, Eraser, Undo2, Trash2, Camera, X, Download, Check, Maximize, MessageSquare } from 'lucide-react'
+import { Pencil, Square, Slash, Move, Copy, Eraser, Undo2, Trash2, Camera, X, Download, Check, Maximize, MessageSquare } from 'lucide-react'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROTOTYPE — Croquis de calepinage sur chantier
@@ -7,7 +7,7 @@ import { Pencil, Square, Slash, Move, Eraser, Undo2, Trash2, Camera, X, Download
 // Aucune écriture en base : le résultat s'exporte en PNG localement.
 // ─────────────────────────────────────────────────────────────────────────────
 
-type Tool = 'pen' | 'rect' | 'line' | 'bubble' | 'move' | 'eraser'
+type Tool = 'pen' | 'rect' | 'line' | 'bubble' | 'move' | 'duplicate' | 'eraser'
 
 interface Point { x: number; y: number }
 
@@ -282,8 +282,9 @@ export default function ProtoCroquis() {
     return -1
   }
 
-  // Forme sous le doigt (la plus récente d'abord), marge tactile constante à l'écran
-  function hitTest(p: Point): number {
+  // Forme sous le doigt (la plus récente d'abord), marge tactile constante à l'écran.
+  // fill = true : on attrape aussi l'intérieur des rectangles (pratique pour dupliquer).
+  function hitTest(p: Point, fill = false): number {
     const HIT = 20 / viewRef.current.s
     const list = strokesRef.current
     for (let i = list.length - 1; i >= 0; i--) {
@@ -293,10 +294,14 @@ export default function ProtoCroquis() {
       if (s.tool === 'rect') {
         const x1 = Math.min(a.x, b.x), x2 = Math.max(a.x, b.x)
         const y1 = Math.min(a.y, b.y), y2 = Math.max(a.y, b.y)
-        // Sur un bord du rectangle (pas l'intérieur, pour pouvoir dessiner dedans)
-        const nearV = (Math.abs(p.x - x1) < HIT || Math.abs(p.x - x2) < HIT) && p.y > y1 - HIT && p.y < y2 + HIT
-        const nearH = (Math.abs(p.y - y1) < HIT || Math.abs(p.y - y2) < HIT) && p.x > x1 - HIT && p.x < x2 + HIT
-        if (nearV || nearH) return i
+        if (fill) {
+          if (p.x > x1 - HIT && p.x < x2 + HIT && p.y > y1 - HIT && p.y < y2 + HIT) return i
+        } else {
+          // Sur un bord du rectangle (pas l'intérieur, pour pouvoir dessiner dedans)
+          const nearV = (Math.abs(p.x - x1) < HIT || Math.abs(p.x - x2) < HIT) && p.y > y1 - HIT && p.y < y2 + HIT
+          const nearH = (Math.abs(p.y - y1) < HIT || Math.abs(p.y - y2) < HIT) && p.x > x1 - HIT && p.x < x2 + HIT
+          if (nearV || nearH) return i
+        }
       } else if (s.tool === 'line') {
         if (distToSegment(p, a, b) < HIT) return i
       } else {
@@ -345,6 +350,22 @@ export default function ProtoCroquis() {
       }
       const i = hitTest(p)
       if (i >= 0) moveRef.current = { index: i, last: p, kind: 'shape', start: p, t0: Date.now() }
+      return
+    }
+
+    // Outil dupliquer : copie la forme touchée (décalée) et on la place en glissant
+    if (tool === 'duplicate') {
+      const bi = hitTestBubble(p)
+      const src = bi >= 0 ? bi : hitTest(p, true)
+      if (src < 0) return
+      const orig = strokesRef.current[src]
+      const OFF = 30
+      const copy: Stroke = { ...orig, points: orig.points.map(pt => ({ x: pt.x + OFF, y: pt.y + OFF })) }
+      strokesRef.current = [...strokesRef.current, copy]
+      const newIndex = strokesRef.current.length - 1
+      // On saisit la copie immédiatement : un simple tap la pose décalée, un glissé la place
+      moveRef.current = { index: newIndex, last: { x: p.x + OFF, y: p.y + OFF }, kind: 'shape', start: p, t0: Date.now() }
+      redraw()
       return
     }
 
@@ -534,6 +555,9 @@ export default function ProtoCroquis() {
         <button onClick={() => setTool('move')} className={toolBtn(tool === 'move')} aria-label="Déplacer">
           <Move className="w-5 h-5" />
         </button>
+        <button onClick={() => setTool('duplicate')} className={toolBtn(tool === 'duplicate')} aria-label="Dupliquer">
+          <Copy className="w-5 h-5" />
+        </button>
         <button onClick={() => setTool('eraser')} className={toolBtn(tool === 'eraser')} aria-label="Gomme">
           <Eraser className="w-5 h-5" />
         </button>
@@ -590,7 +614,7 @@ export default function ProtoCroquis() {
           onPointerCancel={onPointerUp}
         />
         <p className="text-center text-xs text-slate-400 font-medium py-3">
-          ✏️ Stylo · ⬜ Rectangle (panneaux) · ╱ Ligne droite · 💬 Bulle de mesure (tape pour la poser) · ✥ Déplacer · 🤏 Pince à deux doigts pour zoomer
+          ✏️ Stylo · ⬜ Rectangle · ╱ Ligne · 💬 Bulle · ✥ Déplacer · ⧉ Dupliquer (tape une forme, glisse pour la placer) · 🤏 Pince pour zoomer
         </p>
       </div>
 
